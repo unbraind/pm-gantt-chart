@@ -1,0 +1,37 @@
+{
+  "name": "pm-ext-gantt",
+  "version": "0.1.0",
+  "description": "ASCII Gantt chart renderer for pm-cli",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/",
+    "manifest.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "@unbrained/pm-cli": ">=2026.5.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "pm-cli",
+    "pm-cli-extension",
+    "gantt",
+    "ascii",
+    "timeline",
+    "project-management"
+  ],
+  "author": "@unbraind",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/unbraind/pm-cli-ext-gantt.git"
+  }
+}
