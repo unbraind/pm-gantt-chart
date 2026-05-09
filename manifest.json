@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "description": "ASCII Gantt chart renderer for pm-cli",
   "author": "@unbraind",
-  "entry": "index.js",
+  "entry": "./dist/index.js",
   "priority": 50,
-  "capabilities": ["commands", "renderers"]
+  "capabilities": [
+    "commands",
+    "renderers"
+  ]
 }
