@@ -18,6 +18,7 @@
     "@unbrained/pm-cli": ">=2026.5.0"
   },
   "devDependencies": {
+    "@unbrained/pm-cli": "^2026.5.10",
     "typescript": "^5.0.0"
   },
   "keywords": [
