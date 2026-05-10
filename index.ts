@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import {
   defineExtension,
   type ExtensionApi,
@@ -12,7 +13,7 @@ interface PmItem {
   id: string;
   title: string;
   body?: string;
-  status: "todo" | "done" | "wip" | "blocked";
+  status: "open" | "in_progress" | "blocked" | "closed" | "canceled" | "draft";
   priority?: string;
   type?: string;
   tags?: string[];
@@ -23,7 +24,7 @@ interface PmItem {
 }
 
 type GroupBy = "milestone" | "tag" | "type";
-type StatusFilter = "todo" | "wip" | "blocked" | "done" | "all";
+type StatusFilter = "open" | "in_progress" | "blocked" | "closed" | "canceled" | "draft" | "all";
 
 interface GanttOptions {
   weeks: number;
@@ -153,10 +154,11 @@ const COL_SEP = "  ";
 
 function statusSymbol(status: PmItem["status"]): string {
   switch (status) {
-    case "wip":     return "▶";
-    case "blocked": return "!";
-    case "done":    return "✓";
-    default:        return "○";
+    case "in_progress": return "▶";
+    case "blocked":     return "!";
+    case "closed":      return "✓";
+    case "canceled":    return "✗";
+    default:            return "○";
   }
 }
 
@@ -241,9 +243,9 @@ function renderGantt(
     } else {
       for (let w = 0; w < weeks; w++) {
         if (w >= row.startWeek && w <= (row.endWeek ?? row.startWeek)) {
-          // Active: use different block for wip/blocked vs todo
+          // Active: use different block for in_progress/blocked vs open
           const block =
-            item.status === "wip" || item.status === "blocked"
+            item.status === "in_progress" || item.status === "blocked"
               ? BLOCK_ACTIVE
               : BLOCK_PLANNED;
           cells.push(block.padEnd(WEEK_COL));
@@ -262,8 +264,8 @@ function renderGantt(
 
   // Legend
   lines.push(
-    `Legend: ${BLOCK_ACTIVE} wip/blocked  ${BLOCK_PLANNED} todo/planned  ${BLOCK_UNDATED} undated  ` +
-      `S: ▶wip  !blocked  ✓done  ○todo`
+    `Legend: ${BLOCK_ACTIVE} in_progress/blocked  ${BLOCK_PLANNED} open/planned  ${BLOCK_UNDATED} undated  ` +
+      `S: ▶in_progress  !blocked  ✓closed  ○open`
   );
 
   return lines.join("\n");
@@ -287,8 +289,8 @@ export default defineExtension({
         "pm gantt --weeks 12",
         "pm gantt --group-by tag",
         "pm gantt --group-by type --weeks 6",
-        "pm gantt --status wip",
-        "pm gantt --status todo --weeks 16",
+        "pm gantt --status in_progress",
+        "pm gantt --status open --weeks 16",
       ],
       flags: [
         {
@@ -306,32 +308,36 @@ export default defineExtension({
           long: "--status",
           value_name: "filter",
           description:
-            "Filter by status: todo | wip | blocked | done | all (default: all)",
+            "Filter by status: open | in_progress | blocked | closed | canceled | draft | all (default: all)",
         },
       ],
 
       async run(ctx: CommandHandlerContext) {
         // --- Parse flags ---
-        const rawWeeks = ctx.args["--weeks"] ?? ctx.args["weeks"];
+        const rawWeeks = ctx.options["weeks"];
         const weeks = rawWeeks ? Math.max(1, Math.min(52, parseInt(String(rawWeeks), 10))) : 8;
 
-        const rawGroupBy = ctx.args["--group-by"] ?? ctx.args["group-by"] ?? "milestone";
+        const rawGroupBy = ctx.options["group-by"] ?? "milestone";
         const groupBy: GroupBy = ["milestone", "tag", "type"].includes(String(rawGroupBy))
           ? (String(rawGroupBy) as GroupBy)
           : "milestone";
 
-        const rawStatus = ctx.args["--status"] ?? ctx.args["status"] ?? "all";
+        const rawStatus = ctx.options["status"] ?? "all";
         const statusFilter: StatusFilter = [
-          "todo", "wip", "blocked", "done", "all",
+          "open", "in_progress", "blocked", "closed", "canceled", "draft", "all",
         ].includes(String(rawStatus))
           ? (String(rawStatus) as StatusFilter)
           : "all";
 
         // --- Fetch items ---
-        const allItems = (await ctx.pm.listItems({})) as PmItem[];
+        const result = spawnSync("pm", ["--path", ctx.pm_root, "list-all", "--json"], { encoding: "utf-8" });
+        if (result.error || result.status !== 0) {
+          return { error: "Failed to fetch pm items", details: result.stderr };
+        }
+        const allItems: PmItem[] = JSON.parse(result.stdout).items ?? [];
 
         if (allItems.length === 0) {
-          ctx.log.warn("No pm items found. Add some items first.");
+          console.error("No pm items found. Add some items first.");
           return { chart: null, itemCount: 0 };
         }
 
@@ -342,10 +348,8 @@ export default defineExtension({
             : allItems.filter((i) => i.status === statusFilter);
 
         if (items.length === 0) {
-          ctx.log.warn(
-            `No items with status "${statusFilter}". Try --status all.`
-          );
-          return { chart: null, itemCount: 0 };
+          console.error(`No items with status "${statusFilter}". Try --status all.`);
+          return { chart: null, itemCount: 0, warning: `No items with status "${statusFilter}"` };
         }
 
         // --- Build opts ---
@@ -383,12 +387,14 @@ export default defineExtension({
         for (const group of sortedGroups) {
           const groupItems = groupMap.get(group)!;
 
-          // Sort items within group: wip first, then todo, then blocked, then done
+          // Sort items within group: in_progress first, then open, then blocked, then closed
           const statusOrder: Record<PmItem["status"], number> = {
-            wip: 0,
-            todo: 1,
+            in_progress: 0,
+            open: 1,
             blocked: 2,
-            done: 3,
+            closed: 3,
+            canceled: 4,
+            draft: 5,
           };
           groupItems.sort(
             (a, b) => statusOrder[a.status] - statusOrder[b.status]
@@ -418,10 +424,8 @@ export default defineExtension({
         // --- Render ---
         const chart = renderGantt(rows, opts, windowStart);
 
-        // Print to stdout via log.info (pm-cli will display this)
-        for (const line of chart.split("\n")) {
-          ctx.log.info(line);
-        }
+        // Print to stdout
+        process.stdout.write(chart + "\n");
 
         return {
           chart,
