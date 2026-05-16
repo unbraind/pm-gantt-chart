@@ -2,6 +2,14 @@
   "name": "pm-ext-gantt",
   "version": "0.1.0",
   "description": "ASCII Gantt chart renderer for pm-cli",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/unbraind/pm-cli-ext-gantt.git"
+  },
+  "bugs": {
+    "url": "https://github.com/unbraind/pm-cli-ext-gantt/issues"
+  },
+  "homepage": "https://github.com/unbraind/pm-cli-ext-gantt#readme",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -31,9 +39,5 @@
     "project-management"
   ],
   "author": "@unbraind",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/unbraind/pm-cli-ext-gantt.git"
-  }
+  "license": "MIT"
 }
