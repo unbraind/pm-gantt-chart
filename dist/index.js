@@ -1,4 +1,5 @@
-function defineExtension(m){return m}
+import { spawnSync } from "node:child_process";
+const defineExtension = ((extension) => extension);
 // ---------------------------------------------------------------------------
 // Date helpers
 // ---------------------------------------------------------------------------
@@ -87,9 +88,10 @@ const BLOCK_UNDATED = "··";
 const COL_SEP = "  ";
 function statusSymbol(status) {
     switch (status) {
-        case "wip": return "▶";
+        case "in_progress": return "▶";
         case "blocked": return "!";
-        case "done": return "✓";
+        case "closed": return "✓";
+        case "canceled": return "✗";
         default: return "○";
     }
 }
@@ -151,8 +153,8 @@ function renderGantt(rows, opts, windowStart) {
         else {
             for (let w = 0; w < weeks; w++) {
                 if (w >= row.startWeek && w <= (row.endWeek ?? row.startWeek)) {
-                    // Active: use different block for wip/blocked vs todo
-                    const block = item.status === "wip" || item.status === "blocked"
+                    // Active: use different block for in_progress/blocked vs open
+                    const block = item.status === "in_progress" || item.status === "blocked"
                         ? BLOCK_ACTIVE
                         : BLOCK_PLANNED;
                     cells.push(block.padEnd(WEEK_COL));
@@ -166,8 +168,8 @@ function renderGantt(rows, opts, windowStart) {
     }
     lines.push("━".repeat(Math.min(totalWidth, 90)));
     // Legend
-    lines.push(`Legend: ${BLOCK_ACTIVE} wip/blocked  ${BLOCK_PLANNED} todo/planned  ${BLOCK_UNDATED} undated  ` +
-        `S: ▶wip  !blocked  ✓done  ○todo`);
+    lines.push(`Legend: ${BLOCK_ACTIVE} in_progress/blocked  ${BLOCK_PLANNED} open/planned  ${BLOCK_UNDATED} undated  ` +
+        `S: ▶in_progress  !blocked  ✓closed  ○open`);
     return lines.join("\n");
 }
 // ---------------------------------------------------------------------------
@@ -186,8 +188,8 @@ export default defineExtension({
                 "pm gantt --weeks 12",
                 "pm gantt --group-by tag",
                 "pm gantt --group-by type --weeks 6",
-                "pm gantt --status wip",
-                "pm gantt --status todo --weeks 16",
+                "pm gantt --status in_progress",
+                "pm gantt --status open --weeks 16",
             ],
             flags: [
                 {
@@ -203,27 +205,31 @@ export default defineExtension({
                 {
                     long: "--status",
                     value_name: "filter",
-                    description: "Filter by status: todo | wip | blocked | done | all (default: all)",
+                    description: "Filter by status: open | in_progress | blocked | closed | canceled | draft | all (default: all)",
                 },
             ],
             async run(ctx) {
                 // --- Parse flags ---
-                const rawWeeks = ctx.args["--weeks"] ?? ctx.args["weeks"];
+                const rawWeeks = ctx.options["weeks"];
                 const weeks = rawWeeks ? Math.max(1, Math.min(52, parseInt(String(rawWeeks), 10))) : 8;
-                const rawGroupBy = ctx.args["--group-by"] ?? ctx.args["group-by"] ?? "milestone";
+                const rawGroupBy = ctx.options["group-by"] ?? "milestone";
                 const groupBy = ["milestone", "tag", "type"].includes(String(rawGroupBy))
                     ? String(rawGroupBy)
                     : "milestone";
-                const rawStatus = ctx.args["--status"] ?? ctx.args["status"] ?? "all";
+                const rawStatus = ctx.options["status"] ?? "all";
                 const statusFilter = [
-                    "todo", "wip", "blocked", "done", "all",
+                    "open", "in_progress", "blocked", "closed", "canceled", "draft", "all",
                 ].includes(String(rawStatus))
                     ? String(rawStatus)
                     : "all";
                 // --- Fetch items ---
-                const allItems = (await ctx.pm.listItems({}));
+                const result = spawnSync("pm", ["--path", ctx.pm_root, "list-all", "--json"], { encoding: "utf-8" });
+                if (result.error || result.status !== 0) {
+                    return { error: "Failed to fetch pm items", details: result.stderr };
+                }
+                const allItems = JSON.parse(result.stdout).items ?? [];
                 if (allItems.length === 0) {
-                    ctx.log.warn("No pm items found. Add some items first.");
+                    console.error("No pm items found. Add some items first.");
                     return { chart: null, itemCount: 0 };
                 }
                 // --- Filter by status ---
@@ -231,8 +237,8 @@ export default defineExtension({
                     ? allItems
                     : allItems.filter((i) => i.status === statusFilter);
                 if (items.length === 0) {
-                    ctx.log.warn(`No items with status "${statusFilter}". Try --status all.`);
-                    return { chart: null, itemCount: 0 };
+                    console.error(`No items with status "${statusFilter}". Try --status all.`);
+                    return { chart: null, itemCount: 0, warning: `No items with status "${statusFilter}"` };
                 }
                 // --- Build opts ---
                 const today = new Date();
@@ -266,12 +272,14 @@ export default defineExtension({
                 const rows = [];
                 for (const group of sortedGroups) {
                     const groupItems = groupMap.get(group);
-                    // Sort items within group: wip first, then todo, then blocked, then done
+                    // Sort items within group: in_progress first, then open, then blocked, then closed
                     const statusOrder = {
-                        wip: 0,
-                        todo: 1,
+                        in_progress: 0,
+                        open: 1,
                         blocked: 2,
-                        done: 3,
+                        closed: 3,
+                        canceled: 4,
+                        draft: 5,
                     };
                     groupItems.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
                     for (const item of groupItems) {
@@ -289,10 +297,8 @@ export default defineExtension({
                 }
                 // --- Render ---
                 const chart = renderGantt(rows, opts, windowStart);
-                // Print to stdout via log.info (pm-cli will display this)
-                for (const line of chart.split("\n")) {
-                    ctx.log.info(line);
-                }
+                // Print to stdout
+                process.stdout.write(chart + "\n");
                 return {
                     chart,
                     itemCount: items.length,

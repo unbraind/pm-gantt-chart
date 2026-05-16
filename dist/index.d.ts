@@ -1,4 +1,4 @@
-import { type ExtensionApi } from "@unbrained/pm-cli/sdk";
+import type { ExtensionApi } from "@unbrained/pm-cli/sdk";
 declare const _default: {
     name: string;
     version: string;
