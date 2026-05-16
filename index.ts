@@ -1,9 +1,7 @@
 import { spawnSync } from "node:child_process";
-import {
-  defineExtension,
-  type ExtensionApi,
-  type CommandHandlerContext,
-} from "@unbrained/pm-cli/sdk";
+import type { defineExtension as defineExtensionType, CommandHandlerContext, ExtensionApi  } from "@unbrained/pm-cli/sdk";
+
+const defineExtension: typeof defineExtensionType = ((extension: any) => extension) as any;
 
 // ---------------------------------------------------------------------------
 // Types
