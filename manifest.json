@@ -1,5 +1,5 @@
 {
-  "name": "pm-ext-gantt",
+  "name": "pm-gantt-chart",
   "version": "0.1.0",
   "description": "ASCII Gantt chart renderer for pm-cli",
   "author": "@unbraind",
@@ -9,5 +9,8 @@
     "commands",
     "schema",
     "renderers"
-  ]
+  ],
+  "pm": {
+    "compatibility": "v2"
+  }
 }

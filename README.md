@@ -1,4 +1,4 @@
-# pm-ext-gantt
+# pm-gantt-chart-chart
 
 ASCII Gantt chart renderer for [pm-cli](https://github.com/unbraind/pm-cli).
 
@@ -24,7 +24,7 @@ Legend: ██ wip/blocked  ░░ todo/planned  ·· undated  S: ▶wip  !block
 ## Installation
 
 ```sh
-pm ext install unbraind/pm-cli-ext-gantt
+pm ext install unbraind/pm-gantt-chart-chart
 ```
 
 Or from a local clone:
@@ -106,3 +106,7 @@ pm ext install .
 ## License
 
 MIT
+
+## Release Automation
+
+This package is release-ready for GitHub, npm, and Bun-compatible installs. CI runs type checking, build, production dependency audit, package packing, Bun install verification, and pm-changelog validation. The daily release workflow publishes only when commits exist after the latest release tag and uses pm-changelog to generate CHANGELOG.md and GitHub release notes.
