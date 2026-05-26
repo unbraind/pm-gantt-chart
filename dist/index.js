@@ -177,7 +177,7 @@ function renderGantt(rows, opts, windowStart) {
 // ---------------------------------------------------------------------------
 export default defineExtension({
     name: "pm-gantt-chart-chart",
-    version: "0.1.0",
+    version: "2026.5.26",
     activate(api) {
         api.registerCommand({
             name: "gantt",
