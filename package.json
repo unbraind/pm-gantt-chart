@@ -1,6 +1,6 @@
 {
   "name": "pm-gantt-chart",
-  "version": "2026.5.26",
+  "version": "2026.5.27",
   "description": "ASCII Gantt chart renderer for pm-cli",
   "repository": {
     "type": "git",
