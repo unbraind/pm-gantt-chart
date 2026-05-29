@@ -1,5 +1,14 @@
 import { spawnSync } from "node:child_process";
 const defineExtension = ((extension) => extension);
+/** pm has no `milestone` field; map the "milestone" grouping onto its closest
+ * canonical fields (sprint, then release). */
+function itemMilestone(item) {
+    return item.milestone ?? item.sprint ?? item.release;
+}
+/** pm exposes the due date as `deadline`; older payloads may use `due_date`. */
+function itemDueDate(item) {
+    return item.deadline ?? item.due_date;
+}
 // ---------------------------------------------------------------------------
 // Date helpers
 // ---------------------------------------------------------------------------
@@ -70,7 +79,7 @@ function computeWeekRange(itemStart, itemEnd, windowStart, totalWeeks) {
 function getGroupKey(item, groupBy) {
     switch (groupBy) {
         case "milestone":
-            return item.milestone?.trim() || "(no milestone)";
+            return itemMilestone(item)?.trim() || "(no milestone)";
         case "tag":
             return item.tags && item.tags.length > 0
                 ? item.tags[0]
@@ -176,7 +185,7 @@ function renderGantt(rows, opts, windowStart) {
 // Extension entry point
 // ---------------------------------------------------------------------------
 export default defineExtension({
-    name: "pm-gantt-chart-chart",
+    name: "pm-gantt-chart",
     version: "2026.5.28",
     activate(api) {
         api.registerCommand({
@@ -200,7 +209,7 @@ export default defineExtension({
                 {
                     long: "--group-by",
                     value_name: "field",
-                    description: "Group items by: milestone | tag | type (default: milestone)",
+                    description: "Group items by: milestone (sprint/release) | tag | type (default: milestone)",
                 },
                 {
                     long: "--status",
@@ -210,13 +219,23 @@ export default defineExtension({
             ],
             async run(ctx) {
                 // --- Parse flags ---
-                const rawWeeks = ctx.options["weeks"];
+                // pm normalizes multi-word options to camelCase at runtime
+                // (e.g. `--group-by` => `groupBy`), so read both spellings.
+                const readOption = (...keys) => {
+                    for (const key of keys) {
+                        const value = ctx.options[key];
+                        if (value !== undefined && value !== null)
+                            return value;
+                    }
+                    return undefined;
+                };
+                const rawWeeks = readOption("weeks");
                 const weeks = rawWeeks ? Math.max(1, Math.min(52, parseInt(String(rawWeeks), 10))) : 8;
-                const rawGroupBy = ctx.options["group-by"] ?? "milestone";
+                const rawGroupBy = readOption("group-by", "groupBy") ?? "milestone";
                 const groupBy = ["milestone", "tag", "type"].includes(String(rawGroupBy))
                     ? String(rawGroupBy)
                     : "milestone";
-                const rawStatus = ctx.options["status"] ?? "all";
+                const rawStatus = readOption("status") ?? "all";
                 const statusFilter = [
                     "open", "in_progress", "blocked", "closed", "canceled", "draft", "all",
                 ].includes(String(rawStatus))
@@ -225,9 +244,17 @@ export default defineExtension({
                 // --- Fetch items ---
                 const result = spawnSync("pm", ["--path", ctx.pm_root, "list-all", "--json"], { encoding: "utf-8" });
                 if (result.error || result.status !== 0) {
-                    return { error: "Failed to fetch pm items", details: result.stderr };
+                    // Throw so the CLI exits non-zero (returning {error} exits 0).
+                    throw new Error(`Failed to fetch pm items (exit ${result.status ?? "unknown"}): ${result.stderr?.trim() || result.error?.message || "no output"}`);
                 }
-                const allItems = JSON.parse(result.stdout).items ?? [];
+                let parsed;
+                try {
+                    parsed = JSON.parse(result.stdout);
+                }
+                catch (err) {
+                    throw new Error(`Failed to parse pm list-all output as JSON: ${err instanceof Error ? err.message : String(err)}`);
+                }
+                const allItems = parsed.items ?? [];
                 if (allItems.length === 0) {
                     console.error("No pm items found. Add some items first.");
                     return { chart: null, itemCount: 0 };
@@ -285,7 +312,8 @@ export default defineExtension({
                     for (const item of groupItems) {
                         // Compute week range from created_at → due_date
                         const itemStart = item.created_at ? parseDate(item.created_at) : null;
-                        const itemEnd = item.due_date ? parseDate(item.due_date) : null;
+                        const due = itemDueDate(item);
+                        const itemEnd = due ? parseDate(due) : null;
                         const range = computeWeekRange(itemStart, itemEnd, windowStart, weeks);
                         rows.push({
                             group,
@@ -297,8 +325,12 @@ export default defineExtension({
                 }
                 // --- Render ---
                 const chart = renderGantt(rows, opts, windowStart);
-                // Print to stdout
-                process.stdout.write(chart + "\n");
+                // Print the human-readable chart to stdout, but not under --json:
+                // mixing it with the JSON payload would corrupt machine-readable output.
+                // The chart is still returned in the result object for JSON consumers.
+                if (!ctx.global?.json) {
+                    process.stdout.write(chart + "\n");
+                }
                 return {
                     chart,
                     itemCount: items.length,

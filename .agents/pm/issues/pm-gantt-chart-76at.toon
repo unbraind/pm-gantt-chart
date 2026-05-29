@@ -1,0 +1,12 @@
+id: pm-gantt-chart-76at
+title: "gantt: --group-by ignored (kebab vs camelCase option key)"
+description: ""
+type: Issue
+status: closed
+priority: 2
+tags[2]: functional-test,option-normalization
+created_at: "2026-05-29T15:39:37.089Z"
+updated_at: "2026-05-29T15:39:37.089Z"
+author: codex
+parent: pm-gantt-chart-35p0
+body: "Symptom: `--group-by` flag is silently ignored; chart always groups by milestone.\nRepro: `pm gantt --group-by type --json` (with seeded items)\nObserved: result reports `groupBy: \"milestone\"`, single group.\nExpected: groupBy reflects the flag value (type/tag).\nRoot cause (bug class 1, option-key normalization): pm normalizes `--group-by` to camelCase `groupBy` at runtime (probe: ctx.options keys = [\"groupBy\",\"weeks\",\"status\"]), but code read ctx.options[\"group-by\"] only -> undefined -> default \"milestone\".\nFix: readOption() helper reads both kebab+camel (\"group-by\",\"groupBy\"). Verified: `--group-by type` -> groupBy:type/3 groups; `--group-by tag` -> 5 groups."
