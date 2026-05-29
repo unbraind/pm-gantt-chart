@@ -289,7 +289,7 @@ function renderGantt(
 
 export default defineExtension({
   name: "pm-gantt-chart",
-  version: "2026.5.28",
+  version: "2026.5.29",
 
   activate(api: ExtensionApi) {
     api.registerCommand({
