@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026.05.29 - 2026-05-29
+
+### Added
+
+- Hands-on functional test pass 2026-05-29 \(real data\) ([pm-gantt-chart-35p0](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-35p0.toon))
+
+### Other
+
+- gantt: extension name typo pm-gantt-chart-chart ([pm-gantt-chart-dorh](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-dorh.toon))
+- gantt: returns {error} \(exit 0\) on fetch failure + pollutes --json stdout ([pm-gantt-chart-80dm](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-80dm.toon))
+- gantt: milestone grouping empty \(pm has no milestone field; use sprint/release\) ([pm-gantt-chart-f9cv](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-f9cv.toon))
+- gantt: due dates ignored \(read item.due\_date, pm uses deadline\) ([pm-gantt-chart-v0ry](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-v0ry.toon))
+- gantt: --group-by ignored \(kebab vs camelCase option key\) ([pm-gantt-chart-76at](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-76at.toon))
+
 ## 2026.05.28 - 2026-05-28
 
 ### Added
