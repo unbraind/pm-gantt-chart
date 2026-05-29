@@ -1,0 +1,12 @@
+id: pm-gantt-chart-v0ry
+title: "gantt: due dates ignored (read item.due_date, pm uses deadline)"
+description: ""
+type: Issue
+status: closed
+priority: 2
+tags[2]: data-mapping,functional-test
+created_at: "2026-05-29T15:39:38.390Z"
+updated_at: "2026-05-29T15:39:38.390Z"
+author: codex
+parent: pm-gantt-chart-35p0
+body: "Symptom: every items bar collapses to a 1-week span at created_at; real due dates never reflected.\nRepro: seed items with `--deadline` (e.g. 2026-06-15, 2026-07-05), run `pm gantt`.\nObserved: all bars W1-W2 regardless of deadline.\nExpected: bar end tracks the items due date.\nRoot cause: pm items expose the due field as `deadline` (and have no `due_date`), but code read item.due_date -> always undefined -> itemEnd null -> 1-week fallback.\nFix: itemDueDate() reads item.deadline ?? item.due_date; PmItem type updated. Verified: Implement login (6-15)->W1-W4, Build charts (7-5)->W1-W6, Dashboard UI (7-10)->W1-W7."

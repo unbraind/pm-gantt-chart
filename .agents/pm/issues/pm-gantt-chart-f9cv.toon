@@ -1,0 +1,12 @@
+id: pm-gantt-chart-f9cv
+title: "gantt: milestone grouping empty (pm has no milestone field; use sprint/release)"
+description: ""
+type: Issue
+status: closed
+priority: 2
+tags[2]: data-mapping,functional-test
+created_at: "2026-05-29T15:39:40.085Z"
+updated_at: "2026-05-29T15:39:40.085Z"
+author: codex
+parent: pm-gantt-chart-35p0
+body: "Symptom: default `--group-by milestone` lumps every item under \"(no milestone)\".\nRepro: seed items with `--sprint M1/M2`, run `pm gantt`.\nObserved: one group \"(no milestone)\".\nExpected: items grouped by their sprint/release.\nRoot cause: pm has no `milestone` field; code read item.milestone -> always undefined.\nFix: itemMilestone() maps milestone grouping onto item.milestone ?? sprint ?? release. Verified: groups M1/M2/(no milestone), groupCount 3."

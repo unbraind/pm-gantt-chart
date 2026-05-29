@@ -1,0 +1,12 @@
+id: pm-gantt-chart-dorh
+title: "gantt: extension name typo pm-gantt-chart-chart"
+description: ""
+type: Issue
+status: closed
+priority: 2
+tags[2]: cosmetic,functional-test
+created_at: "2026-05-29T15:39:46.507Z"
+updated_at: "2026-05-29T15:39:46.507Z"
+author: codex
+parent: pm-gantt-chart-35p0
+body: "Symptom: defineExtension name was \"pm-gantt-chart-chart\" (duplicated \"chart\").\nFix: corrected to \"pm-gantt-chart\"."

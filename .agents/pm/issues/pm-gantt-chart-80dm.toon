@@ -1,0 +1,12 @@
+id: pm-gantt-chart-80dm
+title: "gantt: returns {error} (exit 0) on fetch failure + pollutes --json stdout"
+description: ""
+type: Issue
+status: closed
+priority: 2
+tags[3]: exit-code,functional-test,json
+created_at: "2026-05-29T15:39:42.448Z"
+updated_at: "2026-05-29T15:39:42.448Z"
+author: codex
+parent: pm-gantt-chart-35p0
+body: "Symptom (bug class 4): on `pm list-all` failure the command `return {error}` which exits 0; also the human chart was written to stdout even under --json, corrupting JSON output.\nRepro: `pm gantt --json` (chart text preceded the JSON object, unparseable); failure path could not be made non-zero.\nExpected: non-zero exit on fetch/parse failure; clean JSON under --json.\nFix: throw Error on spawn failure and on JSON.parse failure; guard process.stdout.write(chart) behind !ctx.global?.json (chart still returned in result). Verified: `pm gantt --json` now parses directly, exit 0 on success."
