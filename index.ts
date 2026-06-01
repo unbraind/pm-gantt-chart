@@ -315,7 +315,7 @@ function renderGantt(
 
 export default defineExtension({
   name: "pm-gantt-chart",
-  version: "2026.5.31",
+  version: "2026.6.1",
 
   activate(api: ExtensionApi) {
     api.registerCommand({
