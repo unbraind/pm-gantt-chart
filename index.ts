@@ -4,6 +4,32 @@ import type { defineExtension as defineExtensionType, CommandHandlerContext, Ext
 const defineExtension: typeof defineExtensionType = ((extension: any) => extension) as any;
 
 // ---------------------------------------------------------------------------
+// Error contract
+// ---------------------------------------------------------------------------
+
+// pm's extension command runtime only treats a thrown error as a cleanly
+// handled non-zero exit when the error carries a numeric `exitCode` property
+// (see @unbrained/pm-cli runCommandHandler). A plain `Error` makes the runtime
+// fall through to its "unhandled" path, which RE-INVOKES the command handler a
+// second time and exits with a generic code. We mirror the SDK's EXIT_CODE
+// contract here rather than importing it: standalone-installed extensions load
+// only their own `dist/`, so `@unbrained/pm-cli` is not resolvable at runtime.
+const EXIT_CODE = {
+  GENERIC_FAILURE: 1,
+  USAGE: 2,
+  NOT_FOUND: 3,
+} as const;
+
+class CommandError extends Error {
+  exitCode: number;
+  constructor(message: string, exitCode: number = EXIT_CODE.GENERIC_FAILURE) {
+    super(message);
+    this.name = "CommandError";
+    this.exitCode = exitCode;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -355,7 +381,7 @@ export default defineExtension({
         const result = spawnSync("pm", ["--path", ctx.pm_root, "list-all", "--json"], { encoding: "utf-8" });
         if (result.error || result.status !== 0) {
           // Throw so the CLI exits non-zero (returning {error} exits 0).
-          throw new Error(
+          throw new CommandError(
             `Failed to fetch pm items (exit ${result.status ?? "unknown"}): ${result.stderr?.trim() || result.error?.message || "no output"}`,
           );
         }
@@ -363,7 +389,7 @@ export default defineExtension({
         try {
           parsed = JSON.parse(result.stdout);
         } catch (err: unknown) {
-          throw new Error(
+          throw new CommandError(
             `Failed to parse pm list-all output as JSON: ${err instanceof Error ? err.message : String(err)}`,
           );
         }

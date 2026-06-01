@@ -1,5 +1,28 @@
 import { spawnSync } from "node:child_process";
 const defineExtension = ((extension) => extension);
+// ---------------------------------------------------------------------------
+// Error contract
+// ---------------------------------------------------------------------------
+// pm's extension command runtime only treats a thrown error as a cleanly
+// handled non-zero exit when the error carries a numeric `exitCode` property
+// (see @unbrained/pm-cli runCommandHandler). A plain `Error` makes the runtime
+// fall through to its "unhandled" path, which RE-INVOKES the command handler a
+// second time and exits with a generic code. We mirror the SDK's EXIT_CODE
+// contract here rather than importing it: standalone-installed extensions load
+// only their own `dist/`, so `@unbrained/pm-cli` is not resolvable at runtime.
+const EXIT_CODE = {
+    GENERIC_FAILURE: 1,
+    USAGE: 2,
+    NOT_FOUND: 3,
+};
+class CommandError extends Error {
+    exitCode;
+    constructor(message, exitCode = EXIT_CODE.GENERIC_FAILURE) {
+        super(message);
+        this.name = "CommandError";
+        this.exitCode = exitCode;
+    }
+}
 /** pm has no `milestone` field; map the "milestone" grouping onto its closest
  * canonical fields (sprint, then release). */
 function itemMilestone(item) {
@@ -245,14 +268,14 @@ export default defineExtension({
                 const result = spawnSync("pm", ["--path", ctx.pm_root, "list-all", "--json"], { encoding: "utf-8" });
                 if (result.error || result.status !== 0) {
                     // Throw so the CLI exits non-zero (returning {error} exits 0).
-                    throw new Error(`Failed to fetch pm items (exit ${result.status ?? "unknown"}): ${result.stderr?.trim() || result.error?.message || "no output"}`);
+                    throw new CommandError(`Failed to fetch pm items (exit ${result.status ?? "unknown"}): ${result.stderr?.trim() || result.error?.message || "no output"}`);
                 }
                 let parsed;
                 try {
                     parsed = JSON.parse(result.stdout);
                 }
                 catch (err) {
-                    throw new Error(`Failed to parse pm list-all output as JSON: ${err instanceof Error ? err.message : String(err)}`);
+                    throw new CommandError(`Failed to parse pm list-all output as JSON: ${err instanceof Error ? err.message : String(err)}`);
                 }
                 const allItems = parsed.items ?? [];
                 if (allItems.length === 0) {
