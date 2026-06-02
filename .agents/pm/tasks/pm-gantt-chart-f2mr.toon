@@ -1,0 +1,13 @@
+id: pm-gantt-chart-f2mr
+title: Add sprint/release/status group-by keys
+description: ""
+type: Task
+status: closed
+priority: 2
+tags: []
+created_at: "2026-06-02T22:07:06.027Z"
+updated_at: "2026-06-02T22:07:29.539Z"
+author: codex
+parent: pm-gantt-chart-uscf
+close_reason: getGroupKey now handles sprint/release/status with fallback labels; verified all three render grouped sections.
+body: ""

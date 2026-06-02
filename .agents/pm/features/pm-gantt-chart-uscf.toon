@@ -1,0 +1,12 @@
+id: pm-gantt-chart-uscf
+title: "Deepen gantt: scheduling, csv, sprint/release/status grouping, --to"
+description: ""
+type: Feature
+status: closed
+priority: 2
+tags: []
+created_at: "2026-06-02T22:06:55.947Z"
+updated_at: "2026-06-02T22:07:30.827Z"
+author: codex
+close_reason: "Shipped scheduling + csv/mermaid formats + sprint/release/status grouping + --to + --critical-only; functionally tested with real data; tests + build + release:check green."
+body: ""

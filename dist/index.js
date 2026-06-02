@@ -34,6 +34,15 @@ function itemMilestone(item) {
 function itemDueDate(item) {
     return item.deadline ?? item.due_date;
 }
+const GROUP_BY_VALUES = [
+    "milestone",
+    "sprint",
+    "release",
+    "tag",
+    "type",
+    "assignee",
+    "status",
+];
 // ---------------------------------------------------------------------------
 // Date helpers
 // ---------------------------------------------------------------------------
@@ -112,6 +121,10 @@ function getGroupKey(item, groupBy) {
     switch (groupBy) {
         case "milestone":
             return itemMilestone(item)?.trim() || "(no milestone)";
+        case "sprint":
+            return item.sprint?.trim() || "(no sprint)";
+        case "release":
+            return item.release?.trim() || "(no release)";
         case "tag":
             return item.tags && item.tags.length > 0
                 ? item.tags[0]
@@ -120,6 +133,8 @@ function getGroupKey(item, groupBy) {
             return item.type?.trim() || "(no type)";
         case "assignee":
             return item.assignee?.trim() || "(unassigned)";
+        case "status":
+            return item.status;
     }
 }
 // ---------------------------------------------------------------------------
@@ -177,6 +192,102 @@ function computeCriticalPath(items) {
     return new Set(overall.len > 1 ? overall.path : []);
 }
 // ---------------------------------------------------------------------------
+// Dependency-aware scheduling
+// ---------------------------------------------------------------------------
+/** One day in milliseconds. */
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** Minutes assumed in a working day when converting `estimated_minutes`. */
+const MINUTES_PER_WORKDAY = 8 * 60;
+/** Add `n` whole days to `d` (non-mutating). */
+function addDays(d, n) {
+    const r = new Date(d);
+    r.setDate(r.getDate() + n);
+    return r;
+}
+/** Later of two dates. */
+function maxDate(a, b) {
+    return a.getTime() >= b.getTime() ? a : b;
+}
+/**
+ * Derive an item's duration in whole days from its estimate, falling back to
+ * `defaultDays`. `estimated_minutes` is the pm-canonical estimate field; it is
+ * converted via an 8h working day and rounded up to at least one day.
+ */
+function itemDurationDays(item, defaultDays) {
+    const mins = item.estimated_minutes;
+    if (typeof mins === "number" && mins > 0) {
+        return Math.max(1, Math.ceil(mins / MINUTES_PER_WORKDAY));
+    }
+    return Math.max(1, defaultDays);
+}
+/**
+ * Forward-schedule items from `anchor`, honoring `blocked_by` dependencies:
+ * an item cannot start until every prerequisite it depends on has finished.
+ * Items with a `deadline` but no scheduling pressure are pulled so they END on
+ * their deadline (back-anchored) when that is later than the dependency-driven
+ * start; otherwise the dependency chain wins (a late chain can push past a
+ * deadline, which is exactly what a schedule should surface).
+ *
+ * Returns a map of item id → { start, end, durationDays }. Cycles are
+ * broken deterministically (a node already on the recursion stack contributes
+ * no constraint, mirroring the critical-path cycle guard). Exported for tests.
+ */
+function computeSchedule(items, anchor, defaultDays) {
+    const byId = new Map();
+    for (const it of items)
+        byId.set(it.id, it);
+    const result = new Map();
+    const visiting = new Set();
+    function schedule(id) {
+        const existing = result.get(id);
+        if (existing)
+            return existing;
+        const item = byId.get(id);
+        if (!item)
+            return null;
+        if (visiting.has(id))
+            return null; // cycle guard
+        visiting.add(id);
+        // Earliest start = day after the latest dependency finishes.
+        let start = new Date(anchor);
+        for (const dep of item.dependencies ?? []) {
+            // Only "blocked_by"/"depends_on" edges gate scheduling. Unknown kinds are
+            // treated as prerequisites too (conservative), but informational kinds
+            // like "related" are ignored.
+            const kind = (dep.kind ?? "blocked_by").toLowerCase();
+            if (kind === "related" || kind === "relates_to" || kind === "duplicate")
+                continue;
+            if (!byId.has(dep.id))
+                continue;
+            const depEntry = schedule(dep.id);
+            if (depEntry)
+                start = maxDate(start, addDays(depEntry.end, 1));
+        }
+        const durationDays = itemDurationDays(item, defaultDays);
+        // Back-anchor to a deadline when the deadline is reachable (later than the
+        // dependency-driven earliest start). This produces a "just-in-time" plan.
+        const due = itemDueDate(item);
+        const deadline = due ? parseDate(due) : null;
+        if (deadline) {
+            const deadlineStart = addDays(deadline, -(durationDays - 1));
+            if (deadlineStart.getTime() >= start.getTime()) {
+                start = deadlineStart;
+            }
+        }
+        const entry = {
+            start,
+            end: addDays(start, durationDays - 1),
+            durationDays,
+        };
+        visiting.delete(id);
+        result.set(id, entry);
+        return entry;
+    }
+    for (const it of items)
+        schedule(it.id);
+    return result;
+}
+// ---------------------------------------------------------------------------
 // Row building (shared by terminal render and exporters)
 // ---------------------------------------------------------------------------
 function statusOrderValue(status) {
@@ -191,9 +302,19 @@ function statusOrderValue(status) {
     return statusOrder[status];
 }
 function buildRows(items, opts, windowStart) {
-    const criticalIds = opts.criticalPath ? computeCriticalPath(items) : new Set();
+    // --critical-only implies critical-path computation even without --critical-path.
+    const needCritical = opts.criticalPath || opts.criticalOnly;
+    const criticalIds = needCritical ? computeCriticalPath(items) : new Set();
+    // --critical-only clips the input to just the critical-path items.
+    let working = items;
+    if (opts.criticalOnly)
+        working = items.filter((i) => criticalIds.has(i.id));
+    // Dependency-aware scheduling overrides created_at/deadline-derived bars.
+    const scheduleMap = opts.schedule
+        ? computeSchedule(working, windowStart, opts.defaultDuration)
+        : null;
     const groupMap = new Map();
-    for (const item of items) {
+    for (const item of working) {
         const key = getGroupKey(item, opts.groupBy);
         if (!groupMap.has(key))
             groupMap.set(key, []);
@@ -214,9 +335,20 @@ function buildRows(items, opts, windowStart) {
         const groupItems = groupMap.get(group);
         groupItems.sort((a, b) => statusOrderValue(a.status) - statusOrderValue(b.status));
         for (const item of groupItems) {
-            const itemStart = item.created_at ? parseDate(item.created_at) : null;
-            const due = itemDueDate(item);
-            const itemEnd = due ? parseDate(due) : null;
+            let itemStart;
+            let itemEnd;
+            if (scheduleMap) {
+                const entry = scheduleMap.get(item.id);
+                itemStart = entry ? entry.start : null;
+                // computeWeekRange treats end as exclusive; the scheduler's end is the
+                // inclusive last work day, so add a day for the half-open range.
+                itemEnd = entry ? addDays(entry.end, 1) : null;
+            }
+            else {
+                itemStart = item.created_at ? parseDate(item.created_at) : null;
+                const due = itemDueDate(item);
+                itemEnd = due ? parseDate(due) : null;
+            }
             const range = computeWeekRange(itemStart, itemEnd, windowStart, opts.weeks);
             rows.push({
                 group,
@@ -224,6 +356,11 @@ function buildRows(items, opts, windowStart) {
                 startWeek: range?.firstActive ?? null,
                 endWeek: range?.lastActive ?? null,
                 critical: criticalIds.has(item.id),
+                start: itemStart,
+                // expose the inclusive end for exporters (undo the +1 day from above)
+                end: scheduleMap
+                    ? (scheduleMap.get(item.id)?.end ?? null)
+                    : itemEnd,
             });
         }
     }
@@ -359,10 +496,15 @@ function renderMermaid(rows, opts, windowStart) {
             lines.push(`    section ${mermaidSafe(row.group)}`);
             lastGroup = row.group;
         }
-        // Determine concrete start/end dates for the task.
-        const startDate = item.created_at ? parseDate(item.created_at) : null;
+        // Determine concrete start/end dates for the task. When the row carries
+        // scheduler-/date-derived bounds (set in buildRows) prefer those so the
+        // export reflects --schedule; otherwise fall back to created_at/deadline.
+        // Mermaid task end dates are exclusive, but row.end is the inclusive last
+        // work day, so advance it one day to keep durations honest (a 1-day task
+        // renders as exactly one day rather than collapsing).
+        const startDate = row.start ?? (item.created_at ? parseDate(item.created_at) : null);
         const due = itemDueDate(item);
-        const endDate = due ? parseDate(due) : null;
+        const endDate = row.end ? addDays(row.end, 1) : (due ? parseDate(due) : null);
         let start;
         let end;
         if (startDate && endDate) {
@@ -395,6 +537,53 @@ function renderMermaid(rows, opts, windowStart) {
     if (today >= windowStart && today < windowEnd) {
         // Mermaid has no explicit today marker in source; documented via comment.
         lines.push(`    %% today: ${isoDay(today)}`);
+    }
+    return lines.join("\n");
+}
+// ---------------------------------------------------------------------------
+// Rendering — CSV schedule
+// ---------------------------------------------------------------------------
+/** RFC-4180 style CSV field quoting (quote when the value has , " or newline). */
+function csvField(value) {
+    if (/[",\n\r]/.test(value)) {
+        return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+}
+/**
+ * Render rows as a CSV schedule: id,title,start,end,duration_days,deps,status.
+ * `start`/`end` use the row's computed bounds (scheduler- or date-derived);
+ * `duration_days` is the inclusive day span, blank when undated. `deps` is a
+ * space-separated list of blocking dependency ids. Exported for tests.
+ */
+function renderCsv(rows) {
+    const header = "id,title,start,end,duration_days,deps,status";
+    const lines = [header];
+    for (const row of rows) {
+        const { item } = row;
+        const start = row.start ? isoDay(row.start) : "";
+        const end = row.end ? isoDay(row.end) : "";
+        let duration = "";
+        if (row.start && row.end) {
+            const days = Math.round((row.end.getTime() - row.start.getTime()) / DAY_MS) + 1;
+            duration = String(Math.max(1, days));
+        }
+        const deps = (item.dependencies ?? [])
+            .filter((d) => {
+            const kind = (d.kind ?? "blocked_by").toLowerCase();
+            return kind !== "related" && kind !== "relates_to" && kind !== "duplicate";
+        })
+            .map((d) => d.id)
+            .join(" ");
+        lines.push([
+            csvField(item.id),
+            csvField(item.title),
+            csvField(start),
+            csvField(end),
+            csvField(duration),
+            csvField(deps),
+            csvField(item.status),
+        ].join(","));
     }
     return lines.join("\n");
 }
@@ -517,10 +706,8 @@ function readBoolOption(options, ...keys) {
     return false;
 }
 function resolveGanttOptions(options) {
-    const rawWeeks = readOption(options, "weeks");
-    const weeks = rawWeeks ? Math.max(1, Math.min(52, parseInt(String(rawWeeks), 10))) : 8;
     const rawGroupBy = readOption(options, "group-by", "groupBy") ?? "milestone";
-    const groupBy = ["milestone", "tag", "type", "assignee"].includes(String(rawGroupBy))
+    const groupBy = GROUP_BY_VALUES.includes(String(rawGroupBy))
         ? String(rawGroupBy)
         : "milestone";
     const rawStatus = readOption(options, "status") ?? "all";
@@ -530,6 +717,17 @@ function resolveGanttOptions(options) {
         ? String(rawStatus)
         : "all";
     const criticalPath = readBoolOption(options, "critical-path", "criticalPath");
+    const criticalOnly = readBoolOption(options, "critical-only", "criticalOnly");
+    const schedule = readBoolOption(options, "schedule");
+    const rawDefaultDuration = readOption(options, "default-duration", "defaultDuration");
+    let defaultDuration = 5;
+    if (rawDefaultDuration !== undefined) {
+        const parsed = parseInt(String(rawDefaultDuration), 10);
+        if (isNaN(parsed) || parsed < 1) {
+            throw new CommandError(`Invalid --default-duration "${rawDefaultDuration}" (expected a positive integer of days).`, EXIT_CODE.USAGE);
+        }
+        defaultDuration = Math.min(365, parsed);
+    }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     // --from anchors the chart window; default is the current week.
@@ -543,7 +741,37 @@ function resolveGanttOptions(options) {
         anchor = parsed;
     }
     const windowStart = weekStart(anchor);
-    return { weeks, groupBy, statusFilter, today, criticalPath, windowStart };
+    // --to clips the window end. When given, weeks is derived from from..to
+    // (overriding --weeks); otherwise --weeks (default 8) drives the width.
+    const rawTo = readOption(options, "to");
+    let weeks;
+    if (rawTo !== undefined) {
+        const parsedTo = parseDate(String(rawTo));
+        if (!parsedTo) {
+            throw new CommandError(`Invalid --to date: "${rawTo}" (expected ISO YYYY-MM-DD).`, EXIT_CODE.USAGE);
+        }
+        if (parsedTo.getTime() < windowStart.getTime()) {
+            throw new CommandError(`--to (${isoDay(parsedTo)}) is before --from window start (${isoDay(windowStart)}).`, EXIT_CODE.USAGE);
+        }
+        // Number of week-columns needed to cover windowStart..parsedTo inclusive.
+        const spanWeeks = Math.ceil((parsedTo.getTime() - windowStart.getTime()) / (7 * DAY_MS)) + 1;
+        weeks = Math.max(1, Math.min(52, spanWeeks));
+    }
+    else {
+        const rawWeeks = readOption(options, "weeks");
+        weeks = rawWeeks ? Math.max(1, Math.min(52, parseInt(String(rawWeeks), 10))) : 8;
+    }
+    return {
+        weeks,
+        groupBy,
+        statusFilter,
+        today,
+        criticalPath,
+        criticalOnly,
+        schedule,
+        defaultDuration,
+        windowStart,
+    };
 }
 function fetchItems(pmRoot) {
     const result = spawnSync("pm", ["--path", pmRoot, "list-all", "--json", "--include-body"], { encoding: "utf-8" });
@@ -562,11 +790,13 @@ function fetchItems(pmRoot) {
 function filterByStatus(items, statusFilter) {
     return statusFilter === "all" ? items : items.filter((i) => i.status === statusFilter);
 }
+const EXPORT_FORMATS = ["mermaid", "html", "ascii", "csv"];
 function renderForFormat(format, rows, opts, windowStart) {
     switch (format) {
         case "mermaid": return renderMermaid(rows, opts, windowStart);
         case "html": return renderHtml(rows, opts, windowStart);
         case "ascii": return renderGantt(rows, opts, windowStart);
+        case "csv": return renderCsv(rows);
     }
 }
 function defaultExtension(format) {
@@ -574,6 +804,7 @@ function defaultExtension(format) {
         case "mermaid": return "mmd";
         case "html": return "html";
         case "ascii": return "txt";
+        case "csv": return "csv";
     }
 }
 // ---------------------------------------------------------------------------
@@ -591,21 +822,25 @@ export default defineExtension({
                 "pm gantt",
                 "pm gantt --weeks 12",
                 "pm gantt --group-by assignee",
-                "pm gantt --group-by type --weeks 6",
+                "pm gantt --group-by sprint",
+                "pm gantt --group-by status --weeks 6",
                 "pm gantt --status in_progress",
-                "pm gantt --from 2026-06-01 --weeks 16",
+                "pm gantt --from 2026-06-01 --to 2026-08-01",
+                "pm gantt --schedule",
+                "pm gantt --schedule --default-duration 3",
                 "pm gantt --critical-path",
+                "pm gantt --critical-only --schedule",
             ],
             flags: [
                 {
                     long: "--weeks",
                     value_name: "n",
-                    description: "Number of weeks to show (default: 8)",
+                    description: "Number of weeks to show (default: 8; ignored when --to is set)",
                 },
                 {
                     long: "--group-by",
                     value_name: "field",
-                    description: "Group items by: milestone (sprint/release) | type | assignee | tag (default: milestone)",
+                    description: "Group items by: milestone (sprint/release) | sprint | release | type | assignee | status | tag (default: milestone)",
                 },
                 {
                     long: "--status",
@@ -618,8 +853,26 @@ export default defineExtension({
                     description: "Anchor the chart window at this ISO date (default: current week)",
                 },
                 {
+                    long: "--to",
+                    value_name: "iso",
+                    description: "Clip the chart window to end at this ISO date (overrides --weeks)",
+                },
+                {
+                    long: "--schedule",
+                    description: "Dependency-aware scheduling: derive start/end from blocked-by chains + estimates",
+                },
+                {
+                    long: "--default-duration",
+                    value_name: "days",
+                    description: "Fallback duration in days for items without an estimate under --schedule (default: 5)",
+                },
+                {
                     long: "--critical-path",
                     description: "Compute & mark the longest dependency chain (critical path)",
+                },
+                {
+                    long: "--critical-only",
+                    description: "Show only items on the critical path (implies critical-path computation)",
                 },
             ],
             async run(ctx) {
@@ -635,6 +888,16 @@ export default defineExtension({
                     return { chart: null, itemCount: 0, warning: `No items with status "${opts.statusFilter}"` };
                 }
                 const rows = buildRows(items, opts, opts.windowStart);
+                if (rows.length === 0) {
+                    // The only way to reach here is --critical-only with no qualifying
+                    // chain (needs ≥2 linked items). Treat as a clean empty result.
+                    console.error("No critical-path items to show (need a chain of ≥2 linked items).");
+                    return {
+                        chart: null,
+                        itemCount: 0,
+                        warning: "No critical-path items (need a chain of ≥2 linked items)",
+                    };
+                }
                 const chart = renderGantt(rows, opts, opts.windowStart);
                 // Print the human-readable chart to stdout, but not under --json:
                 // mixing it with the JSON payload would corrupt machine-readable output.
@@ -644,12 +907,15 @@ export default defineExtension({
                 }
                 return {
                     chart,
-                    itemCount: items.length,
+                    itemCount: rows.length,
                     groupCount: new Set(rows.map((r) => r.group)).size,
                     weeks: opts.weeks,
                     groupBy: opts.groupBy,
                     statusFilter: opts.statusFilter,
                     criticalPath: opts.criticalPath,
+                    criticalOnly: opts.criticalOnly,
+                    schedule: opts.schedule,
+                    ...(opts.schedule ? { defaultDuration: opts.defaultDuration } : {}),
                 };
             },
         });
@@ -662,8 +928,8 @@ export default defineExtension({
         api.registerExporter("gantt", async (ctx) => {
             const opts = resolveGanttOptions(ctx.options);
             const rawFormat = String(readOption(ctx.options, "format") ?? "mermaid").toLowerCase();
-            if (!["mermaid", "html", "ascii"].includes(rawFormat)) {
-                throw new CommandError(`Unknown --format "${rawFormat}". Valid: mermaid | html | ascii.`, EXIT_CODE.USAGE);
+            if (!EXPORT_FORMATS.includes(rawFormat)) {
+                throw new CommandError(`Unknown --format "${rawFormat}". Valid: ${EXPORT_FORMATS.join(" | ")}.`, EXIT_CODE.USAGE);
             }
             const format = rawFormat;
             const allItems = fetchItems(ctx.pm_root);
@@ -673,19 +939,33 @@ export default defineExtension({
                 return { exported: 0, format };
             }
             const rows = buildRows(items, opts, opts.windowStart);
+            if (rows.length === 0) {
+                console.error("No matching pm items to export (e.g. --critical-only with no chain).");
+                return { exported: 0, format };
+            }
             const output = renderForFormat(format, rows, opts, opts.windowStart);
+            const exportedCount = rows.length;
             const outputPath = readOption(ctx.options, "output");
             if (outputPath) {
                 const absolutePath = resolve(outputPath);
                 writeFileSync(absolutePath, output + "\n", "utf-8");
-                console.error(`gantt export: wrote ${items.length} item(s) as ${format} to ${absolutePath}`);
-                return { exported: items.length, format, file: absolutePath };
+                console.error(`gantt export: wrote ${exportedCount} item(s) as ${format} to ${absolutePath}`);
+                return { exported: exportedCount, format, file: absolutePath };
             }
             // No --output: emit to stdout so it can be piped/redirected.
             console.log(output);
-            console.error(`gantt export: rendered ${items.length} item(s) as ${format}.`);
-            return { exported: items.length, format, output };
+            console.error(`gantt export: rendered ${exportedCount} item(s) as ${format}.`);
+            return { exported: exportedCount, format, output };
         });
     },
 });
+// ---------------------------------------------------------------------------
+// Test-only exports
+//
+// These pure helpers carry the logic worth unit-testing (scheduler, critical
+// path, CSV/Mermaid renderers, option resolution). They are not part of the
+// runtime extension contract; the default export above is. Keeping them as
+// named exports lets test/*.test.ts import them without touching pm internals.
+// ---------------------------------------------------------------------------
+export { computeSchedule, computeCriticalPath, itemDurationDays, renderCsv, renderMermaid, buildRows, resolveGanttOptions, getGroupKey, };
 //# sourceMappingURL=index.js.map
