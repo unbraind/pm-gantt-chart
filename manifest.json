@@ -1,14 +1,14 @@
 {
   "name": "pm-gantt-chart",
-  "version": "2026.6.1",
-  "description": "ASCII Gantt chart renderer for pm-cli",
+  "version": "2026.6.2",
+  "description": "ASCII Gantt chart renderer + multi-format exporter for pm-cli",
   "author": "@unbraind",
   "entry": "./dist/index.js",
   "priority": 50,
   "capabilities": [
     "commands",
     "schema",
-    "renderers"
+    "importers"
   ],
   "pm": {
     "compatibility": "v2"

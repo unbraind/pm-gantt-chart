@@ -1,7 +1,7 @@
 {
   "name": "pm-gantt-chart",
-  "version": "2026.6.1",
-  "description": "ASCII Gantt chart renderer for pm-cli",
+  "version": "2026.6.2",
+  "description": "ASCII Gantt chart renderer + multi-format exporter for pm-cli",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/unbraind/pm-gantt-chart.git"
@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
-    "@unbrained/pm-cli": "^2026.5.29",
+    "@unbrained/pm-cli": "^2026.5.31",
     "pm-changelog": "^2026.5.29-2",
     "typescript": "^6.0.3"
   },

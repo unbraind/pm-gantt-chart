@@ -11,19 +11,23 @@ test("extension has required shape", () => {
   assert.strictEqual(typeof extension.activate, "function", "activate should be a function");
 });
 
-test("extension registers at least one capability", () => {
+test("extension registers the gantt command and exporter", () => {
   const registered: string[] = [];
   const noop = () => {};
+  // Mirror the full ExtensionApi surface so activate() can register every
+  // capability the extension uses (command + exporter). A partial mock would
+  // throw a TypeError the moment activate() touched an absent method.
   const api = {
     registerCommand: () => { registered.push("command"); },
-    registerHook: () => { registered.push("hook"); },
+    registerParser: noop, registerPreflight: noop, registerService: noop,
+    registerFlags: noop, registerItemFields: noop, registerItemTypes: noop,
+    registerMigration: noop, registerRenderer: noop,
     registerImporter: () => { registered.push("importer"); },
-    registerSchema: () => { registered.push("schema"); },
-    registerRenderer: () => { registered.push("renderer"); },
-    registerSearchProvider: () => { registered.push("search"); },
-    registerPreflight: () => { registered.push("preflight"); },
-    registerService: () => { registered.push("service"); },
+    registerExporter: () => { registered.push("exporter"); },
+    registerSearchProvider: noop, registerVectorStoreAdapter: noop,
+    hooks: { beforeCommand: noop, afterCommand: noop, onWrite: noop, onRead: noop, onIndex: noop },
   };
   extension.activate(api as any);
-  assert.ok(registered.length > 0, `extension should register at least one capability, got: ${JSON.stringify(registered)}`);
+  assert.ok(registered.includes("command"), "should register the gantt command");
+  assert.ok(registered.includes("exporter"), "should register the gantt exporter");
 });
