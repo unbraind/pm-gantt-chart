@@ -1,0 +1,13 @@
+id: pm-gantt-chart-3reu
+title: "Add CSV schedule export format (id,title,start,end,duration,deps,status)"
+description: ""
+type: Task
+status: closed
+priority: 2
+tags: []
+created_at: "2026-06-02T22:07:05.230Z"
+updated_at: "2026-06-02T22:07:28.787Z"
+author: codex
+parent: pm-gantt-chart-uscf
+close_reason: "Added csv format to exporter (renderCsv); RFC-4180 quoting; verified id,title,start,end,duration_days,deps,status with real data + unit test."
+body: ""

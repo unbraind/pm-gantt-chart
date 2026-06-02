@@ -1,0 +1,13 @@
+id: pm-gantt-chart-oy33
+title: "Decision: forward-schedule from anchor, back-anchor to reachable deadlines, chain may overrun deadline"
+description: ""
+type: Decision
+status: closed
+priority: 2
+tags: []
+created_at: "2026-06-02T22:07:06.805Z"
+updated_at: "2026-06-02T22:07:30.358Z"
+author: codex
+parent: pm-gantt-chart-uscf
+close_reason: Chose forward scheduling from window anchor; deadline back-anchor only when reachable; a late dependency chain is allowed to overrun a deadline so the schedule surfaces the risk rather than hiding it.
+body: ""

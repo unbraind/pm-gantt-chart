@@ -1,0 +1,13 @@
+id: pm-gantt-chart-ifbx
+title: Dependency-aware --schedule mode + --default-duration
+description: ""
+type: Task
+status: closed
+priority: 2
+tags: []
+created_at: "2026-06-02T22:07:05.474Z"
+updated_at: "2026-06-02T22:07:29.040Z"
+author: codex
+parent: pm-gantt-chart-uscf
+close_reason: computeSchedule forward pass over blocked_by deps; estimated_minutes/8h-day or --default-duration; back-anchor to deadlines; cycle-safe; verified chain Jun1<Jun2<Jun4<Jul15.
+body: ""

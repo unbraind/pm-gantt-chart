@@ -1,0 +1,13 @@
+id: pm-gantt-chart-xkr0
+title: Add --critical-only filter (mark already existed)
+description: ""
+type: Task
+status: closed
+priority: 2
+tags: []
+created_at: "2026-06-02T22:07:05.738Z"
+updated_at: "2026-06-02T22:07:29.284Z"
+author: codex
+parent: pm-gantt-chart-uscf
+close_reason: Added --critical-only (filters rows to critical path; clean empty-result guard). Marking pre-existed.
+body: ""

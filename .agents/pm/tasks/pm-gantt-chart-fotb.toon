@@ -1,0 +1,13 @@
+id: pm-gantt-chart-fotb
+title: Add --to date-window clip
+description: ""
+type: Task
+status: closed
+priority: 2
+tags: []
+created_at: "2026-06-02T22:07:06.290Z"
+updated_at: "2026-06-02T22:07:29.872Z"
+author: codex
+parent: pm-gantt-chart-uscf
+close_reason: "--to derives week count from from..to (overrides --weeks); validates ordering + ISO; verified 5-week window Jun1..Jun28."
+body: ""

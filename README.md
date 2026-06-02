@@ -2,7 +2,7 @@
 
 Gantt chart renderer and multi-format exporter for [pm-cli](https://github.com/unbraind/pm-cli).
 
-Renders your pm items as a week-by-week timeline in the terminal — grouped by milestone, type, assignee, or tag — and exports the same chart to **Mermaid**, **standalone HTML**, or **ASCII** files. Can compute and highlight the **critical path** (longest dependency chain).
+Renders your pm items as a week-by-week timeline in the terminal — grouped by milestone, sprint, release, assignee, status, type, or tag — and exports the same chart to **Mermaid `gantt`**, **standalone HTML**, **ASCII**, or a **CSV schedule**. Can compute and highlight the **critical path** (longest dependency chain), and run **dependency-aware scheduling** that derives each item's start/end from its blocked-by chain plus estimates.
 
 ## Example output
 
@@ -46,18 +46,28 @@ pm gantt
 # Show 12 weeks
 pm gantt --weeks 12
 
-# Group by assignee / type
+# Group by sprint / release / assignee / status / type
+pm gantt --group-by sprint
+pm gantt --group-by release
 pm gantt --group-by assignee
-pm gantt --group-by type
+pm gantt --group-by status
 
 # Show only in-progress items
 pm gantt --status in_progress
 
-# Anchor the window at a specific date
+# Anchor the window at a specific date, or clip it with --to
 pm gantt --from 2026-06-01 --weeks 16
+pm gantt --from 2026-06-01 --to 2026-08-01
+
+# Dependency-aware scheduling: derive start/end from blocked-by chains + estimates
+pm gantt --schedule
+pm gantt --schedule --default-duration 3
 
 # Compute & mark the longest dependency chain
 pm gantt --critical-path
+
+# Show only the critical path (great paired with --schedule)
+pm gantt --critical-only --schedule
 ```
 
 ### Export — `pm gantt export`
@@ -75,8 +85,12 @@ pm gantt export --format html --output roadmap.html
 # Plain ASCII (the same chart `pm gantt` prints)
 pm gantt export --format ascii --output roadmap.txt
 
-# Export honors the same shaping flags
+# CSV schedule: id,title,start,end,duration_days,deps,status
+pm gantt export --format csv --schedule --output schedule.csv
+
+# Export honors the same shaping flags (including --schedule / --critical-only)
 pm gantt export --format html --group-by assignee --critical-path --weeks 12 --output team.html
+pm gantt export --format mermaid --schedule --group-by sprint --output plan.mmd
 ```
 
 The exporter writes to the file given by `--output`, or prints to stdout when omitted (handy for piping into a Mermaid live editor).
@@ -87,25 +101,32 @@ Both `pm gantt` and `pm gantt export` accept the shaping flags:
 
 | Flag | Values | Default | Description |
 |------|--------|---------|-------------|
-| `--weeks <n>` | 1–52 | `8` | Number of weeks to display |
-| `--group-by <field>` | `milestone` \| `type` \| `assignee` \| `tag` | `milestone` | How to group items into rows |
+| `--weeks <n>` | 1–52 | `8` | Number of weeks to display (ignored when `--to` is set) |
+| `--group-by <field>` | `milestone` \| `sprint` \| `release` \| `type` \| `assignee` \| `status` \| `tag` | `milestone` | How to group items into rows |
 | `--status <filter>` | `open` \| `in_progress` \| `blocked` \| `closed` \| `canceled` \| `draft` \| `all` | `all` | Filter items by status |
 | `--from <iso>` | `YYYY-MM-DD` | current week | Anchor the chart window at this date |
+| `--to <iso>` | `YYYY-MM-DD` | — | Clip the window to end at this date (derives the week count, overriding `--weeks`) |
+| `--schedule` | flag | off | Dependency-aware scheduling: derive start/end from blocked-by chains + estimates |
+| `--default-duration <days>` | integer ≥ 1 | `5` | Fallback duration for items with no estimate under `--schedule` |
 | `--critical-path` | flag | off | Compute & mark the longest dependency chain |
+| `--critical-only` | flag | off | Show only items on the critical path (implies critical-path computation) |
 
 `pm gantt export` adds:
 
 | Flag | Values | Default | Description |
 |------|--------|---------|-------------|
-| `--format <fmt>` | `mermaid` \| `html` \| `ascii` | `mermaid` | Output format |
+| `--format <fmt>` | `mermaid` \| `html` \| `ascii` \| `csv` | `mermaid` | Output format |
 | `--output <file>` | path | stdout | File to write (prints to stdout if omitted) |
+
+`csv` emits a schedule table: `id,title,start,end,duration_days,deps,status` (deps = space-separated blocking ids). Pair it with `--schedule` for dependency-derived dates.
 
 ## How it works
 
-- **Columns** — each column is one calendar week, starting from the Monday of the anchor week (`--from`, or the current week by default).
-- **Rows** — items are grouped by the chosen field; items with no value land in a `(no milestone)` / `(no type)` / `(unassigned)` / `(no tag)` group.
-- **Bars** — a bar spans from the item's `created_at` to its `deadline`. If only a deadline is known, a one-week bar ending on it is shown. Items with no dates at all are shown as `··` (undated).
-- **Critical path** — with `--critical-path`, the longest chain of `dependencies` edges is computed (cycle-safe), its items prefixed with `*` and drawn with `▓▓` bars. Ties break toward the chain with the latest final deadline.
+- **Columns** — each column is one calendar week, starting from the Monday of the anchor week (`--from`, or the current week by default). `--to` clips the window and derives the week count.
+- **Rows** — items are grouped by the chosen field; items with no value land in a `(no milestone)` / `(no sprint)` / `(no release)` / `(no type)` / `(unassigned)` / `(no tag)` group. `--group-by status` groups by lifecycle status.
+- **Bars (default)** — a bar spans from the item's `created_at` to its `deadline`. If only a deadline is known, a one-week bar ending on it is shown. Items with no dates at all are shown as `··` (undated).
+- **Bars (`--schedule`)** — a forward pass schedules each item to start the day after the latest item it is `blocked_by` finishes. Duration comes from `estimated_minutes` (8h workday, rounded up to whole days) or `--default-duration`. Items with a reachable `deadline` are back-anchored to end on it. The chain ordering, not the calendar, drives the bars — a late chain can push a dependent past its deadline, which is exactly what a schedule should expose.
+- **Critical path** — with `--critical-path` (or `--critical-only`), the longest chain of `dependencies` edges is computed (cycle-safe), its items prefixed with `*` and drawn with `▓▓` bars. Ties break toward the chain with the latest final deadline. `--critical-only` drops every off-path item.
 - **Symbols** — `██` = in_progress/blocked, `░░` = open/planned, `▓▓` = critical path, `··` = undated.
 
 ## Item fields used
@@ -116,13 +137,15 @@ Items are read via `pm list-all --json --include-body`.
 |-------|----------|
 | `title` | Row label |
 | `status` | Bar style and status symbol; also used with `--status` filter |
-| `deadline` (or legacy `due_date`) | Right edge of the bar |
-| `created_at` | Left edge of the bar |
-| `sprint` / `release` / `milestone` | Group key for `--group-by milestone` (default) |
+| `deadline` (or legacy `due_date`) | Right edge of the bar; back-anchor target under `--schedule` |
+| `created_at` | Left edge of the bar (default mode) |
+| `estimated_minutes` | Task duration under `--schedule` (8h workday) |
+| `sprint` / `release` / `milestone` | Group key for `--group-by milestone` (default), `sprint`, `release` |
 | `type` | Group key for `--group-by type` |
 | `assignee` | Group key for `--group-by assignee` |
+| `status` | Group key for `--group-by status`; also bar style |
 | `tags[0]` | Group key for `--group-by tag` |
-| `dependencies[].id` | Edges used to compute the critical path |
+| `dependencies[].id` (kind `blocked_by`) | Edges used for scheduling and the critical path |
 
 ## Development
 

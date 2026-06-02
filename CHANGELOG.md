@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Deepen gantt: scheduling, csv, sprint/release/status grouping, --to ([pm-gantt-chart-uscf](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-uscf.toon))
+- Add --to date-window clip ([pm-gantt-chart-fotb](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-fotb.toon))
+- Add sprint/release/status group-by keys ([pm-gantt-chart-f2mr](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-f2mr.toon))
+- Add --critical-only filter \(mark already existed\) ([pm-gantt-chart-xkr0](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-xkr0.toon))
+- Add CSV schedule export format \(id,title,start,end,duration,deps,status\) ([pm-gantt-chart-3reu](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-3reu.toon))
+
+### Changed
+
+- Decision: estimate source = estimated\_minutes via 8h workday; no capability change \(exporter is under importers\) ([pm-gantt-chart-g2pj](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/decisions/pm-gantt-chart-g2pj.toon))
+
+### Other
+
+- Decision: forward-schedule from anchor, back-anchor to reachable deadlines, chain may overrun deadline ([pm-gantt-chart-oy33](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/decisions/pm-gantt-chart-oy33.toon))
+- Unit tests for scheduler, critical path, csv/mermaid renderers ([pm-gantt-chart-tc2y](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-tc2y.toon))
+- Dependency-aware --schedule mode + --default-duration ([pm-gantt-chart-ifbx](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-ifbx.toon))
+
 ## 2026.06.02 - 2026-06-02
 
 ### Added
