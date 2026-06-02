@@ -1,6 +1,12 @@
 # Changelog
 
-## 2026.6.1 - 2026-06-01
+## 2026.6.2 - 2026-06-02
+
+### Added
+
+- Add gantt export \(mermaid/html/ascii\) + critical-path, assignee grouping, --from window ([pm-gantt-chart-q3zh](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-q3zh.toon))
+
+## 2026.06.01 - 2026-06-01
 
 ### Fixed
 
