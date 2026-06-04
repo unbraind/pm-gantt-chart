@@ -1,0 +1,14 @@
+id: pm-gantt-chart-ao93
+title: "Slack/float, infeasible-deadline flag, ASCII TODAY marker, HTML summary + assignee workload"
+description: ""
+type: Feature
+status: closed
+priority: 2
+tags: []
+created_at: "2026-06-04T05:12:00.099Z"
+updated_at: "2026-06-04T05:12:11.623Z"
+author: codex
+comments[1]{created_at,author,text}:
+  "2026-06-04T05:12:07.274Z",codex,"Implemented in index.ts: computeSlack() backward pass (CPM latest-start/finish from project end + downstream deadlines); slack_days CSV column + tasks[].slack_days/infeasible JSON; infeasibleWarnings() emitted on stderr by command + exporter; ▼TODAY marker line in renderGantt; computeSummary() + HTML Summary footer + Assignee workload table. Added 11 unit tests (23 total, all green). Functionally verified in /tmp/gantttest with a 6-item dependency chain and tight deadlines: slack column correct (off-path Write docs = +1, critical = 0/-7), infeasibility warnings fired, TODAY marker rendered, HTML summary + workload present. Backward-compatible: slack blank without --schedule, mermaid/html/ascii unchanged otherwise."
+close_reason: "Shipped: slack/float, infeasible-deadline flag, ASCII TODAY marker, HTML summary + assignee workload"
+body: "Backward-pass total slack/float in CSV (slack_days column) and JSON output; infeasible-deadline detection surfaced as a warning + per-task flag; ASCII TODAY marker for parity with mermaid; HTML footer summary (project span, critical-path length, total task-days) plus per-assignee workload table under --group-by assignee. Additive and backward-compatible."
