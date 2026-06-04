@@ -118,7 +118,23 @@ Both `pm gantt` and `pm gantt export` accept the shaping flags:
 | `--format <fmt>` | `mermaid` \| `html` \| `ascii` \| `csv` | `mermaid` | Output format |
 | `--output <file>` | path | stdout | File to write (prints to stdout if omitted) |
 
-`csv` emits a schedule table: `id,title,start,end,duration_days,deps,status` (deps = space-separated blocking ids). Pair it with `--schedule` for dependency-derived dates.
+`csv` emits a schedule table: `id,title,start,end,duration_days,slack_days,deps,status` (deps = space-separated blocking ids). Pair it with `--schedule` for dependency-derived dates and slack. `slack_days` is the total float in days (only populated under `--schedule`; blank otherwise): `0` marks a critical-path item, a positive value is how many days the task can slip without delaying the project, and a **negative** value means the plan is already late for a downstream deadline.
+
+### Slack / float, critical path & infeasible deadlines
+
+Under `--schedule`, a **backward pass** (classic CPM) computes each item's *latest* feasible start/finish from the project end and any downstream deadlines, then derives **total slack** = latest start − earliest start:
+
+- **0 slack** → the item is on the critical path; any slip delays the project.
+- **positive slack** → the item can slip that many days harmlessly.
+- **negative slack** → the item's required start (to hit a downstream deadline) is *before* its earliest feasible start. The plan is **already late**. These items are listed in a `WARNING:` block on stderr by both `pm gantt` and `pm gantt export`, and flagged per-task in the JSON result (`tasks[].slack_days`, `tasks[].infeasible`, plus `infeasibleCount` / `warnings`).
+
+### ASCII TODAY marker
+
+The terminal chart draws a `▼TODAY` caret under the week column that contains the current date (parity with the Mermaid `%% today:` marker), shown only when "today" falls inside the chart window.
+
+### HTML summary & assignee workload
+
+The HTML export ends with a **Summary** footer — project span (start → end and day count), critical-path length, and total task-days. When exported with `--group-by assignee`, an additional **Assignee workload** table lists each assignee's total task-days (descending).
 
 ## How it works
 

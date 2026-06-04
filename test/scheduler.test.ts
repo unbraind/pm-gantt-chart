@@ -3,10 +3,15 @@ import test from "node:test";
 
 import {
   computeSchedule,
+  computeSlack,
   computeCriticalPath,
+  computeSummary,
   itemDurationDays,
   renderCsv,
   renderMermaid,
+  renderGantt,
+  renderHtml,
+  infeasibleWarnings,
   buildRows,
   resolveGanttOptions,
   getGroupKey,
@@ -109,7 +114,7 @@ test("renderCsv emits the documented header and a row per item with deps", () =>
   const rows = buildRows(chainItems(), opts, opts.windowStart);
   const csv = renderCsv(rows);
   const lines = csv.split("\n");
-  assert.equal(lines[0], "id,title,start,end,duration_days,deps,status");
+  assert.equal(lines[0], "id,title,start,end,duration_days,slack_days,deps,status");
   // B's row should list A as a dependency.
   const bLine = lines.find((l) => l.startsWith("B,"));
   assert.ok(bLine, "B row present");
@@ -155,4 +160,162 @@ test("buildRows with --critical-only keeps only critical-path items", () => {
   const rows = buildRows(chainItems(), opts, opts.windowStart);
   const ids = new Set(rows.map((r) => r.item.id));
   assert.deepEqual([...ids].sort(), ["A", "B", "C"]);
+});
+
+// ---------------------------------------------------------------------------
+// Backward pass — slack / float
+// ---------------------------------------------------------------------------
+
+test("computeSlack: critical-path items have 0 slack, off-path slack > 0", () => {
+  // A->B->C chain (1+2+2 = 5 days, ends day idx 4) plus isolated D (1 day).
+  // Project end = C's end. D has no deps and no deadline -> it can slide to the
+  // project end, so its total slack = (projectEnd - D.duration) - D.start.
+  const items = chainItems();
+  const sched = computeSchedule(items, ANCHOR, 5);
+  const slack = computeSlack(items, sched);
+
+  assert.equal(slack.get("A")!.slackDays, 0, "A is on the critical path");
+  assert.equal(slack.get("B")!.slackDays, 0, "B is on the critical path");
+  assert.equal(slack.get("C")!.slackDays, 0, "C ends the project");
+
+  // D: 1 day, starts at anchor. Project end is C.end (day idx 4). D can finish
+  // as late as the project end -> latest start = projectEnd, slack = 4 days.
+  const d = slack.get("D")!;
+  assert.equal(d.slackDays, 4, "isolated D can float to the project end");
+  assert.equal(d.infeasible, false);
+});
+
+test("computeSlack: a slack-bearing parallel branch is non-zero, its blocker is 0", () => {
+  // Chain A(2d) -> C(2d). Parallel short task B(1d) -> C. B has slack because
+  // A is longer; A is critical, B floats.
+  const items: any[] = [
+    { id: "A", title: "A long", status: "open", estimated_minutes: 960, dependencies: [] }, // 2d
+    { id: "B", title: "B short", status: "open", estimated_minutes: 480, dependencies: [] }, // 1d
+    { id: "C", title: "C join", status: "open", estimated_minutes: 960, dependencies: [
+      { id: "A", kind: "blocked_by" }, { id: "B", kind: "blocked_by" },
+    ] },
+  ];
+  const sched = computeSchedule(items, ANCHOR, 5);
+  const slack = computeSlack(items, sched);
+  assert.equal(slack.get("A")!.slackDays, 0, "longer predecessor A is critical");
+  assert.equal(slack.get("C")!.slackDays, 0, "join task C is critical");
+  assert.equal(slack.get("B")!.slackDays, 1, "shorter parallel B has 1 day of float");
+});
+
+test("computeSlack: infeasible deadline is flagged with negative slack", () => {
+  // A(2d) -> B(2d), but B has a deadline only 1 day after the anchor. B cannot
+  // possibly finish that early because A must complete first -> infeasible.
+  const items: any[] = [
+    { id: "A", title: "A", status: "open", estimated_minutes: 960, dependencies: [] },
+    { id: "B", title: "B", status: "open", estimated_minutes: 960, deadline: "2026-06-02",
+      dependencies: [{ id: "A", kind: "blocked_by" }] },
+  ];
+  const sched = computeSchedule(items, ANCHOR, 5);
+  const slack = computeSlack(items, sched);
+  const b = slack.get("B")!;
+  assert.equal(b.infeasible, true, "B's deadline cannot be met");
+  assert.ok(b.slackDays < 0, "infeasible task carries negative slack");
+});
+
+test("renderCsv includes slack_days column (blank without --schedule, filled with)", () => {
+  // Without --schedule: header has slack_days, but values are blank.
+  const plainOpts = resolveGanttOptions({});
+  const plainRows = buildRows(chainItems(), plainOpts, plainOpts.windowStart);
+  const plainCsv = renderCsv(plainRows);
+  assert.equal(
+    plainCsv.split("\n")[0],
+    "id,title,start,end,duration_days,slack_days,deps,status",
+  );
+
+  // With --schedule: A on the critical path -> slack 0.
+  const opts = resolveGanttOptions({ schedule: true, weeks: "12", from: "2026-06-01" });
+  const rows = buildRows(chainItems(), opts, opts.windowStart);
+  const csv = renderCsv(rows);
+  const aLine = csv.split("\n").find((l) => l.startsWith("A,"))!;
+  // columns: id,title,start,end,duration_days,slack_days,deps,status
+  const aCols = aLine.split(",");
+  assert.equal(aCols[5], "0", "A (critical) has slack_days = 0");
+  const dLine = csv.split("\n").find((l) => l.startsWith("D,"))!;
+  assert.equal(dLine.split(",")[5], "4", "D has slack_days = 4");
+});
+
+test("infeasibleWarnings surfaces a line per already-late item", () => {
+  const opts = resolveGanttOptions({ schedule: true, weeks: "12", from: "2026-06-01" });
+  const items: any[] = [
+    { id: "A", title: "A", status: "open", estimated_minutes: 960, dependencies: [] },
+    { id: "B", title: "Tight", status: "open", estimated_minutes: 960, deadline: "2026-06-02",
+      dependencies: [{ id: "A", kind: "blocked_by" }] },
+  ];
+  const rows = buildRows(items, opts, opts.windowStart);
+  const warnings = infeasibleWarnings(rows);
+  // The deadline miss on B propagates back through its predecessor A (standard
+  // CPM): both the deadline task and its blockers are flagged as already-late.
+  assert.ok(warnings.length >= 1, "at least the deadline task is flagged");
+  assert.ok(warnings.some((w) => /B "Tight"/.test(w)), "B is flagged late");
+  assert.ok(warnings.every((w) => /late/.test(w)));
+});
+
+// ---------------------------------------------------------------------------
+// ASCII TODAY marker
+// ---------------------------------------------------------------------------
+
+test("renderGantt draws a TODAY marker when today is in-window", () => {
+  // Anchor the window on today's own week so the marker is guaranteed in-range.
+  const opts = resolveGanttOptions({}); // from defaults to current week
+  const rows = buildRows(chainItems(), opts, opts.windowStart);
+  const ascii = renderGantt(rows, opts, opts.windowStart);
+  assert.match(ascii, /▼TODAY/, "ASCII chart contains the TODAY caret");
+});
+
+test("renderGantt omits the TODAY marker when today is outside the window", () => {
+  // Anchor far in the past with a narrow window -> today not in range.
+  const opts = resolveGanttOptions({ from: "2000-01-03", weeks: "2" });
+  const rows = buildRows(chainItems(), opts, opts.windowStart);
+  const ascii = renderGantt(rows, opts, opts.windowStart);
+  assert.doesNotMatch(ascii, /TODAY/, "no TODAY marker when out of window");
+});
+
+// ---------------------------------------------------------------------------
+// HTML summary + assignee workload
+// ---------------------------------------------------------------------------
+
+test("computeSummary totals task-days, critical length, and per-group workload", () => {
+  const items: any[] = [
+    { id: "A", title: "A", status: "open", estimated_minutes: 960, assignee: "alice", dependencies: [] },
+    { id: "B", title: "B", status: "open", estimated_minutes: 480, assignee: "bob",
+      dependencies: [{ id: "A", kind: "blocked_by" }] },
+  ];
+  const opts = resolveGanttOptions({ schedule: true, "group-by": "assignee", "critical-path": true, weeks: "12", from: "2026-06-01" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const summary = computeSummary(rows);
+  assert.equal(summary.totalTaskDays, 3, "2 days (A) + 1 day (B)");
+  assert.ok(summary.criticalPathLength >= 2, "A->B chain is critical");
+  const alice = summary.workload.find((w) => w.group === "alice")!;
+  const bob = summary.workload.find((w) => w.group === "bob")!;
+  assert.equal(alice.days, 2);
+  assert.equal(bob.days, 1);
+});
+
+test("renderHtml emits a Summary footer, and an assignee-workload table when grouped by assignee", () => {
+  const items: any[] = [
+    { id: "A", title: "A", status: "open", estimated_minutes: 960, assignee: "alice", dependencies: [] },
+    { id: "B", title: "B", status: "open", estimated_minutes: 480, assignee: "bob",
+      dependencies: [{ id: "A", kind: "blocked_by" }] },
+  ];
+  const opts = resolveGanttOptions({ schedule: true, "group-by": "assignee", weeks: "12", from: "2026-06-01" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const html = renderHtml(rows, opts, opts.windowStart);
+  assert.match(html, /<h2>Summary<\/h2>/, "summary footer present");
+  assert.match(html, /Total task-days/);
+  assert.match(html, /Project span/);
+  assert.match(html, /Critical-path length/);
+  assert.match(html, /<h2>Assignee workload<\/h2>/, "workload table present under --group-by assignee");
+  assert.match(html, /alice/);
+
+  // Not grouped by assignee -> summary present, but no workload table.
+  const opts2 = resolveGanttOptions({ schedule: true, "group-by": "sprint", weeks: "12", from: "2026-06-01" });
+  const rows2 = buildRows(items, opts2, opts2.windowStart);
+  const html2 = renderHtml(rows2, opts2, opts2.windowStart);
+  assert.match(html2, /<h2>Summary<\/h2>/);
+  assert.doesNotMatch(html2, /Assignee workload/);
 });

@@ -287,6 +287,113 @@ function computeSchedule(items, anchor, defaultDays) {
         schedule(it.id);
     return result;
 }
+/**
+ * Compute total slack/float for every scheduled item via a backward pass over
+ * the dependency graph (CPM). The forward pass (`computeSchedule`) gives each
+ * item's earliest start/finish (ES/EF). This computes the latest start/finish
+ * (LS/LF):
+ *
+ *   - successors(node) = items that list `node` as a (gating) dependency.
+ *   - A node's latest finish is the day before the earliest latest-start of any
+ *     of its successors, and never later than the project's latest finish.
+ *   - A node with its OWN `deadline` is additionally capped so it finishes on or
+ *     before that deadline.
+ *   - The project's latest finish is the maximum forward-pass EF across all
+ *     items (the computed project end) — leaves with no deadline simply inherit
+ *     it, giving them 0 slack only if they actually end the project.
+ *
+ * total slack = latestStart − earliestStart (in whole days). Items on the
+ * critical path have ~0 slack. `infeasible` flags items whose latest feasible
+ * start is before their earliest possible start (the deadline cannot be met).
+ *
+ * Exported for tests.
+ */
+function computeSlack(items, schedule) {
+    const byId = new Map();
+    for (const it of items)
+        byId.set(it.id, it);
+    /** Only gating ("blocked_by"/unknown) edges drive scheduling & slack. */
+    const gating = (dep) => {
+        const kind = (dep.kind ?? "blocked_by").toLowerCase();
+        return kind !== "related" && kind !== "relates_to" && kind !== "duplicate";
+    };
+    // Build successor adjacency: successors[depId] = [items depending on depId].
+    const successors = new Map();
+    for (const it of items) {
+        for (const dep of it.dependencies ?? []) {
+            if (!gating(dep) || !byId.has(dep.id))
+                continue;
+            if (!successors.has(dep.id))
+                successors.set(dep.id, []);
+            successors.get(dep.id).push(it.id);
+        }
+    }
+    // Project latest finish = the latest forward-pass end across all items.
+    let projectEnd = null;
+    for (const entry of schedule.values()) {
+        if (!projectEnd || entry.end.getTime() > projectEnd.getTime()) {
+            projectEnd = new Date(entry.end);
+        }
+    }
+    const latestFinish = new Map();
+    const visiting = new Set();
+    function lf(id) {
+        const cached = latestFinish.get(id);
+        if (cached)
+            return cached;
+        const entry = schedule.get(id);
+        if (!entry) {
+            // Unscheduled fallback: treat the project end as the bound.
+            return projectEnd ?? new Date(0);
+        }
+        if (visiting.has(id)) {
+            // Cycle guard: contribute no successor constraint (mirror other passes).
+            return projectEnd ?? entry.end;
+        }
+        visiting.add(id);
+        // Start from the project's latest finish.
+        let bound = projectEnd ? new Date(projectEnd) : new Date(entry.end);
+        // Constrain by each successor: this item must finish the day BEFORE the
+        // successor's latest start.
+        for (const succId of successors.get(id) ?? []) {
+            const succEntry = schedule.get(succId);
+            if (!succEntry)
+                continue;
+            const succLatestStart = addDays(lf(succId), -(succEntry.durationDays - 1));
+            const beforeSucc = addDays(succLatestStart, -1);
+            if (beforeSucc.getTime() < bound.getTime())
+                bound = beforeSucc;
+        }
+        // Constrain by this item's OWN deadline (must finish on or before it).
+        const item = byId.get(id);
+        const due = item ? itemDueDate(item) : undefined;
+        const deadline = due ? parseDate(due) : null;
+        if (deadline && deadline.getTime() < bound.getTime()) {
+            bound = deadline;
+        }
+        visiting.delete(id);
+        latestFinish.set(id, bound);
+        return bound;
+    }
+    const result = new Map();
+    for (const it of items) {
+        const entry = schedule.get(it.id);
+        if (!entry)
+            continue;
+        const finish = lf(it.id);
+        const start = addDays(finish, -(entry.durationDays - 1));
+        const slackDays = Math.round((start.getTime() - entry.start.getTime()) / DAY_MS);
+        result.set(it.id, {
+            // Negative slack means infeasible; report it (don't clamp) so callers can
+            // distinguish "0 = on the critical path" from "<0 = already late".
+            slackDays,
+            latestStart: start,
+            latestFinish: finish,
+            infeasible: start.getTime() < entry.start.getTime(),
+        });
+    }
+    return result;
+}
 // ---------------------------------------------------------------------------
 // Row building (shared by terminal render and exporters)
 // ---------------------------------------------------------------------------
@@ -313,6 +420,9 @@ function buildRows(items, opts, windowStart) {
     const scheduleMap = opts.schedule
         ? computeSchedule(working, windowStart, opts.defaultDuration)
         : null;
+    // Backward pass: total slack/float + infeasible-deadline detection. Only
+    // meaningful when we have a forward schedule to measure against.
+    const slackMap = scheduleMap ? computeSlack(working, scheduleMap) : null;
     const groupMap = new Map();
     for (const item of working) {
         const key = getGroupKey(item, opts.groupBy);
@@ -361,6 +471,8 @@ function buildRows(items, opts, windowStart) {
                 end: scheduleMap
                     ? (scheduleMap.get(item.id)?.end ?? null)
                     : itemEnd,
+                slackDays: slackMap ? (slackMap.get(item.id)?.slackDays ?? null) : null,
+                infeasible: slackMap ? (slackMap.get(item.id)?.infeasible ?? false) : false,
             });
         }
     }
@@ -416,6 +528,16 @@ function renderGantt(rows, opts, windowStart) {
         .map((l) => l.padEnd(WEEK_COL))
         .join(COL_SEP);
     lines.push(`${"".padEnd(COL_GROUP)}  ${"".padEnd(COL_ITEM)}  ${"".padEnd(COL_ST)}  ${weekDateCols}`);
+    // TODAY marker line — parity with the mermaid `%% today:` marker. Drops a
+    // caret in the week column that contains `today`, when it falls in-window.
+    const windowEnd = addWeeks(windowStart, weeks);
+    const todayWeek = opts.today >= windowStart && opts.today < windowEnd
+        ? Math.floor((opts.today.getTime() - windowStart.getTime()) / (7 * DAY_MS))
+        : -1;
+    if (todayWeek >= 0 && todayWeek < weeks) {
+        const markerCells = weekLabels.map((_, w) => (w === todayWeek ? "▼TODAY" : "").padEnd(WEEK_COL));
+        lines.push(`${"".padEnd(COL_GROUP)}  ${"".padEnd(COL_ITEM)}  ${"".padEnd(COL_ST)}  ${markerCells.join(COL_SEP)}`);
+    }
     lines.push("─".repeat(Math.min(totalWidth, 90)));
     // Rows — track last group to only print group name on first row
     let lastGroup = "";
@@ -551,13 +673,17 @@ function csvField(value) {
     return value;
 }
 /**
- * Render rows as a CSV schedule: id,title,start,end,duration_days,deps,status.
+ * Render rows as a CSV schedule:
+ * id,title,start,end,duration_days,slack_days,deps,status.
  * `start`/`end` use the row's computed bounds (scheduler- or date-derived);
- * `duration_days` is the inclusive day span, blank when undated. `deps` is a
- * space-separated list of blocking dependency ids. Exported for tests.
+ * `duration_days` is the inclusive day span, blank when undated. `slack_days`
+ * is the backward-pass total float (only populated under `--schedule`; blank
+ * otherwise) — 0 marks a critical-path item, negative means the plan is already
+ * late for a downstream deadline. `deps` is a space-separated list of blocking
+ * dependency ids. Exported for tests.
  */
 function renderCsv(rows) {
-    const header = "id,title,start,end,duration_days,deps,status";
+    const header = "id,title,start,end,duration_days,slack_days,deps,status";
     const lines = [header];
     for (const row of rows) {
         const { item } = row;
@@ -568,6 +694,7 @@ function renderCsv(rows) {
             const days = Math.round((row.end.getTime() - row.start.getTime()) / DAY_MS) + 1;
             duration = String(Math.max(1, days));
         }
+        const slack = row.slackDays === null ? "" : String(row.slackDays);
         const deps = (item.dependencies ?? [])
             .filter((d) => {
             const kind = (d.kind ?? "blocked_by").toLowerCase();
@@ -581,6 +708,7 @@ function renderCsv(rows) {
             csvField(start),
             csvField(end),
             csvField(duration),
+            csvField(slack),
             csvField(deps),
             csvField(item.status),
         ].join(","));
@@ -596,6 +724,40 @@ function htmlEscape(s) {
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
+}
+/** Inclusive day span of a dated row, else 0. */
+function rowDurationDays(row) {
+    if (!row.start || !row.end)
+        return 0;
+    return Math.max(1, Math.round((row.end.getTime() - row.start.getTime()) / DAY_MS) + 1);
+}
+/** Compute the footer summary stats shared by the HTML export. */
+function computeSummary(rows) {
+    let projectStart = null;
+    let projectEnd = null;
+    let totalTaskDays = 0;
+    let criticalPathLength = 0;
+    const workloadMap = new Map();
+    for (const row of rows) {
+        if (row.critical)
+            criticalPathLength++;
+        const days = rowDurationDays(row);
+        totalTaskDays += days;
+        workloadMap.set(row.group, (workloadMap.get(row.group) ?? 0) + days);
+        if (row.start && (!projectStart || row.start.getTime() < projectStart.getTime())) {
+            projectStart = new Date(row.start);
+        }
+        if (row.end && (!projectEnd || row.end.getTime() > projectEnd.getTime())) {
+            projectEnd = new Date(row.end);
+        }
+    }
+    const spanDays = projectStart && projectEnd
+        ? Math.max(1, Math.round((projectEnd.getTime() - projectStart.getTime()) / DAY_MS) + 1)
+        : 0;
+    const workload = [...workloadMap.entries()]
+        .map(([group, days]) => ({ group, days }))
+        .sort((a, b) => b.days - a.days || a.group.localeCompare(b.group));
+    return { projectStart, projectEnd, spanDays, criticalPathLength, totalTaskDays, workload };
 }
 function renderHtml(rows, opts, windowStart) {
     const weeks = opts.weeks;
@@ -637,6 +799,29 @@ function renderHtml(rows, opts, windowStart) {
             cells.join("") +
             `</tr>`);
     }
+    // Footer summary + (for --group-by assignee) per-assignee workload.
+    const summary = computeSummary(rows);
+    const spanText = summary.projectStart && summary.projectEnd
+        ? `${isoDay(summary.projectStart)} → ${isoDay(summary.projectEnd)} (${summary.spanDays} day${summary.spanDays === 1 ? "" : "s"})`
+        : "—";
+    const summaryRows = [
+        `<tr><th>Project span</th><td>${htmlEscape(spanText)}</td></tr>`,
+        `<tr><th>Critical-path length</th><td>${summary.criticalPathLength} item${summary.criticalPathLength === 1 ? "" : "s"}</td></tr>`,
+        `<tr><th>Total task-days</th><td>${summary.totalTaskDays}</td></tr>`,
+    ];
+    let workloadBlock = "";
+    if (opts.groupBy === "assignee" && summary.workload.length > 0) {
+        const workloadRows = summary.workload
+            .map((w) => `<tr><td>${htmlEscape(w.group)}</td><td>${w.days} day${w.days === 1 ? "" : "s"}</td></tr>`)
+            .join("\n");
+        workloadBlock = `<h2>Assignee workload</h2>
+<table class="workload">
+<thead><tr><th>Assignee</th><th>Total days</th></tr></thead>
+<tbody>
+${workloadRows}
+</tbody>
+</table>`;
+    }
     const title = `pm gantt — ${weeks} weeks from ${isoDay(windowStart)}`;
     return `<!DOCTYPE html>
 <html lang="en">
@@ -666,6 +851,10 @@ function renderHtml(rows, opts, windowStart) {
   .legend span { display: inline-block; margin-right: 1rem; }
   .swatch { display: inline-block; width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; border: 1px solid #ccc; }
   tr.status-closed td.item { text-decoration: line-through; color: #999; }
+  h2 { font-size: 1rem; margin: 1.4rem 0 0.5rem; }
+  table.summary, table.workload { width: auto; min-width: 18rem; }
+  table.summary th, table.workload th { text-align: left; }
+  table.summary td, table.workload td { white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -678,6 +867,13 @@ function renderHtml(rows, opts, windowStart) {
 ${bodyRows.join("\n")}
 </tbody>
 </table>
+<h2>Summary</h2>
+<table class="summary">
+<tbody>
+${summaryRows.join("\n")}
+</tbody>
+</table>
+${workloadBlock}
 <div class="legend">
   <span><i class="swatch" style="background:#2b7de9"></i>in_progress / blocked</span>
   <span><i class="swatch" style="background:#b3d4fc"></i>open / planned</span>
@@ -790,6 +986,20 @@ function fetchItems(pmRoot) {
 function filterByStatus(items, statusFilter) {
     return statusFilter === "all" ? items : items.filter((i) => i.status === statusFilter);
 }
+/**
+ * Collect infeasible-deadline warnings from scheduled rows. A row is infeasible
+ * when its backward-pass latest-feasible start is before its earliest possible
+ * start — the plan is already late for a downstream deadline. Returns one
+ * human-readable line per affected item (empty when none / not scheduling).
+ */
+function infeasibleWarnings(rows) {
+    return rows
+        .filter((r) => r.infeasible)
+        .map((r) => {
+        const slip = r.slackDays === null ? 0 : Math.abs(r.slackDays);
+        return `  • ${r.item.id} "${r.item.title}" is ${slip} day(s) late: its required start to hit a downstream deadline is before its earliest feasible start.`;
+    });
+}
 const EXPORT_FORMATS = ["mermaid", "html", "ascii", "csv"];
 function renderForFormat(format, rows, opts, windowStart) {
     switch (format) {
@@ -812,7 +1022,7 @@ function defaultExtension(format) {
 // ---------------------------------------------------------------------------
 export default defineExtension({
     name: "pm-gantt-chart",
-    version: "2026.6.3",
+    version: "2026.6.4",
     activate(api) {
         api.registerCommand({
             name: "gantt",
@@ -899,11 +1109,18 @@ export default defineExtension({
                     };
                 }
                 const chart = renderGantt(rows, opts, opts.windowStart);
+                // Backward-pass infeasible-deadline warnings (only under --schedule).
+                const warnings = infeasibleWarnings(rows);
                 // Print the human-readable chart to stdout, but not under --json:
                 // mixing it with the JSON payload would corrupt machine-readable output.
                 // The chart is still returned in the result object for JSON consumers.
                 if (!ctx.global?.json) {
                     process.stdout.write(chart + "\n");
+                    if (warnings.length > 0) {
+                        process.stderr.write(`\nWARNING: ${warnings.length} item(s) have an infeasible deadline (plan already late):\n` +
+                            warnings.join("\n") +
+                            "\n");
+                    }
                 }
                 return {
                     chart,
@@ -916,6 +1133,18 @@ export default defineExtension({
                     criticalOnly: opts.criticalOnly,
                     schedule: opts.schedule,
                     ...(opts.schedule ? { defaultDuration: opts.defaultDuration } : {}),
+                    ...(opts.schedule
+                        ? {
+                            tasks: rows.map((r) => ({
+                                id: r.item.id,
+                                slack_days: r.slackDays,
+                                critical: r.critical,
+                                infeasible: r.infeasible,
+                            })),
+                            infeasibleCount: warnings.length,
+                            ...(warnings.length > 0 ? { warnings } : {}),
+                        }
+                        : {}),
                 };
             },
         });
@@ -945,6 +1174,13 @@ export default defineExtension({
             }
             const output = renderForFormat(format, rows, opts, opts.windowStart);
             const exportedCount = rows.length;
+            // Surface backward-pass infeasible-deadline warnings on stderr so they do
+            // not corrupt the exported artifact written to stdout / a file.
+            const warnings = infeasibleWarnings(rows);
+            if (warnings.length > 0) {
+                console.error(`gantt export WARNING: ${warnings.length} item(s) have an infeasible deadline (plan already late):\n` +
+                    warnings.join("\n"));
+            }
             const outputPath = readOption(ctx.options, "output");
             if (outputPath) {
                 const absolutePath = resolve(outputPath);
@@ -967,5 +1203,5 @@ export default defineExtension({
 // runtime extension contract; the default export above is. Keeping them as
 // named exports lets test/*.test.ts import them without touching pm internals.
 // ---------------------------------------------------------------------------
-export { computeSchedule, computeCriticalPath, itemDurationDays, renderCsv, renderMermaid, buildRows, resolveGanttOptions, getGroupKey, };
+export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderMermaid, renderGantt, renderHtml, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, };
 //# sourceMappingURL=index.js.map

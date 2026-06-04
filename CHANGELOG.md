@@ -1,6 +1,12 @@
 # Changelog
 
-## 2026.6.3 - 2026-06-02
+## 2026.6.4 - 2026-06-04
+
+### Added
+
+- Slack/float, infeasible-deadline flag, ASCII TODAY marker, HTML summary + assignee workload ([pm-gantt-chart-ao93](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-ao93.toon))
+
+## 2026.06.03 - 2026-06-02
 
 ### Added
 
