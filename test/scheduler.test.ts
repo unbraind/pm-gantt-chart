@@ -15,6 +15,9 @@ import {
   buildRows,
   resolveGanttOptions,
   getGroupKey,
+  itemProgress,
+  isOverdue,
+  classifyOffWindow,
 } from "../dist/index.js";
 
 // A small, deterministic project: A -> B -> C chain plus an isolated item.
@@ -318,4 +321,185 @@ test("renderHtml emits a Summary footer, and an assignee-workload table when gro
   const html2 = renderHtml(rows2, opts2, opts2.windowStart);
   assert.match(html2, /<h2>Summary<\/h2>/);
   assert.doesNotMatch(html2, /Assignee workload/);
+});
+
+// ---------------------------------------------------------------------------
+// Progress (% complete) derivation
+// ---------------------------------------------------------------------------
+
+test("itemProgress: closed/canceled are 100%, open is 0%, in_progress defaults to 50%, blocked 25%", () => {
+  assert.equal(itemProgress({ id: "a", title: "a", status: "closed" } as any), 100);
+  assert.equal(itemProgress({ id: "a", title: "a", status: "canceled" } as any), 100);
+  assert.equal(itemProgress({ id: "a", title: "a", status: "open" } as any), 0);
+  assert.equal(itemProgress({ id: "a", title: "a", status: "draft" } as any), 0);
+  assert.equal(itemProgress({ id: "a", title: "a", status: "in_progress" } as any), 50);
+  assert.equal(itemProgress({ id: "a", title: "a", status: "blocked" } as any), 25);
+});
+
+test("itemProgress: derives ratio from an acceptance-criteria checklist in the body", () => {
+  const body = [
+    "Some description",
+    "- [x] write code",
+    "- [x] add tests",
+    "- [ ] update docs",
+    "- [-] optional polish",
+  ].join("\n");
+  // 2 of 4 checked -> 50%.
+  assert.equal(itemProgress({ id: "a", title: "a", status: "in_progress", body } as any), 50);
+  // All checked -> 100% even when still in_progress.
+  const allDone = "- [x] one\n- [x] two";
+  assert.equal(itemProgress({ id: "a", title: "a", status: "in_progress", body: allDone } as any), 100);
+});
+
+test("itemProgress: honors an explicit meta.progress (fraction or percentage)", () => {
+  assert.equal(itemProgress({ id: "a", title: "a", status: "open", meta: { progress: 0.4 } } as any), 40);
+  assert.equal(itemProgress({ id: "a", title: "a", status: "open", meta: { percent_complete: 80 } } as any), 80);
+  // out-of-range is clamped
+  assert.equal(itemProgress({ id: "a", title: "a", status: "open", meta: { progress: 150 } } as any), 100);
+});
+
+test("renderGantt --progress appends NN% and a fill glyph without breaking default output", () => {
+  const items: any[] = [
+    { id: "A", title: "Design", status: "closed", estimated_minutes: 480, sprint: "S1", dependencies: [] },
+    { id: "B", title: "Build", status: "in_progress", estimated_minutes: 480, sprint: "S1", dependencies: [] },
+  ];
+  const optsPlain = resolveGanttOptions({ schedule: true, weeks: "12", from: "2026-06-01" });
+  const rowsPlain = buildRows(items, optsPlain, optsPlain.windowStart);
+  const plain = renderGantt(rowsPlain, optsPlain, optsPlain.windowStart);
+  assert.doesNotMatch(plain, /\d+%/, "default ASCII output has no percentages");
+
+  const opts = resolveGanttOptions({ schedule: true, progress: true, weeks: "12", from: "2026-06-01" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const ascii = renderGantt(rows, opts, opts.windowStart);
+  assert.match(ascii, /100%/, "closed item shows 100%");
+  assert.match(ascii, /50%/, "in_progress item shows 50%");
+});
+
+// ---------------------------------------------------------------------------
+// Overdue detection + highlighting
+// ---------------------------------------------------------------------------
+
+test("isOverdue: deadline before today on a non-closed item is overdue; closed/future/undated are not", () => {
+  const today = new Date("2026-06-15T00:00:00");
+  assert.equal(isOverdue({ id: "a", title: "a", status: "open", deadline: "2026-06-01" } as any, today), true);
+  assert.equal(isOverdue({ id: "a", title: "a", status: "in_progress", deadline: "2026-06-01" } as any, today), true);
+  // closed/canceled never overdue
+  assert.equal(isOverdue({ id: "a", title: "a", status: "closed", deadline: "2026-06-01" } as any, today), false);
+  assert.equal(isOverdue({ id: "a", title: "a", status: "canceled", deadline: "2026-06-01" } as any, today), false);
+  // future deadline not overdue
+  assert.equal(isOverdue({ id: "a", title: "a", status: "open", deadline: "2026-06-30" } as any, today), false);
+  // no deadline not overdue
+  assert.equal(isOverdue({ id: "a", title: "a", status: "open" } as any, today), false);
+});
+
+test("renderGantt marks overdue items with a ‼ OVERDUE glyph; renderHtml adds an overdue class", () => {
+  // Window starts on the current week; give an open item a deadline in the past.
+  const past = "2020-01-01";
+  const items: any[] = [
+    { id: "A", title: "Late thing", status: "open", created_at: past, deadline: past, sprint: "S1", dependencies: [] },
+    { id: "B", title: "Fine thing", status: "open", sprint: "S1", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({}); // today's week, default 8w
+  const rows = buildRows(items, opts, opts.windowStart);
+  const ascii = renderGantt(rows, opts, opts.windowStart);
+  assert.match(ascii, /‼ OVERDUE/, "overdue glyph present in ASCII");
+  const html = renderHtml(rows, opts, opts.windowStart);
+  assert.match(html, /is-overdue/, "overdue row class present in HTML");
+  assert.match(html, /overdue-mark/, "overdue marker present in HTML");
+});
+
+// ---------------------------------------------------------------------------
+// Off-window vs genuinely undated classification
+// ---------------------------------------------------------------------------
+
+test("classifyOffWindow distinguishes undated, before-window, and after-window", () => {
+  const windowStart = new Date("2026-06-01T00:00:00"); // Monday
+  const weeks = 4; // window = Jun 1 .. Jun 29
+  // no dates -> undated
+  assert.equal(classifyOffWindow(null, null, windowStart, weeks), "undated");
+  // both dates before the window
+  assert.equal(
+    classifyOffWindow(new Date("2026-04-01"), new Date("2026-04-10"), windowStart, weeks),
+    "before",
+  );
+  // both dates after the window
+  assert.equal(
+    classifyOffWindow(new Date("2026-09-01"), new Date("2026-09-10"), windowStart, weeks),
+    "after",
+  );
+});
+
+test("buildRows tags off-window rows so ASCII/HTML render a directional hint, not ··", () => {
+  const items: any[] = [
+    // genuinely undated
+    { id: "U", title: "Undated", status: "open", sprint: "S1", dependencies: [] },
+    // dated entirely before the window
+    { id: "P", title: "Past", status: "open", created_at: "2020-01-01", deadline: "2020-01-08", sprint: "S1", dependencies: [] },
+    // dated entirely after the window
+    { id: "F", title: "Future", status: "open", created_at: "2030-01-01", deadline: "2030-01-08", sprint: "S1", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ from: "2026-06-01", weeks: "4" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const byId = (id: string) => rows.find((r) => r.item.id === id)!;
+  assert.equal(byId("U").offWindow, "undated");
+  assert.equal(byId("P").offWindow, "before");
+  assert.equal(byId("F").offWindow, "after");
+
+  const ascii = renderGantt(rows, opts, opts.windowStart);
+  assert.match(ascii, /←·/, "before-window directional hint in ASCII");
+  assert.match(ascii, /·→/, "after-window directional hint in ASCII");
+  assert.match(ascii, /··/, "genuinely undated still shows ··");
+
+  const html = renderHtml(rows, opts, opts.windowStart);
+  assert.match(html, /offwindow-hint/, "off-window hint span in HTML");
+  assert.match(html, /cell undated/, "undated cell class still present in HTML");
+});
+
+// ---------------------------------------------------------------------------
+// HTML TODAY marker (parity with ASCII / Mermaid)
+// ---------------------------------------------------------------------------
+
+test("renderHtml adds a TODAY column when today is in-window, omits it otherwise", () => {
+  const items: any[] = [
+    { id: "A", title: "A", status: "open", sprint: "S1", dependencies: [] },
+  ];
+  // in-window: default anchor is the current week.
+  const optsIn = resolveGanttOptions({});
+  const rowsIn = buildRows(items, optsIn, optsIn.windowStart);
+  const htmlIn = renderHtml(rowsIn, optsIn, optsIn.windowStart);
+  // The today-col CSS class is always defined in <style>; assert on the
+  // rendered marker + the column being tagged in the header.
+  assert.match(htmlIn, /▼ today/, "today marker label present when in-window");
+  assert.match(htmlIn, /class="wk-th today-col"/, "header column tagged today when in-window");
+
+  // out-of-window: anchor far in the past, narrow window. No column gets the
+  // today tag and no marker label is rendered.
+  const optsOut = resolveGanttOptions({ from: "2000-01-03", weeks: "2" });
+  const rowsOut = buildRows(items, optsOut, optsOut.windowStart);
+  const htmlOut = renderHtml(rowsOut, optsOut, optsOut.windowStart);
+  assert.doesNotMatch(htmlOut, /▼ today/, "no today marker when out of window");
+  assert.doesNotMatch(htmlOut, /class="wk-th today-col"/, "no header column tagged today when out of window");
+});
+
+test("renderHtml --progress emits a fill overlay sized to the completion ratio", () => {
+  const items: any[] = [
+    { id: "A", title: "A", status: "in_progress", created_at: "2026-06-01", deadline: "2026-06-15", sprint: "S1", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ progress: true, from: "2026-06-01", weeks: "6" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const html = renderHtml(rows, opts, opts.windowStart);
+  assert.match(html, /class="fill" style="width:50%"/, "fill overlay sized to 50%");
+  assert.match(html, /class="pct">50%/, "numeric percent label present");
+});
+
+test("renderMermaid keeps valid scaffolding under --progress and flags overdue via crit", () => {
+  const items: any[] = [
+    { id: "A", title: "Late", status: "open", created_at: "2020-01-01", deadline: "2020-01-08", sprint: "S1", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ progress: true }); // today's week
+  const rows = buildRows(items, opts, opts.windowStart);
+  const mmd = renderMermaid(rows, opts, opts.windowStart);
+  assert.match(mmd, /^gantt/m, "still valid gantt scaffolding");
+  assert.match(mmd, /progress:/, "progress comment present under --progress");
+  assert.match(mmd, /:crit, /, "overdue item carries the crit tag");
 });

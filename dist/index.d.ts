@@ -34,7 +34,14 @@ interface GanttOptions {
     criticalOnly: boolean;
     schedule: boolean;
     defaultDuration: number;
+    progress: boolean;
 }
+/** Why a row has no in-window bar.
+ *  - "undated": the item carries no start/end at all (genuinely unscheduled).
+ *  - "before":  the item's dates fall entirely BEFORE the chart window (earlier).
+ *  - "after":   the item's dates fall entirely AFTER the chart window (later).
+ */
+type OffWindow = "undated" | "before" | "after";
 interface GanttRow {
     group: string;
     item: PmItem;
@@ -45,7 +52,44 @@ interface GanttRow {
     end: Date | null;
     slackDays: number | null;
     infeasible: boolean;
+    progress: number;
+    overdue: boolean;
+    /** When startWeek is null, WHY: genuinely undated, or off-window before/after.
+     *  null when the row does have an in-window bar (startWeek !== null). */
+    offWindow: OffWindow | null;
 }
+/**
+ * Classify WHY an item has no in-window bar. `computeWeekRange` collapses two
+ * very different cases to `null`: a genuinely undated item (no start/end at all)
+ * and an item whose dates fall entirely OUTSIDE the chart window. Renderers used
+ * to draw both as the same `··` "undated" glyph, which misled users. This
+ * disambiguates them so off-window items can show a directional hint.
+ *
+ * Returns:
+ *   - "undated" — no start and no end date.
+ *   - "before"  — the item's (effective) span ends at/before the window start.
+ *   - "after"   — the item's (effective) span starts at/after the window end.
+ * Exported for tests. Mirrors computeWeekRange's effective-span derivation so
+ * the two never disagree about overlap.
+ */
+export declare function classifyOffWindow(itemStart: Date | null, itemEnd: Date | null, windowStart: Date, totalWeeks: number): OffWindow;
+/**
+ * Derive a 0..100 completion ratio for an item from available pm signals,
+ * deterministically:
+ *   • closed / canceled            → 100 (work is finished/dropped from the plan)
+ *   • a meta `progress`/`percent_complete` number (0..100 or 0..1) is honored verbatim
+ *   • acceptance-criteria checklist (checked / total) from the body, when present
+ *   • in_progress with no other signal → 50 (a sensible "halfway" default)
+ *   • blocked                         → 25 (started but stalled)
+ *   • everything else (open/draft)    → 0
+ * Exported for tests.
+ */
+export declare function itemProgress(item: PmItem): number;
+/**
+ * An item is overdue when it has a deadline strictly before `today` AND is not
+ * already closed or canceled. Exported for tests.
+ */
+export declare function isOverdue(item: PmItem, today: Date): boolean;
 declare function getGroupKey(item: PmItem, groupBy: GroupBy): string;
 /**
  * Compute the critical path: the longest chain of dependency edges across the
@@ -186,5 +230,5 @@ declare const _default: {
 };
 export default _default;
 export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderMermaid, renderGantt, renderHtml, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, };
-export type { PmItem, GanttOptions, GanttRow, GroupBy, ScheduleEntry, SlackEntry, GanttSummary };
+export type { PmItem, GanttOptions, GanttRow, GroupBy, ScheduleEntry, SlackEntry, GanttSummary, OffWindow };
 //# sourceMappingURL=index.d.ts.map

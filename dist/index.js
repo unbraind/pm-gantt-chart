@@ -114,6 +114,115 @@ function computeWeekRange(itemStart, itemEnd, windowStart, totalWeeks) {
         lastActive: Math.min(totalWeeks - 1, lastActive),
     };
 }
+/**
+ * Classify WHY an item has no in-window bar. `computeWeekRange` collapses two
+ * very different cases to `null`: a genuinely undated item (no start/end at all)
+ * and an item whose dates fall entirely OUTSIDE the chart window. Renderers used
+ * to draw both as the same `··` "undated" glyph, which misled users. This
+ * disambiguates them so off-window items can show a directional hint.
+ *
+ * Returns:
+ *   - "undated" — no start and no end date.
+ *   - "before"  — the item's (effective) span ends at/before the window start.
+ *   - "after"   — the item's (effective) span starts at/after the window end.
+ * Exported for tests. Mirrors computeWeekRange's effective-span derivation so
+ * the two never disagree about overlap.
+ */
+export function classifyOffWindow(itemStart, itemEnd, windowStart, totalWeeks) {
+    if (!itemStart && !itemEnd)
+        return "undated";
+    const windowEnd = addWeeks(windowStart, totalWeeks);
+    const effectiveStart = itemStart ?? (itemEnd ? addWeeks(itemEnd, -1) : windowStart);
+    const effectiveEnd = itemEnd ?? (itemStart ? addWeeks(itemStart, 1) : windowEnd);
+    if (effectiveEnd <= windowStart)
+        return "before";
+    if (effectiveStart >= windowEnd)
+        return "after";
+    // Overlaps the window (caller should have used computeWeekRange); default to
+    // "undated" only as a defensive fallback that should never be reached.
+    return "undated";
+}
+// ---------------------------------------------------------------------------
+// Progress (% complete) + overdue detection
+// ---------------------------------------------------------------------------
+/**
+ * Derive a 0..100 completion ratio for an item from available pm signals,
+ * deterministically:
+ *   • closed / canceled            → 100 (work is finished/dropped from the plan)
+ *   • a meta `progress`/`percent_complete` number (0..100 or 0..1) is honored verbatim
+ *   • acceptance-criteria checklist (checked / total) from the body, when present
+ *   • in_progress with no other signal → 50 (a sensible "halfway" default)
+ *   • blocked                         → 25 (started but stalled)
+ *   • everything else (open/draft)    → 0
+ * Exported for tests.
+ */
+export function itemProgress(item) {
+    if (item.status === "closed" || item.status === "canceled")
+        return 100;
+    // 1) An explicit numeric progress signal in meta wins (some pm setups store it).
+    const metaProgress = readMetaProgress(item.meta);
+    if (metaProgress !== null)
+        return clampPercent(metaProgress);
+    // 2) Acceptance-criteria checklist in the body: count [x] vs [ ] / [-].
+    const checklist = checklistRatio(item.body);
+    if (checklist !== null)
+        return clampPercent(Math.round(checklist * 100));
+    // 3) Status-based fallback.
+    switch (item.status) {
+        case "in_progress": return 50;
+        case "blocked": return 25;
+        default: return 0; // open / draft
+    }
+}
+function clampPercent(n) {
+    if (!isFinite(n))
+        return 0;
+    return Math.max(0, Math.min(100, Math.round(n)));
+}
+/** Read a numeric progress hint from meta (`progress` or `percent_complete`).
+ *  Accepts 0..1 fractions (scaled to %) or 0..100 percentages. Returns null when
+ *  no usable numeric value is present. */
+function readMetaProgress(meta) {
+    if (!meta)
+        return null;
+    for (const key of ["progress", "percent_complete", "percentComplete"]) {
+        const raw = meta[key];
+        const n = typeof raw === "number" ? raw : typeof raw === "string" ? parseFloat(raw) : NaN;
+        if (isFinite(n))
+            return n > 0 && n <= 1 ? n * 100 : n;
+    }
+    return null;
+}
+/** Parse a GitHub-style task list from the body and return checked/total, or
+ *  null when there are no checklist lines. `[x]`/`[X]` count as done. */
+function checklistRatio(body) {
+    if (!body)
+        return null;
+    let total = 0;
+    let done = 0;
+    for (const line of body.split("\n")) {
+        const m = /^\s*[-*]\s*\[([ xX\-])\]/.exec(line);
+        if (!m)
+            continue;
+        total++;
+        if (m[1] === "x" || m[1] === "X")
+            done++;
+    }
+    return total > 0 ? done / total : null;
+}
+/**
+ * An item is overdue when it has a deadline strictly before `today` AND is not
+ * already closed or canceled. Exported for tests.
+ */
+export function isOverdue(item, today) {
+    if (item.status === "closed" || item.status === "canceled")
+        return false;
+    const due = itemDueDate(item);
+    if (!due)
+        return false;
+    const deadline = parseDate(due);
+    return deadline !== null && deadline.getTime() < today.getTime();
+}
 // ---------------------------------------------------------------------------
 // Grouping
 // ---------------------------------------------------------------------------
@@ -610,6 +719,12 @@ function buildRows(items, opts, windowStart) {
                     : itemEnd,
                 slackDays: slackMap ? (slackMap.get(item.id)?.slackDays ?? null) : null,
                 infeasible: slackMap ? (slackMap.get(item.id)?.infeasible ?? false) : false,
+                progress: itemProgress(item),
+                overdue: isOverdue(item, opts.today),
+                // Only classify the no-bar reason when there is no in-window bar.
+                offWindow: range === null
+                    ? classifyOffWindow(itemStart, itemEnd, windowStart, opts.weeks)
+                    : null,
             });
         }
     }
@@ -622,7 +737,22 @@ const BLOCK_ACTIVE = "██";
 const BLOCK_PLANNED = "░░";
 const BLOCK_CRITICAL = "▓▓";
 const BLOCK_UNDATED = "··";
+const OFF_WINDOW_BEFORE = "←·"; // dates fall entirely before the window
+const OFF_WINDOW_AFTER = "·→"; // dates fall entirely after the window
 const COL_SEP = "  ";
+/** Half-filled block glyphs for a coarse 0..100 % progress indicator in ASCII.
+ *  Mapped onto the existing 2-char cell width so alignment is preserved. */
+function progressGlyph(pct) {
+    if (pct >= 100)
+        return "██";
+    if (pct >= 75)
+        return "▓▓";
+    if (pct >= 50)
+        return "▓░";
+    if (pct >= 25)
+        return "░░";
+    return "··";
+}
 function statusSymbol(status) {
     switch (status) {
         case "in_progress": return "▶";
@@ -693,20 +823,43 @@ function renderGantt(rows, opts, windowStart) {
         // Gantt cells
         const cells = [];
         if (row.startWeek === null) {
-            // Undated item
+            // No in-window bar. Distinguish a genuinely undated item (`··`) from one
+            // whose dates fall entirely outside the window (directional hint), so the
+            // two no longer look identical. The hint is placed at the nearest edge
+            // column and points toward where the work actually lives.
+            const glyph = row.offWindow === "before"
+                ? OFF_WINDOW_BEFORE
+                : row.offWindow === "after"
+                    ? OFF_WINDOW_AFTER
+                    : BLOCK_UNDATED;
             for (let w = 0; w < weeks; w++) {
-                cells.push(BLOCK_UNDATED.padEnd(WEEK_COL));
+                if (row.offWindow === "before") {
+                    cells.push((w === 0 ? glyph : "  ").padEnd(WEEK_COL));
+                }
+                else if (row.offWindow === "after") {
+                    cells.push((w === weeks - 1 ? glyph : "  ").padEnd(WEEK_COL));
+                }
+                else {
+                    cells.push(BLOCK_UNDATED.padEnd(WEEK_COL));
+                }
             }
         }
         else {
             for (let w = 0; w < weeks; w++) {
                 if (w >= row.startWeek && w <= (row.endWeek ?? row.startWeek)) {
                     // Active: critical-path items override, then in_progress/blocked vs open.
-                    const block = row.critical
-                        ? BLOCK_CRITICAL
-                        : item.status === "in_progress" || item.status === "blocked"
-                            ? BLOCK_ACTIVE
-                            : BLOCK_PLANNED;
+                    // Under --progress, fill the bar's cells with a coarse completion glyph.
+                    let block;
+                    if (opts.progress) {
+                        block = progressGlyph(row.progress);
+                    }
+                    else {
+                        block = row.critical
+                            ? BLOCK_CRITICAL
+                            : item.status === "in_progress" || item.status === "blocked"
+                                ? BLOCK_ACTIVE
+                                : BLOCK_PLANNED;
+                    }
                     cells.push(block.padEnd(WEEK_COL));
                 }
                 else {
@@ -714,13 +867,27 @@ function renderGantt(rows, opts, windowStart) {
                 }
             }
         }
-        lines.push(`${groupLabel}  ${itemLabel}  ${st}   ${cells.join(COL_SEP)}`);
+        // Trailing annotations (do not affect the week-column grid alignment):
+        //   • overdue items get a distinct "‼ OVERDUE" marker (default-on; data-driven).
+        //   • --progress appends the numeric "NN%".
+        const suffixParts = [];
+        if (opts.progress)
+            suffixParts.push(`${String(row.progress).padStart(3)}%`);
+        if (row.overdue)
+            suffixParts.push("‼ OVERDUE");
+        const suffix = suffixParts.length > 0 ? "  " + suffixParts.join("  ") : "";
+        lines.push(`${groupLabel}  ${itemLabel}  ${st}   ${cells.join(COL_SEP)}${suffix}`);
     }
     lines.push("━".repeat(Math.min(totalWidth, 90)));
     // Legend
+    const anyOffWindow = rows.some((r) => r.offWindow === "before" || r.offWindow === "after");
+    const anyOverdue = rows.some((r) => r.overdue);
     lines.push(`Legend: ${BLOCK_ACTIVE} in_progress/blocked  ${BLOCK_PLANNED} open/planned  ` +
         (opts.criticalPath ? `${BLOCK_CRITICAL} critical-path (*)  ` : "") +
         `${BLOCK_UNDATED} undated  ` +
+        (anyOffWindow ? `${OFF_WINDOW_BEFORE}/${OFF_WINDOW_AFTER} off-window (earlier/later)  ` : "") +
+        (opts.progress ? `progress: ·· 0% ░░ 25% ▓░ 50% ▓▓ 75% ██ 100%  ` : "") +
+        (anyOverdue ? `‼ OVERDUE (deadline passed, not closed)  ` : "") +
         `S: ▶in_progress  !blocked  ✓closed  ○open`);
     return lines.join("\n");
 }
@@ -786,10 +953,24 @@ function renderMermaid(rows, opts, windowStart) {
         if (end <= start)
             end = addWeeks(start, 1); // mermaid requires positive duration
         const taskId = `t${taskIndex++}`;
-        const tag = (row.critical ? "crit, " : "") + mermaidStatusTag(item.status);
+        // Mermaid gantt has no per-task numeric % field; its closest native signals
+        // are the `done`/`active`/`crit` task tags. We map status via
+        // mermaidStatusTag (closed→done, in_progress→active, canceled→crit) and add
+        // `crit` for critical-path AND overdue items (overdue == deadline-risk, the
+        // semantic mermaid's `crit` styling conveys). The exact numeric progress is
+        // preserved as a trailing `%% progress:` comment under --progress so no data
+        // is lost while the diagram stays valid.
+        const critTag = row.critical || row.overdue ? "crit, " : "";
+        const tag = critTag + mermaidStatusTag(item.status);
         const name = mermaidSafe(`${item.title} [${item.id}]`);
         // `tag, id, startISO, endISO`
         lines.push(`    ${name} :${tag}${taskId}, ${isoDay(start)}, ${isoDay(end)}`);
+        if (opts.progress) {
+            lines.push(`    %% ${taskId} progress: ${row.progress}%${row.overdue ? " (overdue)" : ""}`);
+        }
+        else if (row.overdue) {
+            lines.push(`    %% ${taskId} overdue: deadline ${itemDueDate(item) ?? "?"} passed`);
+        }
     }
     // Mark a vertical "today" line within the window when applicable.
     const today = opts.today;
@@ -901,8 +1082,19 @@ function renderHtml(rows, opts, windowStart) {
     const weekLabels = [];
     for (let w = 0; w < weeks; w++)
         weekLabels.push(weekLabel(addWeeks(windowStart, w)));
+    // TODAY column: highlight the week column containing opts.today (parity with
+    // the ASCII ▼TODAY row and the Mermaid `%% today:` comment). -1 when today
+    // falls outside the chart window, in which case no column is highlighted.
+    const windowEndHtml = addWeeks(windowStart, weeks);
+    const todayWeek = opts.today >= windowStart && opts.today < windowEndHtml
+        ? Math.floor((opts.today.getTime() - windowStart.getTime()) / (7 * DAY_MS))
+        : -1;
     const headCols = weekLabels
-        .map((l, i) => `<th title="${htmlEscape(l)}">W${i + 1}<br><span class="wk">${htmlEscape(l)}</span></th>`)
+        .map((l, i) => {
+        const todayCls = i === todayWeek ? " today-col" : "";
+        const todayMark = i === todayWeek ? '<br><span class="today-mark">▼ today</span>' : "";
+        return `<th class="wk-th${todayCls}" title="${htmlEscape(l)}">W${i + 1}<br><span class="wk">${htmlEscape(l)}</span>${todayMark}</th>`;
+    })
         .join("");
     const bodyRows = [];
     let lastGroup = "";
@@ -915,8 +1107,23 @@ function renderHtml(rows, opts, windowStart) {
         const cells = [];
         for (let w = 0; w < weeks; w++) {
             let cls = "cell";
+            let inner = "";
             if (row.startWeek === null) {
-                cls = "cell undated";
+                // Distinguish off-window (directional hint) from genuinely undated.
+                if (row.offWindow === "before" && w === 0) {
+                    cls = "cell offwindow";
+                    inner = '<span class="offwindow-hint" title="dates fall before this window">←</span>';
+                }
+                else if (row.offWindow === "after" && w === weeks - 1) {
+                    cls = "cell offwindow";
+                    inner = '<span class="offwindow-hint" title="dates fall after this window">→</span>';
+                }
+                else if (row.offWindow === "before" || row.offWindow === "after") {
+                    cls = "cell";
+                }
+                else {
+                    cls = "cell undated";
+                }
             }
             else if (w >= row.startWeek && w <= (row.endWeek ?? row.startWeek)) {
                 cls = row.critical
@@ -924,14 +1131,25 @@ function renderHtml(rows, opts, windowStart) {
                     : item.status === "in_progress" || item.status === "blocked"
                         ? "cell bar active"
                         : "cell bar planned";
+                if (row.overdue)
+                    cls += " overdue";
+                // --progress: overlay a fill whose width is the completion ratio.
+                if (opts.progress) {
+                    inner = `<span class="fill" style="width:${row.progress}%"></span>`;
+                }
             }
-            cells.push(`<td class="${cls}"></td>`);
+            if (w === todayWeek)
+                cls += " today-col";
+            cells.push(`<td class="${cls}">${inner}</td>`);
         }
-        const title = htmlEscape(item.title) + (row.critical ? ' <span class="crit-mark">★</span>' : "");
+        const critMark = row.critical ? ' <span class="crit-mark">★</span>' : "";
+        const overdueMark = row.overdue ? ' <span class="overdue-mark" title="deadline passed, not closed">‼ overdue</span>' : "";
+        const progressMark = opts.progress ? ` <span class="pct">${row.progress}%</span>` : "";
+        const title = htmlEscape(item.title) + critMark + overdueMark + progressMark;
         const due = itemDueDate(item);
-        bodyRows.push(`<tr class="status-${htmlEscape(item.status)}">` +
+        bodyRows.push(`<tr class="status-${htmlEscape(item.status)}${row.overdue ? " is-overdue" : ""}">` +
             groupCell +
-            `<td class="item">${title}<br><span class="meta">${htmlEscape(item.id)}${due ? " · due " + htmlEscape(isoDay(parseDate(due))) : ""}</span></td>` +
+            `<td class="item">${title}<br><span class="meta">${htmlEscape(item.id)}${due ? ' · due <span class="due">' + htmlEscape(isoDay(parseDate(due))) + "</span>" : ""}</span></td>` +
             `<td class="st" title="${htmlEscape(item.status)}">${htmlEscape(item.status)}</td>` +
             cells.join("") +
             `</tr>`);
@@ -978,11 +1196,25 @@ ${workloadRows}
   td.item { white-space: nowrap; }
   .meta { color: #888; font-size: 0.7rem; }
   td.st { text-transform: capitalize; white-space: nowrap; }
-  td.cell { width: 28px; min-width: 28px; padding: 0; }
+  td.cell { width: 28px; min-width: 28px; padding: 0; position: relative; }
   td.bar.planned  { background: #b3d4fc; }
   td.bar.active   { background: #2b7de9; }
   td.bar.critical { background: #e05c5c; }
   td.cell.undated { background: repeating-linear-gradient(45deg,#eee,#eee 4px,#f7f7f7 4px,#f7f7f7 8px); }
+  /* off-window directional hint: dates fall before / after the chart window */
+  td.cell.offwindow { text-align: center; color: #b07000; font-weight: 700; }
+  .offwindow-hint { font-size: 0.95rem; }
+  /* overdue bars: red striped overlay + a warning marker on the row label */
+  td.bar.overdue { background: repeating-linear-gradient(45deg,#e05c5c,#e05c5c 5px,#c23b3b 5px,#c23b3b 10px); }
+  tr.is-overdue td.item .due { color: #c23b3b; font-weight: 700; }
+  .overdue-mark { color: #c23b3b; font-weight: 700; font-size: 0.72rem; }
+  /* --progress fill overlay: a darker band sized to the completion ratio */
+  td.bar .fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(0,0,0,0.35); }
+  .pct { color: #2b7de9; font-size: 0.72rem; font-weight: 600; }
+  /* TODAY column highlight (parity with ASCII ▼TODAY / Mermaid %% today:) */
+  th.today-col, td.today-col { box-shadow: inset 2px 0 0 #d33, inset -2px 0 0 #d33; }
+  td.cell.today-col { background-image: linear-gradient(rgba(221,51,51,0.10),rgba(221,51,51,0.10)); }
+  .today-mark { color: #d33; font-weight: 700; font-size: 0.66rem; }
   .crit-mark { color: #e05c5c; }
   .legend { margin-top: 1rem; font-size: 0.78rem; color: #555; }
   .legend span { display: inline-block; margin-right: 1rem; }
@@ -1016,6 +1248,10 @@ ${workloadBlock}
   <span><i class="swatch" style="background:#b3d4fc"></i>open / planned</span>
   ${opts.criticalPath ? '<span><i class="swatch" style="background:#e05c5c"></i>critical path (★)</span>' : ""}
   <span><i class="swatch" style="background:#eee"></i>undated</span>
+  <span><i class="swatch" style="background:repeating-linear-gradient(45deg,#e05c5c,#e05c5c 5px,#c23b3b 5px,#c23b3b 10px)"></i>overdue (deadline passed)</span>
+  <span style="color:#b07000;font-weight:700">← / →</span> off-window (earlier / later)
+  ${opts.progress ? '<span><i class="swatch" style="background:rgba(0,0,0,0.35)"></i>% complete fill</span>' : ""}
+  ${todayWeek >= 0 ? '<span style="color:#d33;font-weight:700">▼ today</span> current week' : ""}
 </div>
 </body>
 </html>`;
@@ -1052,6 +1288,7 @@ function resolveGanttOptions(options) {
     const criticalPath = readBoolOption(options, "critical-path", "criticalPath");
     const criticalOnly = readBoolOption(options, "critical-only", "criticalOnly");
     const schedule = readBoolOption(options, "schedule");
+    const progress = readBoolOption(options, "progress");
     const rawDefaultDuration = readOption(options, "default-duration", "defaultDuration");
     let defaultDuration = 5;
     if (rawDefaultDuration !== undefined) {
@@ -1103,6 +1340,7 @@ function resolveGanttOptions(options) {
         criticalOnly,
         schedule,
         defaultDuration,
+        progress,
         windowStart,
     };
 }
@@ -1177,6 +1415,7 @@ export default defineExtension({
                 "pm gantt --schedule --default-duration 3",
                 "pm gantt --critical-path",
                 "pm gantt --critical-only --schedule",
+                "pm gantt --progress",
             ],
             flags: [
                 {
@@ -1221,6 +1460,10 @@ export default defineExtension({
                     long: "--critical-only",
                     description: "Show only items on the critical path (implies critical-path computation)",
                 },
+                {
+                    long: "--progress",
+                    description: "Show each item's % complete on its bar (closed/canceled 100%, in_progress 50% or acceptance-criteria ratio, open 0%)",
+                },
             ],
             async run(ctx) {
                 const opts = resolveGanttOptions(ctx.options);
@@ -1263,6 +1506,16 @@ export default defineExtension({
                             "\n");
                     }
                 }
+                const overdueRows = rows.filter((r) => r.overdue);
+                const offWindowCount = rows.filter((r) => r.offWindow === "before" || r.offWindow === "after").length;
+                const undatedCount = rows.filter((r) => r.offWindow === "undated").length;
+                if (!ctx.global?.json && overdueRows.length > 0) {
+                    process.stderr.write(`\nNOTE: ${overdueRows.length} item(s) are overdue (deadline passed, not closed):\n` +
+                        overdueRows
+                            .map((r) => `  • ${r.item.id} "${r.item.title}" (due ${itemDueDate(r.item)})`)
+                            .join("\n") +
+                        "\n");
+                }
                 return {
                     chart,
                     itemCount: rows.length,
@@ -1273,6 +1526,16 @@ export default defineExtension({
                     criticalPath: opts.criticalPath,
                     criticalOnly: opts.criticalOnly,
                     schedule: opts.schedule,
+                    progress: opts.progress,
+                    overdueCount: overdueRows.length,
+                    offWindowCount,
+                    undatedCount,
+                    ...(overdueRows.length > 0
+                        ? { overdue: overdueRows.map((r) => ({ id: r.item.id, deadline: itemDueDate(r.item) ?? null })) }
+                        : {}),
+                    ...(opts.progress
+                        ? { itemProgress: rows.map((r) => ({ id: r.item.id, percent: r.progress })) }
+                        : {}),
                     ...(opts.schedule ? { defaultDuration: opts.defaultDuration } : {}),
                     ...(opts.schedule
                         ? {
