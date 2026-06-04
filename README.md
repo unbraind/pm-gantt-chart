@@ -128,6 +128,22 @@ Under `--schedule`, a **backward pass** (classic CPM) computes each item's *late
 - **positive slack** → the item can slip that many days harmlessly.
 - **negative slack** → the item's required start (to hit a downstream deadline) is *before* its earliest feasible start. The plan is **already late**. These items are listed in a `WARNING:` block on stderr by both `pm gantt` and `pm gantt export`, and flagged per-task in the JSON result (`tasks[].slack_days`, `tasks[].infeasible`, plus `infeasibleCount` / `warnings`).
 
+### Preflight data-sanity gate
+
+Before rendering, both `pm gantt` and `pm gantt export` run a **preflight data-sanity gate** so bad data surfaces early instead of producing a silently-confusing chart. It splits problems into two tiers:
+
+- **Hard-fail (blocks, non-zero exit)** — a **dependency cycle**. A cycle has no valid topological order, so dependency-aware scheduling is impossible and any chart drawn from it would be plausible-looking but wrong. The command aborts with a clear error naming the full cycle path, e.g.:
+
+  ```
+  gantt: 1 fatal data problem(s) make scheduling impossible:
+    • dependency cycle: pm-a "Design" → pm-b "Build" → pm-a "Design"
+  Resolve the dependency cycle(s) above and re-run.
+  ```
+
+- **Warn (non-blocking, stderr; chart still renders, exit 0)** — soft issues that still yield a useful chart: a **deadline that precedes the item's own start date**, and an **implausibly large estimate** (over ~2000h, almost always a minutes-vs-hours unit error). These print a `NOTE:` block on stderr and are suppressed under `--json` to keep machine-readable output clean.
+
+Fully valid data produces no warnings and no block. (Infeasible/unreachable *downstream* deadlines are a separate, lighter signal — they are flagged in the schedule's backward pass rather than by this gate; see above.)
+
 ### ASCII TODAY marker
 
 The terminal chart draws a `▼TODAY` caret under the week column that contains the current date (parity with the Mermaid `%% today:` marker), shown only when "today" falls inside the chart window.

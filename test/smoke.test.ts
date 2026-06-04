@@ -19,7 +19,9 @@ test("extension registers the gantt command and exporter", () => {
   // throw a TypeError the moment activate() touched an absent method.
   const api = {
     registerCommand: () => { registered.push("command"); },
-    registerParser: noop, registerPreflight: noop, registerService: noop,
+    registerParser: noop,
+    registerPreflight: () => { registered.push("preflight"); },
+    registerService: noop,
     registerFlags: noop, registerItemFields: noop, registerItemTypes: noop,
     registerMigration: noop, registerRenderer: noop,
     registerImporter: () => { registered.push("importer"); },
@@ -30,4 +32,5 @@ test("extension registers the gantt command and exporter", () => {
   extension.activate(api as any);
   assert.ok(registered.includes("command"), "should register the gantt command");
   assert.ok(registered.includes("exporter"), "should register the gantt exporter");
+  assert.ok(registered.includes("preflight"), "should register the preflight gate");
 });

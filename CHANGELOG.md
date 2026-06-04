@@ -1,6 +1,12 @@
 # Changelog
 
-## 2026.6.4 - 2026-06-04
+## Unreleased
+
+### Added
+
+- preflight: data-sanity gate \(hard-fail on dependency cycles, warn on soft issues\) ([pm-gantt-chart-ayz2](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-ayz2.toon))
+
+## 2026.06.04 - 2026-06-04
 
 ### Added
 
