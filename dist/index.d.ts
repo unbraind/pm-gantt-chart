@@ -56,6 +56,26 @@ declare function getGroupKey(item: PmItem, groupBy: GroupBy): string;
  * latest deadline, then by lexical id for determinism).
  */
 declare function computeCriticalPath(items: PmItem[]): Set<string>;
+export interface DataSanityReport {
+    /** Render-breaking problems. Non-empty ⇒ the command must hard-fail. */
+    fatal: string[];
+    /** Soft problems worth surfacing but which still allow a useful chart. */
+    warnings: string[];
+}
+/**
+ * Find every dependency cycle reachable through `dependencies[].id` edges
+ * (an edge points item → prerequisite). Returns one human-readable path string
+ * per distinct cycle, e.g. `A "Login" → B "API" → A "Login"`. Dangling
+ * dependencies (ids not present in the item set) are ignored — they are a soft
+ * concern handled elsewhere, not a cycle. Exported for tests.
+ */
+export declare function detectCycles(items: PmItem[]): string[];
+/**
+ * Run the preflight data-sanity checks over the items that will be charted.
+ * Pure + deterministic; exported for tests. The caller decides what to do with
+ * `fatal` (block) vs `warnings` (surface but proceed).
+ */
+export declare function dataSanityReport(items: PmItem[]): DataSanityReport;
 interface ScheduleEntry {
     start: Date;
     end: Date;

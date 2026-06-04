@@ -192,6 +192,143 @@ function computeCriticalPath(items) {
     return new Set(overall.len > 1 ? overall.path : []);
 }
 // ---------------------------------------------------------------------------
+// Preflight data-sanity gate
+//
+// Validates date / dependency / estimate sanity BEFORE any chart is rendered so
+// problems surface early instead of producing a silently-confusing chart.
+//
+// Policy (deliberately split into HARD-FAIL vs WARN):
+//   • HARD-FAIL — a dependency CYCLE. A cycle makes forward scheduling
+//     impossible (there is no valid topological order), so any --schedule chart
+//     is meaningless. The render path's existing cycle *guards* would silently
+//     break the cycle and emit a plausible-looking but wrong chart; that is the
+//     confusing-data case this gate exists to stop. Fail fast and name the cycle.
+//   • WARN (non-blocking, stderr) — soft data issues that still yield a useful
+//     chart: a deadline that precedes the item's own start date, and an absurd
+//     estimate. These are informative, not render-breaking, so we never block.
+//
+// NOTE: infeasible/unreachable deadlines (a downstream deadline the dependency
+// chain can't hit) are already FLAGGED in the render via the backward pass
+// (`infeasibleWarnings`); we deliberately do NOT duplicate that here, and we do
+// NOT hard-fail on it — the chart is still useful.
+// ---------------------------------------------------------------------------
+/** Upper bound for a "sane" single-item estimate, in minutes. 2000h (~50
+ * 40h-weeks / a full work-year of one person) — anything larger is almost
+ * certainly a data-entry error (e.g. minutes typed where hours were meant). */
+const MAX_SANE_ESTIMATE_MINUTES = 2000 * 60;
+/**
+ * Find every dependency cycle reachable through `dependencies[].id` edges
+ * (an edge points item → prerequisite). Returns one human-readable path string
+ * per distinct cycle, e.g. `A "Login" → B "API" → A "Login"`. Dangling
+ * dependencies (ids not present in the item set) are ignored — they are a soft
+ * concern handled elsewhere, not a cycle. Exported for tests.
+ */
+export function detectCycles(items) {
+    const byId = new Map();
+    for (const it of items)
+        byId.set(it.id, it);
+    const WHITE = 0, GRAY = 1, BLACK = 2;
+    const color = new Map();
+    for (const it of items)
+        color.set(it.id, WHITE);
+    const cycles = [];
+    const seenCycleKeys = new Set();
+    const stack = [];
+    const label = (id) => {
+        const it = byId.get(id);
+        return it ? `${id} "${it.title}"` : id;
+    };
+    function visit(id) {
+        color.set(id, GRAY);
+        stack.push(id);
+        const item = byId.get(id);
+        for (const dep of item?.dependencies ?? []) {
+            if (!byId.has(dep.id))
+                continue; // dangling dep is not a cycle
+            const c = color.get(dep.id);
+            if (c === GRAY) {
+                // Found a back-edge: extract the cycle from the recursion stack.
+                const start = stack.indexOf(dep.id);
+                const cyclePath = stack.slice(start);
+                // De-dup cycles regardless of which node we entered from by keying on
+                // the sorted node-set.
+                const key = [...cyclePath].sort().join("|");
+                if (!seenCycleKeys.has(key)) {
+                    seenCycleKeys.add(key);
+                    cycles.push([...cyclePath, dep.id].map(label).join(" → "));
+                }
+            }
+            else if (c === WHITE) {
+                visit(dep.id);
+            }
+        }
+        stack.pop();
+        color.set(id, BLACK);
+    }
+    for (const it of items) {
+        if (color.get(it.id) === WHITE)
+            visit(it.id);
+    }
+    return cycles;
+}
+/**
+ * Run the preflight data-sanity checks over the items that will be charted.
+ * Pure + deterministic; exported for tests. The caller decides what to do with
+ * `fatal` (block) vs `warnings` (surface but proceed).
+ */
+export function dataSanityReport(items) {
+    const fatal = [];
+    const warnings = [];
+    // HARD-FAIL: dependency cycles.
+    for (const cycle of detectCycles(items)) {
+        fatal.push(`dependency cycle: ${cycle}`);
+    }
+    // WARN: deadline before the item's own start date.
+    for (const item of items) {
+        const due = itemDueDate(item);
+        if (!due || !item.created_at)
+            continue;
+        const deadline = parseDate(due);
+        const start = parseDate(item.created_at);
+        if (deadline && start && deadline.getTime() < start.getTime()) {
+            warnings.push(`${item.id} "${item.title}": deadline ${isoDay(deadline)} is before its start ${isoDay(start)}.`);
+        }
+    }
+    // WARN: implausibly large estimate (likely a data-entry error).
+    for (const item of items) {
+        const mins = item.estimated_minutes;
+        if (typeof mins === "number" && mins > MAX_SANE_ESTIMATE_MINUTES) {
+            const hours = Math.round(mins / 60);
+            warnings.push(`${item.id} "${item.title}": estimate of ${mins} min (~${hours}h) is implausibly large; check the units.`);
+        }
+    }
+    return { fatal, warnings };
+}
+/**
+ * Preflight gate invoked from the command/exporter handlers BEFORE rendering.
+ * Hard-fails (throws CommandError → non-zero exit) when the report has fatal
+ * problems; otherwise prints any soft warnings to stderr and returns so the
+ * chart still renders. `where` labels the message (e.g. "gantt", "gantt export").
+ *
+ * Why gate in the handler rather than registerPreflight? The pm runtime wraps
+ * registerPreflight overrides in a try/catch and downgrades a thrown error to a
+ * non-fatal warning, so a throw there does NOT abort the command. Gating in the
+ * handler with the package's CommandError is the clean way to truly fail fast.
+ */
+function runDataSanityGate(items, where, json) {
+    const report = dataSanityReport(items);
+    if (report.fatal.length > 0) {
+        throw new CommandError(`${where}: ${report.fatal.length} fatal data problem(s) make scheduling impossible:\n` +
+            report.fatal.map((f) => `  • ${f}`).join("\n") +
+            `\nResolve the dependency cycle(s) above and re-run.`, EXIT_CODE.USAGE);
+    }
+    if (report.warnings.length > 0 && !json) {
+        process.stderr.write(`\nNOTE: ${report.warnings.length} data-sanity warning(s) (chart still rendered):\n` +
+            report.warnings.map((w) => `  • ${w}`).join("\n") +
+            "\n");
+    }
+}
+// ---------------------------------------------------------------------------
 // Dependency-aware scheduling
 // ---------------------------------------------------------------------------
 /** One day in milliseconds. */
@@ -1097,6 +1234,10 @@ export default defineExtension({
                     console.error(`No items with status "${opts.statusFilter}". Try --status all.`);
                     return { chart: null, itemCount: 0, warning: `No items with status "${opts.statusFilter}"` };
                 }
+                // Preflight data-sanity gate: hard-fail on dependency cycles (scheduling
+                // impossible), warn on soft issues (deadline<start, absurd estimate).
+                // Runs over all status-filtered items so a cycle anywhere is caught.
+                runDataSanityGate(allItems, "gantt", ctx.global?.json);
                 const rows = buildRows(items, opts, opts.windowStart);
                 if (rows.length === 0) {
                     // The only way to reach here is --critical-only with no qualifying
@@ -1167,6 +1308,9 @@ export default defineExtension({
                 console.error("No matching pm items to export.");
                 return { exported: 0, format };
             }
+            // Same preflight gate as the `gantt` command: a cycle would otherwise emit
+            // a silently-wrong artifact. Warnings go to stderr (never the artifact).
+            runDataSanityGate(allItems, "gantt export", ctx.global?.json);
             const rows = buildRows(items, opts, opts.windowStart);
             if (rows.length === 0) {
                 console.error("No matching pm items to export (e.g. --critical-only with no chain).");
@@ -1192,6 +1336,24 @@ export default defineExtension({
             console.log(output);
             console.error(`gantt export: rendered ${exportedCount} item(s) as ${format}.`);
             return { exported: exportedCount, format, output };
+        });
+        // -----------------------------------------------------------------------
+        // Preflight (capability surface): a scoped, pass-through override.
+        //
+        // The package's real data-sanity gate runs inside the gantt command /
+        // exporter handlers (see runDataSanityGate): the pm runtime wraps
+        // registerPreflight overrides in try/catch and downgrades a thrown error to
+        // a non-fatal warning, so a throw HERE would NOT abort the command. We still
+        // register a scoped preflight so the extension truthfully advertises the
+        // "preflight" capability; it leaves the runtime decision untouched for every
+        // command except our own, where it is a no-op delta.
+        // -----------------------------------------------------------------------
+        api.registerPreflight((preflightCtx) => {
+            if (preflightCtx.command !== "gantt")
+                return {};
+            // Intentionally no enforcement here (runtime swallows throws); the gate is
+            // enforced in the command handler. Return an empty delta = no change.
+            return {};
         });
     },
 });
