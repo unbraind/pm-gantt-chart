@@ -1,0 +1,11 @@
+id: pm-gantt-chart-30wt
+title: Highlight overdue / deadline-risk items in Gantt charts
+description: ""
+type: Feature
+status: open
+priority: 2
+tags: []
+created_at: "2026-06-04T23:13:20.998Z"
+updated_at: "2026-06-04T23:13:20.998Z"
+author: codex
+body: "Items whose deadline is before today but are not closed/canceled are overdue. Surface them: ASCII with a distinct trailing glyph (e.g. OVERDUE marker / ! deadline), HTML with a red/warning color on the row or due-date label. Data already available (deadline + status + opts.today). Additive; must not change default layout width or break golden output."
