@@ -1,0 +1,11 @@
+id: pm-gantt-chart-gtqn
+title: Add % complete (progress) rendering to Gantt bars
+description: ""
+type: Feature
+status: open
+priority: 2
+tags: []
+created_at: "2026-06-04T23:13:05.334Z"
+updated_at: "2026-06-04T23:13:05.334Z"
+author: codex
+body: "Add an opt-in --progress flag that derives a per-item progress ratio from pm signals (closed/canceled=100%, in_progress=acceptance-criteria checked ratio or 50% default, open=0%) and renders it: ASCII as a trailing NN% plus partial-fill glyph, Mermaid via native 'done'/percentage tag, HTML as a fill width overlay. Default output (no flag) must remain byte-identical to keep existing tests/golden output intact."
