@@ -1,0 +1,11 @@
+id: pm-gantt-chart-169m
+title: Add a TODAY marker to the HTML Gantt export (parity with ASCII/Mermaid)
+description: ""
+type: Feature
+status: open
+priority: 2
+tags: []
+created_at: "2026-06-04T23:13:21.422Z"
+updated_at: "2026-06-04T23:13:21.422Z"
+author: codex
+body: "ASCII already prints a TODAY caret row and Mermaid emits a today comment, but the HTML export has no today indicator. Add a highlighted/colored vertical column (the week column containing opts.today) to the HTML table header and body cells, rendered only when today falls within the chart window. Keep alignment intact."

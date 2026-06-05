@@ -68,6 +68,9 @@ pm gantt --critical-path
 
 # Show only the critical path (great paired with --schedule)
 pm gantt --critical-only --schedule
+
+# Show each item's % complete on its bar
+pm gantt --progress
 ```
 
 ### Export — `pm gantt export`
@@ -110,6 +113,7 @@ Both `pm gantt` and `pm gantt export` accept the shaping flags:
 | `--default-duration <days>` | integer ≥ 1 | `5` | Fallback duration for items with no estimate under `--schedule` |
 | `--critical-path` | flag | off | Compute & mark the longest dependency chain |
 | `--critical-only` | flag | off | Show only items on the critical path (implies critical-path computation) |
+| `--progress` | flag | off | Show each item's **% complete** on its bar |
 
 `pm gantt export` adds:
 
@@ -144,9 +148,49 @@ Before rendering, both `pm gantt` and `pm gantt export` run a **preflight data-s
 
 Fully valid data produces no warnings and no block. (Infeasible/unreachable *downstream* deadlines are a separate, lighter signal — they are flagged in the schedule's backward pass rather than by this gate; see above.)
 
+### TODAY marker (all formats)
+
+The current week is indicated in every format, shown only when "today" falls inside the chart window:
+
+- **ASCII** — a `▼TODAY` caret under the week column that contains the current date.
+- **Mermaid** — a `%% today: <date>` comment.
+- **HTML** — the matching week column is highlighted with a red vertical rule and a `▼ today` label in the header.
+
+### `--progress` — % complete on bars
+
+`--progress` (opt-in) renders each item's completion ratio on its bar. The ratio is derived deterministically from available pm signals:
+
+- **closed / canceled** → 100%
+- an explicit `meta.progress` / `meta.percent_complete` number (a `0..1` fraction or a `0..100` percent) → honored verbatim
+- an **acceptance-criteria checklist** in the body (`- [x]` vs `- [ ]`) → checked / total
+- **in_progress** with no other signal → 50% (a "halfway" default); **blocked** → 25%
+- everything else (open / draft) → 0%
+
+It surfaces as a trailing `NN%` plus a coarse fill glyph in ASCII (`·· 0% · ░░ 25% · ▓░ 50% · ▓▓ 75% · ██ 100%`), as a `%% tN progress:` comment in Mermaid (the diagram has no native per-task percent field), and as a width-sized fill overlay plus a `NN%` label in HTML. Default output (no `--progress`) is **byte-identical** to before across ASCII, Mermaid, and CSV.
+
+### Overdue / deadline-risk highlighting
+
+Items whose `deadline` is **before today** and that are **not** closed/canceled are flagged automatically (no flag needed):
+
+- **ASCII** — a trailing `‼ OVERDUE` marker on the row.
+- **Mermaid** — the task carries the `crit` tag (the diagram's deadline-risk styling) plus an `%% overdue:` comment.
+- **HTML** — the bar gets a red striped fill, the due date turns red, and the row label shows a `‼ overdue` marker.
+
+Overdue items are also counted in the JSON result (`overdueCount`, `overdue[]`) and listed in a `NOTE:` block on stderr (suppressed under `--json`).
+
+### Off-window vs. undated items
+
+A genuinely **undated** item (no dates at all) and an item whose dates fall **entirely outside** the chart window used to look identical (both `··`). They are now distinguished:
+
+- **undated** → `··` (ASCII) / a hatched cell (HTML).
+- **off-window earlier** → `←·` (ASCII) / a `←` hint in the first column (HTML).
+- **off-window later** → `·→` (ASCII) / a `→` hint in the last column (HTML).
+
+The JSON result reports `offWindowCount` and `undatedCount`. Mermaid is unaffected (it always renders real dates).
+
 ### ASCII TODAY marker
 
-The terminal chart draws a `▼TODAY` caret under the week column that contains the current date (parity with the Mermaid `%% today:` marker), shown only when "today" falls inside the chart window.
+The terminal chart draws a `▼TODAY` caret under the week column that contains the current date (parity with the Mermaid `%% today:` marker and the HTML today column), shown only when "today" falls inside the chart window.
 
 ### HTML summary & assignee workload
 
@@ -159,7 +203,7 @@ The HTML export ends with a **Summary** footer — project span (start → end a
 - **Bars (default)** — a bar spans from the item's `created_at` to its `deadline`. If only a deadline is known, a one-week bar ending on it is shown. Items with no dates at all are shown as `··` (undated).
 - **Bars (`--schedule`)** — a forward pass schedules each item to start the day after the latest item it is `blocked_by` finishes. Duration comes from `estimated_minutes` (8h workday, rounded up to whole days) or `--default-duration`. Items with a reachable `deadline` are back-anchored to end on it. The chain ordering, not the calendar, drives the bars — a late chain can push a dependent past its deadline, which is exactly what a schedule should expose.
 - **Critical path** — with `--critical-path` (or `--critical-only`), the longest chain of `dependencies` edges is computed (cycle-safe), its items prefixed with `*` and drawn with `▓▓` bars. Ties break toward the chain with the latest final deadline. `--critical-only` drops every off-path item.
-- **Symbols** — `██` = in_progress/blocked, `░░` = open/planned, `▓▓` = critical path, `··` = undated.
+- **Symbols** — `██` = in_progress/blocked, `░░` = open/planned, `▓▓` = critical path, `··` = undated, `←·` / `·→` = off-window (dates earlier / later than the window), `‼ OVERDUE` = past deadline & not closed.
 
 ## Item fields used
 

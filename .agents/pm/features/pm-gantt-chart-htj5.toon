@@ -1,0 +1,11 @@
+id: pm-gantt-chart-htj5
+title: Distinguish off-window items from genuinely undated items in ASCII/HTML
+description: ""
+type: Feature
+status: open
+priority: 2
+tags: []
+created_at: "2026-06-04T23:13:21.222Z"
+updated_at: "2026-06-04T23:13:21.222Z"
+author: codex
+body: "Bug: computeWeekRange returns null both for items with NO dates and for items whose dates fall entirely OUTSIDE the chart window; both render as the same dot-dot 'undated' glyph, which misleads users. Fix: classify each row as undated vs off-window-earlier vs off-window-later, and render off-window with a directional hint (arrow left=earlier, right=later) while keeping genuinely undated as dot-dot. Mermaid uses real dates so it is unaffected."
