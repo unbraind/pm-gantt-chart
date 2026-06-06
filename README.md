@@ -88,7 +88,7 @@ pm gantt export --format html --output roadmap.html
 # Plain ASCII (the same chart `pm gantt` prints)
 pm gantt export --format ascii --output roadmap.txt
 
-# CSV schedule: id,title,start,end,duration_days,deps,status
+# CSV schedule: id,title,start,end,duration_days,slack_days,deps,status,critical,progress_percent,overdue,off_window
 pm gantt export --format csv --schedule --output schedule.csv
 
 # Export honors the same shaping flags (including --schedule / --critical-only)
@@ -122,7 +122,7 @@ Both `pm gantt` and `pm gantt export` accept the shaping flags:
 | `--format <fmt>` | `mermaid` \| `html` \| `ascii` \| `csv` | `mermaid` | Output format |
 | `--output <file>` | path | stdout | File to write (prints to stdout if omitted) |
 
-`csv` emits a schedule table: `id,title,start,end,duration_days,slack_days,deps,status` (deps = space-separated blocking ids). Pair it with `--schedule` for dependency-derived dates and slack. `slack_days` is the total float in days (only populated under `--schedule`; blank otherwise): `0` marks a critical-path item, a positive value is how many days the task can slip without delaying the project, and a **negative** value means the plan is already late for a downstream deadline.
+`csv` emits a schedule table: `id,title,start,end,duration_days,slack_days,deps,status,critical,progress_percent,overdue,off_window` (deps = space-separated blocking ids). Pair it with `--schedule` for dependency-derived dates and slack. `slack_days` is the total float in days (only populated under `--schedule`; blank otherwise): `0` marks a critical-path item, a positive value is how many days the task can slip without delaying the project, and a **negative** value means the plan is already late for a downstream deadline. The trailing risk columns make the CSV useful directly in spreadsheets and portfolio reports: `critical`/`overdue` are `yes`/`no`, `progress_percent` is `0..100`, and `off_window` distinguishes `before`, `after`, and `undated` rows.
 
 ### Slack / float, critical path & infeasible deadlines
 
@@ -166,7 +166,7 @@ The current week is indicated in every format, shown only when "today" falls ins
 - **in_progress** with no other signal → 50% (a "halfway" default); **blocked** → 25%
 - everything else (open / draft) → 0%
 
-It surfaces as a trailing `NN%` plus a coarse fill glyph in ASCII (`·· 0% · ░░ 25% · ▓░ 50% · ▓▓ 75% · ██ 100%`), as a `%% tN progress:` comment in Mermaid (the diagram has no native per-task percent field), and as a width-sized fill overlay plus a `NN%` label in HTML. Default output (no `--progress`) is **byte-identical** to before across ASCII, Mermaid, and CSV.
+It surfaces as a trailing `NN%` plus a coarse fill glyph in ASCII (`·· 0% · ░░ 25% · ▓░ 50% · ▓▓ 75% · ██ 100%`), as a `%% tN progress:` comment in Mermaid (the diagram has no native per-task percent field), as a width-sized fill overlay plus a `NN%` label in HTML, and as `progress_percent` in CSV.
 
 ### Overdue / deadline-risk highlighting
 
