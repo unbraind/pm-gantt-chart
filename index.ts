@@ -1231,11 +1231,13 @@ function csvField(value: string): string {
  * `duration_days` is the inclusive day span, blank when undated. `slack_days`
  * is the backward-pass total float (only populated under `--schedule`; blank
  * otherwise) — 0 marks a critical-path item, negative means the plan is already
- * late for a downstream deadline. `deps` is a space-separated list of blocking
- * dependency ids. Exported for tests.
+ * late for a downstream deadline. The trailing risk columns make CSV exports
+ * directly usable for portfolio reporting: critical, progress_percent, overdue,
+ * off_window. `deps` is a space-separated list of blocking dependency ids.
+ * Exported for tests.
  */
 function renderCsv(rows: GanttRow[]): string {
-  const header = "id,title,start,end,duration_days,slack_days,deps,status";
+  const header = "id,title,start,end,duration_days,slack_days,deps,status,critical,progress_percent,overdue,off_window";
   const lines = [header];
   for (const row of rows) {
     const { item } = row;
@@ -1264,6 +1266,10 @@ function renderCsv(rows: GanttRow[]): string {
         csvField(slack),
         csvField(deps),
         csvField(item.status),
+        csvField(row.critical || row.slackDays === 0 ? "yes" : "no"),
+        csvField(String(row.progress)),
+        csvField(row.overdue ? "yes" : "no"),
+        csvField(row.offWindow ?? ""),
       ].join(","),
     );
   }
