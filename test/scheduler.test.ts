@@ -117,7 +117,7 @@ test("renderCsv emits the documented header and a row per item with deps", () =>
   const rows = buildRows(chainItems(), opts, opts.windowStart);
   const csv = renderCsv(rows);
   const lines = csv.split("\n");
-  assert.equal(lines[0], "id,title,start,end,duration_days,slack_days,deps,status");
+  assert.equal(lines[0], "id,title,start,end,duration_days,slack_days,deps,status,critical,progress_percent,overdue,off_window");
   // B's row should list A as a dependency.
   const bLine = lines.find((l) => l.startsWith("B,"));
   assert.ok(bLine, "B row present");
@@ -227,7 +227,7 @@ test("renderCsv includes slack_days column (blank without --schedule, filled wit
   const plainCsv = renderCsv(plainRows);
   assert.equal(
     plainCsv.split("\n")[0],
-    "id,title,start,end,duration_days,slack_days,deps,status",
+    "id,title,start,end,duration_days,slack_days,deps,status,critical,progress_percent,overdue,off_window",
   );
 
   // With --schedule: A on the critical path -> slack 0.
@@ -235,9 +235,11 @@ test("renderCsv includes slack_days column (blank without --schedule, filled wit
   const rows = buildRows(chainItems(), opts, opts.windowStart);
   const csv = renderCsv(rows);
   const aLine = csv.split("\n").find((l) => l.startsWith("A,"))!;
-  // columns: id,title,start,end,duration_days,slack_days,deps,status
+  // columns: id,title,start,end,duration_days,slack_days,deps,status,critical,progress_percent,overdue,off_window
   const aCols = aLine.split(",");
   assert.equal(aCols[5], "0", "A (critical) has slack_days = 0");
+  assert.equal(aCols[8], "yes", "A is marked critical in CSV");
+  assert.equal(aCols[9], "100", "A carries progress percent in CSV");
   const dLine = csv.split("\n").find((l) => l.startsWith("D,"))!;
   assert.equal(dLine.split(",")[5], "4", "D has slack_days = 4");
 });

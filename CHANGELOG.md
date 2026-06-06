@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Add schedule risk columns to Gantt CSV exports ([pm-gantt-chart-4a5d](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-4a5d.toon))
+
 ### Other
 
 - Align package dependencies to pm CLI/SDK 2026.6.6 ([pm-gantt-chart-yv1k](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-yv1k.toon))
