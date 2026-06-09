@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Add --milestones markers to gantt chart and exports ([pm-gantt-chart-xqak](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-xqak.toon))
+
 ## 2026.06.07 - 2026-06-07
 
 ### Added
