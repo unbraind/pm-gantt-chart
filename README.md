@@ -71,6 +71,9 @@ pm gantt --critical-only --schedule
 
 # Show each item's % complete on its bar
 pm gantt --progress
+
+# Overlay fixed release/deadline dates as labeled vertical markers
+pm gantt --milestones "v1.0=2026-06-30,v1.1=2026-08-15"
 ```
 
 ### Export — `pm gantt export`
@@ -114,6 +117,7 @@ Both `pm gantt` and `pm gantt export` accept the shaping flags:
 | `--critical-path` | flag | off | Compute & mark the longest dependency chain |
 | `--critical-only` | flag | off | Show only items on the critical path (implies critical-path computation) |
 | `--progress` | flag | off | Show each item's **% complete** on its bar |
+| `--milestones <list>` | `name=YYYY-MM-DD,…` | — | Draw fixed release/deadline dates as labeled vertical markers on the timeline |
 
 `pm gantt export` adds:
 
@@ -155,6 +159,22 @@ The current week is indicated in every format, shown only when "today" falls ins
 - **ASCII** — a `▼TODAY` caret under the week column that contains the current date.
 - **Mermaid** — a `%% today: <date>` comment.
 - **HTML** — the matching week column is highlighted with a red vertical rule and a `▼ today` label in the header.
+
+### `--milestones` — fixed release/deadline dates
+
+Items are *scheduled* work; **milestones** are immovable calendar targets (a release, a launch, a contractual deadline). In cross-functional views that aren't grouped by milestone, those dates are otherwise invisible. `--milestones` overlays them as labeled vertical markers so deadline pressure is obvious at a glance.
+
+Pass a comma-separated list of `name=YYYY-MM-DD` entries:
+
+```sh
+pm gantt --milestones "v1.0=2026-06-30,v1.1=2026-08-15"
+```
+
+- **ASCII** — a `▼<name>` caret in the week column the milestone lands in (parity with the `▼TODAY` marker). Multiple milestones in the same week are comma-joined (`▼v1.0,beta`).
+- **Mermaid** — a dedicated `section Milestones` with native zero-duration `:milestone` markers on the exact date, so they render as the diamond marker.
+- **CSV** — appended rows (`id=milestone:<name>`, `status=milestone`, `start`=`end`=date) so the dates round-trip alongside the schedule.
+
+Milestones outside the rendered window are ignored on the chart/Mermaid output, with a one-line note on **stderr** (CSV still includes them so the data round-trips). Malformed entries (missing `=`, empty name, or a non-ISO date) fail cleanly with a usage error rather than crashing. The same flag is honored by `pm gantt export`.
 
 ### `--progress` — % complete on bars
 
