@@ -79,6 +79,58 @@ function parseDate(s) {
     const d = new Date(s.length === 10 ? s + "T00:00:00" : s);
     return isNaN(d.getTime()) ? null : d;
 }
+/**
+ * Parse the `--milestones` flag: a comma-separated list of `name=YYYY-MM-DD`
+ * entries (e.g. `v1.0=2026-06-30,v1.1=2026-08-15`). Returns the parsed list
+ * (empty when the flag is absent/blank). Throws a CommandError (USAGE) on any
+ * malformed entry — missing `=`, empty name, or an unparseable/non-ISO date —
+ * rather than crashing. Exported for tests.
+ */
+export function parseMilestones(raw) {
+    if (raw === undefined || raw === null)
+        return [];
+    const text = String(raw).trim();
+    if (text === "")
+        return [];
+    const out = [];
+    for (const part of text.split(",")) {
+        const entry = part.trim();
+        if (entry === "")
+            continue; // tolerate trailing/double commas
+        const eq = entry.indexOf("=");
+        if (eq < 0) {
+            throw new CommandError(`Invalid --milestones entry "${entry}" (expected name=YYYY-MM-DD).`, EXIT_CODE.USAGE);
+        }
+        const name = entry.slice(0, eq).trim();
+        const dateStr = entry.slice(eq + 1).trim();
+        if (name === "") {
+            throw new CommandError(`Invalid --milestones entry "${entry}": empty milestone name (expected name=YYYY-MM-DD).`, EXIT_CODE.USAGE);
+        }
+        // Require the strict ISO calendar-day shape; parseDate alone would accept
+        // looser forms (full ISO timestamps), which we deliberately reject here so
+        // milestone dates round-trip predictably through every export.
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            throw new CommandError(`Invalid --milestones date for "${name}": "${dateStr}" (expected ISO YYYY-MM-DD).`, EXIT_CODE.USAGE);
+        }
+        const date = parseDate(dateStr);
+        if (!date) {
+            throw new CommandError(`Invalid --milestones date for "${name}": "${dateStr}" (expected ISO YYYY-MM-DD).`, EXIT_CODE.USAGE);
+        }
+        out.push({ name, date });
+    }
+    return out;
+}
+/**
+ * 0-based week column a milestone lands in for the given window, or -1 when the
+ * milestone falls outside the rendered window. Mirrors the TODAY-marker math so
+ * markers and items never disagree about column placement. Exported for tests.
+ */
+export function milestoneWeek(date, windowStart, weeks) {
+    const windowEnd = addWeeks(windowStart, weeks);
+    if (date < windowStart || date >= windowEnd)
+        return -1;
+    return Math.floor((date.getTime() - windowStart.getTime()) / (7 * DAY_MS));
+}
 /** Format a Date as "YYYY-MM-DD" (local). */
 function isoDay(d) {
     const y = d.getFullYear();
@@ -805,6 +857,22 @@ function renderGantt(rows, opts, windowStart) {
         const markerCells = weekLabels.map((_, w) => (w === todayWeek ? "▼TODAY" : "").padEnd(WEEK_COL));
         lines.push(`${"".padEnd(COL_GROUP)}  ${"".padEnd(COL_ITEM)}  ${"".padEnd(COL_ST)}  ${markerCells.join(COL_SEP)}`);
     }
+    // Milestone marker line(s) — fixed release/deadline dates dropped as labeled
+    // ▼<name> carets in the week column they land in (parity with ▼TODAY). When
+    // several milestones share a week, their names are comma-joined in that cell.
+    // The cell content may overflow WEEK_COL; that is intentional (the label is
+    // the point), so we do not pad/truncate the joined names. Milestones outside
+    // the window are skipped here and reported to stderr by the caller.
+    const inWindowMilestones = opts.milestones.filter((m) => milestoneWeek(m.date, windowStart, weeks) >= 0);
+    if (inWindowMilestones.length > 0) {
+        const perWeek = weekLabels.map(() => []);
+        for (const m of inWindowMilestones) {
+            const w = milestoneWeek(m.date, windowStart, weeks);
+            perWeek[w].push(m.name);
+        }
+        const markerCells = weekLabels.map((_, w) => perWeek[w].length > 0 ? `▼${perWeek[w].join(",")}` : "".padEnd(WEEK_COL));
+        lines.push(`${"".padEnd(COL_GROUP)}  ${"".padEnd(COL_ITEM)}  ${"".padEnd(COL_ST)}  ${markerCells.join(COL_SEP)}`);
+    }
     lines.push("─".repeat(Math.min(totalWidth, 90)));
     // Rows — track last group to only print group name on first row
     let lastGroup = "";
@@ -888,6 +956,7 @@ function renderGantt(rows, opts, windowStart) {
         (anyOffWindow ? `${OFF_WINDOW_BEFORE}/${OFF_WINDOW_AFTER} off-window (earlier/later)  ` : "") +
         (opts.progress ? `progress: ·· 0% ░░ 25% ▓░ 50% ▓▓ 75% ██ 100%  ` : "") +
         (anyOverdue ? `‼ OVERDUE (deadline passed, not closed)  ` : "") +
+        (inWindowMilestones.length > 0 ? `▼<name> milestone date  ` : "") +
         `S: ▶in_progress  !blocked  ✓closed  ○open`);
     return lines.join("\n");
 }
@@ -978,6 +1047,18 @@ function renderMermaid(rows, opts, windowStart) {
         // Mermaid has no explicit today marker in source; documented via comment.
         lines.push(`    %% today: ${isoDay(today)}`);
     }
+    // Milestones: Mermaid's native zero-duration `milestone` task. We emit one
+    // per in-window milestone under a dedicated section so they render as the
+    // diamond marker on their exact date. Out-of-window milestones are dropped
+    // (the caller notes them on stderr). `0d` duration keeps it a point marker.
+    const mileInWindow = opts.milestones.filter((m) => m.date >= windowStart && m.date < windowEnd);
+    if (mileInWindow.length > 0) {
+        lines.push("    section Milestones");
+        let mi = 0;
+        for (const m of mileInWindow) {
+            lines.push(`    ${mermaidSafe(m.name)} :milestone, m${mi++}, ${isoDay(m.date)}, 0d`);
+        }
+    }
     return lines.join("\n");
 }
 // ---------------------------------------------------------------------------
@@ -1000,9 +1081,14 @@ function csvField(value) {
  * late for a downstream deadline. The trailing risk columns make CSV exports
  * directly usable for portfolio reporting: critical, progress_percent, overdue,
  * off_window. `deps` is a space-separated list of blocking dependency ids.
+ *
+ * Milestones (from `--milestones`) are appended as extra rows so the timeline's
+ * fixed dates round-trip in the same table: `id` = `milestone:<name>`, `title`
+ * = the milestone name, `start` = `end` = the milestone date, `status` =
+ * `milestone`, all other columns blank. They sort after the item rows.
  * Exported for tests.
  */
-function renderCsv(rows) {
+function renderCsv(rows, milestones = []) {
     const header = "id,title,start,end,duration_days,slack_days,deps,status,critical,progress_percent,overdue,off_window";
     const lines = [header];
     for (const row of rows) {
@@ -1035,6 +1121,23 @@ function renderCsv(rows) {
             csvField(String(row.progress)),
             csvField(row.overdue ? "yes" : "no"),
             csvField(row.offWindow ?? ""),
+        ].join(","));
+    }
+    for (const m of milestones) {
+        const day = isoDay(m.date);
+        lines.push([
+            csvField(`milestone:${m.name}`),
+            csvField(m.name),
+            csvField(day),
+            csvField(day),
+            "", // duration_days
+            "", // slack_days
+            "", // deps
+            csvField("milestone"),
+            "", // critical
+            "", // progress_percent
+            "", // overdue
+            "", // off_window
         ].join(","));
     }
     return lines.join("\n");
@@ -1304,6 +1407,7 @@ function resolveGanttOptions(options) {
         }
         defaultDuration = Math.min(365, parsed);
     }
+    const milestones = parseMilestones(readOption(options, "milestones"));
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     // --from anchors the chart window; default is the current week.
@@ -1347,6 +1451,7 @@ function resolveGanttOptions(options) {
         schedule,
         defaultDuration,
         progress,
+        milestones,
         windowStart,
     };
 }
@@ -1381,13 +1486,22 @@ function infeasibleWarnings(rows) {
         return `  • ${r.item.id} "${r.item.title}" is ${slip} day(s) late: its required start to hit a downstream deadline is before its earliest feasible start.`;
     });
 }
+/**
+ * Names of milestones that fall entirely outside the rendered window (so they
+ * cannot be drawn). Returned for a one-line stderr note. Exported for tests.
+ */
+export function offWindowMilestones(milestones, windowStart, weeks) {
+    return milestones
+        .filter((m) => milestoneWeek(m.date, windowStart, weeks) < 0)
+        .map((m) => `${m.name} (${isoDay(m.date)})`);
+}
 const EXPORT_FORMATS = ["mermaid", "html", "ascii", "csv"];
 function renderForFormat(format, rows, opts, windowStart) {
     switch (format) {
         case "mermaid": return renderMermaid(rows, opts, windowStart);
         case "html": return renderHtml(rows, opts, windowStart);
         case "ascii": return renderGantt(rows, opts, windowStart);
-        case "csv": return renderCsv(rows);
+        case "csv": return renderCsv(rows, opts.milestones);
     }
 }
 function defaultExtension(format) {
@@ -1422,6 +1536,7 @@ export default defineExtension({
                 "pm gantt --critical-path",
                 "pm gantt --critical-only --schedule",
                 "pm gantt --progress",
+                "pm gantt --milestones \"v1.0=2026-06-30,v1.1=2026-08-15\"",
             ],
             flags: [
                 {
@@ -1470,6 +1585,11 @@ export default defineExtension({
                     long: "--progress",
                     description: "Show each item's % complete on its bar (closed/canceled 100%, in_progress 50% or acceptance-criteria ratio, open 0%)",
                 },
+                {
+                    long: "--milestones",
+                    value_name: "list",
+                    description: "Draw fixed release/deadline dates as labeled vertical markers. Comma-separated name=YYYY-MM-DD (e.g. \"v1.0=2026-06-30,v1.1=2026-08-15\")",
+                },
             ],
             async run(ctx) {
                 const opts = resolveGanttOptions(ctx.options);
@@ -1504,8 +1624,12 @@ export default defineExtension({
                 // Print the human-readable chart to stdout, but not under --json:
                 // mixing it with the JSON payload would corrupt machine-readable output.
                 // The chart is still returned in the result object for JSON consumers.
+                const droppedMilestones = offWindowMilestones(opts.milestones, opts.windowStart, opts.weeks);
                 if (!ctx.global?.json) {
                     process.stdout.write(chart + "\n");
+                    if (droppedMilestones.length > 0) {
+                        process.stderr.write(`NOTE: ${droppedMilestones.length} milestone(s) fall outside the chart window and were not drawn: ${droppedMilestones.join(", ")}\n`);
+                    }
                     if (warnings.length > 0) {
                         process.stderr.write(`\nWARNING: ${warnings.length} item(s) have an infeasible deadline (plan already late):\n` +
                             warnings.join("\n") +
@@ -1533,6 +1657,16 @@ export default defineExtension({
                     criticalOnly: opts.criticalOnly,
                     schedule: opts.schedule,
                     progress: opts.progress,
+                    ...(opts.milestones.length > 0
+                        ? {
+                            milestones: opts.milestones.map((m) => ({
+                                name: m.name,
+                                date: isoDay(m.date),
+                                week: milestoneWeek(m.date, opts.windowStart, opts.weeks),
+                                inWindow: milestoneWeek(m.date, opts.windowStart, opts.weeks) >= 0,
+                            })),
+                        }
+                        : {}),
                     overdueCount: overdueRows.length,
                     offWindowCount,
                     undatedCount,
@@ -1587,6 +1721,10 @@ export default defineExtension({
             }
             const output = renderForFormat(format, rows, opts, opts.windowStart);
             const exportedCount = rows.length;
+            const droppedMilestones = offWindowMilestones(opts.milestones, opts.windowStart, opts.weeks);
+            if (droppedMilestones.length > 0) {
+                console.error(`gantt export NOTE: ${droppedMilestones.length} milestone(s) fall outside the chart window and were omitted: ${droppedMilestones.join(", ")}`);
+            }
             // Surface backward-pass infeasible-deadline warnings on stderr so they do
             // not corrupt the exported artifact written to stdout / a file.
             const warnings = infeasibleWarnings(rows);

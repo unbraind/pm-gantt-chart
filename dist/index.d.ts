@@ -25,6 +25,13 @@ interface PmItem {
 }
 type GroupBy = "milestone" | "sprint" | "release" | "tag" | "type" | "assignee" | "status";
 type StatusFilter = "open" | "in_progress" | "blocked" | "closed" | "canceled" | "draft" | "all";
+/** A fixed deadline/release date drawn as a labeled vertical marker on the
+ *  timeline. Parsed from `--milestones "name=YYYY-MM-DD,..."`. `date` is the
+ *  local-midnight Date the milestone lands on. */
+interface Milestone {
+    name: string;
+    date: Date;
+}
 interface GanttOptions {
     weeks: number;
     groupBy: GroupBy;
@@ -35,6 +42,7 @@ interface GanttOptions {
     schedule: boolean;
     defaultDuration: number;
     progress: boolean;
+    milestones: Milestone[];
 }
 /** Why a row has no in-window bar.
  *  - "undated": the item carries no start/end at all (genuinely unscheduled).
@@ -58,6 +66,20 @@ interface GanttRow {
      *  null when the row does have an in-window bar (startWeek !== null). */
     offWindow: OffWindow | null;
 }
+/**
+ * Parse the `--milestones` flag: a comma-separated list of `name=YYYY-MM-DD`
+ * entries (e.g. `v1.0=2026-06-30,v1.1=2026-08-15`). Returns the parsed list
+ * (empty when the flag is absent/blank). Throws a CommandError (USAGE) on any
+ * malformed entry — missing `=`, empty name, or an unparseable/non-ISO date —
+ * rather than crashing. Exported for tests.
+ */
+export declare function parseMilestones(raw: unknown): Milestone[];
+/**
+ * 0-based week column a milestone lands in for the given window, or -1 when the
+ * milestone falls outside the rendered window. Mirrors the TODAY-marker math so
+ * markers and items never disagree about column placement. Exported for tests.
+ */
+export declare function milestoneWeek(date: Date, windowStart: Date, weeks: number): number;
 /**
  * Classify WHY an item has no in-window bar. `computeWeekRange` collapses two
  * very different cases to `null`: a genuinely undated item (no start/end at all)
@@ -191,9 +213,14 @@ declare function renderMermaid(rows: GanttRow[], opts: GanttOptions, windowStart
  * late for a downstream deadline. The trailing risk columns make CSV exports
  * directly usable for portfolio reporting: critical, progress_percent, overdue,
  * off_window. `deps` is a space-separated list of blocking dependency ids.
+ *
+ * Milestones (from `--milestones`) are appended as extra rows so the timeline's
+ * fixed dates round-trip in the same table: `id` = `milestone:<name>`, `title`
+ * = the milestone name, `start` = `end` = the milestone date, `status` =
+ * `milestone`, all other columns blank. They sort after the item rows.
  * Exported for tests.
  */
-declare function renderCsv(rows: GanttRow[]): string;
+declare function renderCsv(rows: GanttRow[], milestones?: Milestone[]): string;
 interface GanttSummary {
     /** Earliest start across all dated rows (null when none are dated). */
     projectStart: Date | null;
@@ -225,6 +252,11 @@ declare function resolveGanttOptions(options: Record<string, unknown>): Resolved
  * human-readable line per affected item (empty when none / not scheduling).
  */
 declare function infeasibleWarnings(rows: GanttRow[]): string[];
+/**
+ * Names of milestones that fall entirely outside the rendered window (so they
+ * cannot be drawn). Returned for a one-line stderr note. Exported for tests.
+ */
+export declare function offWindowMilestones(milestones: Milestone[], windowStart: Date, weeks: number): string[];
 declare const _default: {
     name: string;
     version: string;
@@ -232,5 +264,5 @@ declare const _default: {
 };
 export default _default;
 export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderMermaid, renderGantt, renderHtml, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, };
-export type { PmItem, GanttOptions, GanttRow, GroupBy, ScheduleEntry, SlackEntry, GanttSummary, OffWindow };
+export type { PmItem, GanttOptions, GanttRow, GroupBy, ScheduleEntry, SlackEntry, GanttSummary, OffWindow, Milestone };
 //# sourceMappingURL=index.d.ts.map
