@@ -23,7 +23,7 @@
     "build": "tsc",
     "build:test": "tsc -p tsconfig.test.json",
     "test": "npm run build && npm run build:test && node --test dist-test/*.js",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "npm run release:check",
     "prepack": "npm run build",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck",
@@ -39,8 +39,8 @@
   },
   "devDependencies": {
     "@types/node": "^25.9.2",
-    "@unbrained/pm-cli": "^2026.6.7",
-    "pm-changelog": "^2026.6.7",
+    "@unbrained/pm-cli": "^2026.6.9",
+    "pm-changelog": "^2026.6.8",
     "typescript": "^6.0.3"
   },
   "keywords": [
@@ -88,5 +88,8 @@
     "examples": [
       "README.md"
     ]
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
