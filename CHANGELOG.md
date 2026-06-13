@@ -1,12 +1,12 @@
 # Changelog
 
-## 2026.06.09 - 2026-06-09
+## 2026.6.9 - 2026-06-09
 
 ### Added
 
 - Add --milestones markers to gantt chart and exports ([pm-gantt-chart-xqak](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-xqak.toon))
 
-## 2026.06.07 - 2026-06-07
+## 2026.6.7 - 2026-06-07
 
 ### Added
 
@@ -17,19 +17,19 @@
 - Harden release readiness checks ([pm-gantt-chart-ws4i](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-ws4i.toon))
 - Align package dependencies to pm CLI/SDK 2026.6.6 ([pm-gantt-chart-yv1k](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-yv1k.toon))
 
-## 2026.06.04-1 - 2026-06-04
+## 2026.6.4-1 - 2026-06-04
 
 ### Added
 
 - preflight: data-sanity gate \(hard-fail on dependency cycles, warn on soft issues\) ([pm-gantt-chart-ayz2](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-ayz2.toon))
 
-## 2026.06.04 - 2026-06-04
+## 2026.6.4 - 2026-06-04
 
 ### Added
 
 - Slack/float, infeasible-deadline flag, ASCII TODAY marker, HTML summary + assignee workload ([pm-gantt-chart-ao93](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-ao93.toon))
 
-## 2026.06.03 - 2026-06-02
+## 2026.6.3 - 2026-06-02
 
 ### Added
 
@@ -49,19 +49,19 @@
 - Unit tests for scheduler, critical path, csv/mermaid renderers ([pm-gantt-chart-tc2y](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-tc2y.toon))
 - Dependency-aware --schedule mode + --default-duration ([pm-gantt-chart-ifbx](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-ifbx.toon))
 
-## 2026.06.02 - 2026-06-02
+## 2026.6.2 - 2026-06-02
 
 ### Added
 
 - Add gantt export \(mermaid/html/ascii\) + critical-path, assignee grouping, --from window ([pm-gantt-chart-q3zh](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-q3zh.toon))
 
-## 2026.06.01 - 2026-06-01
+## 2026.6.1 - 2026-06-01
 
 ### Fixed
 
 - Command handler threw plain Error \(no exitCode\) → runtime double-invocation ([pm-gantt-chart-hl8t](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-hl8t.toon))
 
-## 2026.05.29 - 2026-05-29
+## 2026.5.29 - 2026-05-29
 
 ### Added
 
@@ -75,19 +75,19 @@
 - gantt: due dates ignored \(read item.due\_date, pm uses deadline\) ([pm-gantt-chart-v0ry](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-v0ry.toon))
 - gantt: --group-by ignored \(kebab vs camelCase option key\) ([pm-gantt-chart-76at](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-76at.toon))
 
-## 2026.05.28 - 2026-05-28
+## 2026.5.28 - 2026-05-28
 
 ### Added
 
 - Add publish retry + provenance fallback to release workflow ([pm-gantt-chart-qvnl](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-qvnl.toon))
 
-## 2026.05.27 - 2026-05-27
+## 2026.5.27 - 2026-05-27
 
 ### Added
 
 - Add bun-install verification to release workflow ([pm-gantt-chart-cd9u](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-cd9u.toon))
 
-## 2026.05.26 - 2026-05-26
+## 2026.5.26 - 2026-05-26
 
 ### Fixed
 
