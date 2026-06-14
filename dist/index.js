@@ -1158,6 +1158,28 @@ function renderCsv(rows, milestones = []) {
  *  wall-clock is embedded, so identical input yields byte-identical output. */
 function renderJson(rows, opts, windowStart, milestones = []) {
     const summary = computeSummary(rows);
+    const items = rows.map((row) => {
+        const duration = rowDurationDays(row);
+        return {
+            id: row.item.id,
+            title: row.item.title,
+            type: row.item.type ?? null,
+            status: row.item.status,
+            group: row.group,
+            start: row.start ? isoDay(row.start) : null,
+            end: row.end ? isoDay(row.end) : null,
+            durationDays: duration > 0 ? duration : null,
+            slackDays: row.slackDays,
+            progress: row.progress,
+            // On the critical path if it is on the longest chain OR has zero total
+            // float (mirrors the CSV `critical` column's predicate).
+            critical: row.critical || row.slackDays === 0,
+            overdue: row.overdue,
+            infeasible: row.infeasible,
+            offWindow: row.offWindow,
+            deps: gatingDepIds(row.item),
+        };
+    });
     const payload = {
         window: { start: isoDay(windowStart), weeks: opts.weeks },
         options: {
@@ -1171,31 +1193,15 @@ function renderJson(rows, opts, windowStart, milestones = []) {
             projectStart: summary.projectStart ? isoDay(summary.projectStart) : null,
             projectEnd: summary.projectEnd ? isoDay(summary.projectEnd) : null,
             spanDays: summary.spanDays,
-            criticalPathLength: summary.criticalPathLength,
+            // Derived from the per-item `critical` flag above (not computeSummary,
+            // which counts only longest-chain membership) so the count and the
+            // items[] flags can never disagree within the same JSON payload.
+            criticalPathLength: items.filter((i) => i.critical).length,
             totalTaskDays: summary.totalTaskDays,
             workload: summary.workload,
         },
         milestones: milestones.map((m) => ({ name: m.name, date: isoDay(m.date) })),
-        items: rows.map((row) => {
-            const duration = rowDurationDays(row);
-            return {
-                id: row.item.id,
-                title: row.item.title,
-                type: row.item.type ?? null,
-                status: row.item.status,
-                group: row.group,
-                start: row.start ? isoDay(row.start) : null,
-                end: row.end ? isoDay(row.end) : null,
-                durationDays: duration > 0 ? duration : null,
-                slackDays: row.slackDays,
-                progress: row.progress,
-                critical: row.critical || row.slackDays === 0,
-                overdue: row.overdue,
-                infeasible: row.infeasible,
-                offWindow: row.offWindow,
-                deps: gatingDepIds(row.item),
-            };
-        }),
+        items,
     };
     return JSON.stringify(payload, null, 2);
 }

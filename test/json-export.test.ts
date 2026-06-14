@@ -87,6 +87,19 @@ test("renderJson surfaces milestones and is deterministic (no wall-clock)", () =
   assert.deepEqual(parsed.milestones, [{ name: "v1.0", date: "2026-06-30" }]);
 });
 
+test("renderJson summary.criticalPathLength matches the count of critical items", () => {
+  // --schedule populates slackDays so the slack==0 critical predicate is exercised.
+  const opts = resolveGanttOptions({ schedule: true, "group-by": "sprint", weeks: "12", from: "2026-06-01" });
+  const rows = buildRows(chainItems(), opts, opts.windowStart);
+  const parsed = JSON.parse(renderJson(rows, opts, opts.windowStart, opts.milestones));
+  const criticalItems = (parsed.items as any[]).filter((i) => i.critical).length;
+  assert.equal(
+    parsed.summary.criticalPathLength,
+    criticalItems,
+    "summary count and per-item critical flags must agree within one payload",
+  );
+});
+
 test("renderJson output round-trips through JSON.parse (valid JSON)", () => {
   const opts = resolveGanttOptions({});
   const rows = buildRows(chainItems(), opts, opts.windowStart);
