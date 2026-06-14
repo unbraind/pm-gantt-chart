@@ -1,0 +1,16 @@
+id: pm-gantt-chart-53tr
+title: Add structured JSON output format to the gantt exporter
+description: "pm gantt export --format json emits the computed CPM schedule as machine-readable JSON (window, options, summary, milestones, per-item start/end/duration/slack/progress/critical/overdue/deps) for agents and scripts."
+type: Feature
+status: closed
+priority: 2
+tags[3]: agent-optimized,exporter,feature
+created_at: "2026-06-14T05:12:55.947Z"
+updated_at: "2026-06-14T05:13:23.370Z"
+author: claude
+acceptance_criteria: "pm gantt export --format json produces valid, deterministic JSON with per-item schedule + summary; existing formats (mermaid/html/ascii/csv) and default pm gantt unchanged; tests cover the new format; release:check green."
+resolution: "Added json to ExportFormat/EXPORT_FORMATS + renderJson() emitting deterministic structured schedule (window/options/summary/milestones/items[]); shared gatingDepIds() with CSV; 5 new tests; README documented."
+expected_result: pm gantt export --format json returns valid deterministic structured JSON; all other formats and default pm gantt behavior unchanged.
+actual_result: pm gantt export --format json yields valid deterministic JSON; all other formats and default pm gantt unchanged; 59 tests pass.
+close_reason: Implemented JSON exporter format with tests and docs
+body: ""
