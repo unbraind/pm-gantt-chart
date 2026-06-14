@@ -1071,6 +1071,17 @@ function csvField(value) {
     }
     return value;
 }
+/** IDs of the dependencies that gate scheduling (blocking kinds only —
+ *  informational links like related/relates_to/duplicate are excluded).
+ *  Shared by the CSV and JSON exporters so both report the same edge set. */
+function gatingDepIds(item) {
+    return (item.dependencies ?? [])
+        .filter((d) => {
+        const kind = (d.kind ?? "blocked_by").toLowerCase();
+        return kind !== "related" && kind !== "relates_to" && kind !== "duplicate";
+    })
+        .map((d) => d.id);
+}
 /**
  * Render rows as a CSV schedule:
  * id,title,start,end,duration_days,slack_days,deps,status.
@@ -1101,13 +1112,7 @@ function renderCsv(rows, milestones = []) {
             duration = String(Math.max(1, days));
         }
         const slack = row.slackDays === null ? "" : String(row.slackDays);
-        const deps = (item.dependencies ?? [])
-            .filter((d) => {
-            const kind = (d.kind ?? "blocked_by").toLowerCase();
-            return kind !== "related" && kind !== "relates_to" && kind !== "duplicate";
-        })
-            .map((d) => d.id)
-            .join(" ");
+        const deps = gatingDepIds(item).join(" ");
         lines.push([
             csvField(item.id),
             csvField(item.title),
@@ -1141,6 +1146,64 @@ function renderCsv(rows, milestones = []) {
         ].join(","));
     }
     return lines.join("\n");
+}
+// ---------------------------------------------------------------------------
+// Rendering — structured JSON schedule (machine-readable)
+// ---------------------------------------------------------------------------
+/** The computed CPM schedule as structured JSON. Unlike the ASCII chart (a
+ *  rendered string) or `pm --json gantt` (chart string + summary counts), this
+ *  gives agents and programmatic consumers the per-item plan — start/end,
+ *  duration, slack, progress, critical-path membership, overdue/infeasible
+ *  flags, gating deps — without parsing a chart or CSV. Deterministic: no
+ *  wall-clock is embedded, so identical input yields byte-identical output. */
+function renderJson(rows, opts, windowStart, milestones = []) {
+    const summary = computeSummary(rows);
+    const items = rows.map((row) => {
+        const duration = rowDurationDays(row);
+        return {
+            id: row.item.id,
+            title: row.item.title,
+            type: row.item.type ?? null,
+            status: row.item.status,
+            group: row.group,
+            start: row.start ? isoDay(row.start) : null,
+            end: row.end ? isoDay(row.end) : null,
+            durationDays: duration > 0 ? duration : null,
+            slackDays: row.slackDays,
+            progress: row.progress,
+            // On the critical path if it is on the longest chain OR has zero total
+            // float (mirrors the CSV `critical` column's predicate).
+            critical: row.critical || row.slackDays === 0,
+            overdue: row.overdue,
+            infeasible: row.infeasible,
+            offWindow: row.offWindow,
+            deps: gatingDepIds(row.item),
+        };
+    });
+    const payload = {
+        window: { start: isoDay(windowStart), weeks: opts.weeks },
+        options: {
+            groupBy: opts.groupBy,
+            statusFilter: opts.statusFilter,
+            schedule: opts.schedule,
+            criticalPath: opts.criticalPath,
+            progress: opts.progress,
+        },
+        summary: {
+            projectStart: summary.projectStart ? isoDay(summary.projectStart) : null,
+            projectEnd: summary.projectEnd ? isoDay(summary.projectEnd) : null,
+            spanDays: summary.spanDays,
+            // Derived from the per-item `critical` flag above (not computeSummary,
+            // which counts only longest-chain membership) so the count and the
+            // items[] flags can never disagree within the same JSON payload.
+            criticalPathLength: items.filter((i) => i.critical).length,
+            totalTaskDays: summary.totalTaskDays,
+            workload: summary.workload,
+        },
+        milestones: milestones.map((m) => ({ name: m.name, date: isoDay(m.date) })),
+        items,
+    };
+    return JSON.stringify(payload, null, 2);
 }
 // ---------------------------------------------------------------------------
 // Rendering — standalone HTML
@@ -1495,13 +1558,14 @@ export function offWindowMilestones(milestones, windowStart, weeks) {
         .filter((m) => milestoneWeek(m.date, windowStart, weeks) < 0)
         .map((m) => `${m.name} (${isoDay(m.date)})`);
 }
-const EXPORT_FORMATS = ["mermaid", "html", "ascii", "csv"];
+const EXPORT_FORMATS = ["mermaid", "html", "ascii", "csv", "json"];
 function renderForFormat(format, rows, opts, windowStart) {
     switch (format) {
         case "mermaid": return renderMermaid(rows, opts, windowStart);
         case "html": return renderHtml(rows, opts, windowStart);
         case "ascii": return renderGantt(rows, opts, windowStart);
         case "csv": return renderCsv(rows, opts.milestones);
+        case "json": return renderJson(rows, opts, windowStart, opts.milestones);
     }
 }
 function defaultExtension(format) {
@@ -1510,6 +1574,7 @@ function defaultExtension(format) {
         case "html": return "html";
         case "ascii": return "txt";
         case "csv": return "csv";
+        case "json": return "json";
     }
 }
 // ---------------------------------------------------------------------------
@@ -1695,8 +1760,9 @@ export default defineExtension({
         // -----------------------------------------------------------------------
         // Exporter: gantt  →  `pm gantt export`
         // Writes the chart to a file (or stdout) as Mermaid `gantt`, standalone
-        // HTML, or ASCII. registerRenderer only supports toon|json, so a new
-        // output format must go through the exporter pipeline.
+        // HTML, ASCII, CSV, or structured JSON (the computed schedule).
+        // registerRenderer only supports toon|json, so a new output format must go
+        // through the exporter pipeline.
         // -----------------------------------------------------------------------
         api.registerExporter("gantt", async (ctx) => {
             const opts = resolveGanttOptions(ctx.options);
@@ -1772,5 +1838,5 @@ export default defineExtension({
 // runtime extension contract; the default export above is. Keeping them as
 // named exports lets test/*.test.ts import them without touching pm internals.
 // ---------------------------------------------------------------------------
-export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderMermaid, renderGantt, renderHtml, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, };
+export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderJson, renderMermaid, renderGantt, renderHtml, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, };
 //# sourceMappingURL=index.js.map

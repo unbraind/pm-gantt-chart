@@ -221,6 +221,13 @@ declare function renderMermaid(rows: GanttRow[], opts: GanttOptions, windowStart
  * Exported for tests.
  */
 declare function renderCsv(rows: GanttRow[], milestones?: Milestone[]): string;
+/** The computed CPM schedule as structured JSON. Unlike the ASCII chart (a
+ *  rendered string) or `pm --json gantt` (chart string + summary counts), this
+ *  gives agents and programmatic consumers the per-item plan — start/end,
+ *  duration, slack, progress, critical-path membership, overdue/infeasible
+ *  flags, gating deps — without parsing a chart or CSV. Deterministic: no
+ *  wall-clock is embedded, so identical input yields byte-identical output. */
+declare function renderJson(rows: GanttRow[], opts: GanttOptions, windowStart: Date, milestones?: Milestone[]): string;
 interface GanttSummary {
     /** Earliest start across all dated rows (null when none are dated). */
     projectStart: Date | null;
@@ -263,6 +270,6 @@ declare const _default: {
     activate(api: ExtensionApi): void;
 };
 export default _default;
-export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderMermaid, renderGantt, renderHtml, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, };
+export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderJson, renderMermaid, renderGantt, renderHtml, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, };
 export type { PmItem, GanttOptions, GanttRow, GroupBy, ScheduleEntry, SlackEntry, GanttSummary, OffWindow, Milestone };
 //# sourceMappingURL=index.d.ts.map

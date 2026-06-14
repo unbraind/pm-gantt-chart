@@ -2,7 +2,7 @@
 
 Gantt chart renderer and multi-format exporter for [pm-cli](https://github.com/unbraind/pm-cli).
 
-Renders your pm items as a week-by-week timeline in the terminal — grouped by milestone, sprint, release, assignee, status, type, or tag — and exports the same chart to **Mermaid `gantt`**, **standalone HTML**, **ASCII**, or a **CSV schedule**. Can compute and highlight the **critical path** (longest dependency chain), and run **dependency-aware scheduling** that derives each item's start/end from its blocked-by chain plus estimates.
+Renders your pm items as a week-by-week timeline in the terminal — grouped by milestone, sprint, release, assignee, status, type, or tag — and exports the same chart to **Mermaid `gantt`**, **standalone HTML**, **ASCII**, a **CSV schedule**, or **structured JSON**. Can compute and highlight the **critical path** (longest dependency chain), and run **dependency-aware scheduling** that derives each item's start/end from its blocked-by chain plus estimates.
 
 ## Example output
 
@@ -94,6 +94,9 @@ pm gantt export --format ascii --output roadmap.txt
 # CSV schedule: id,title,start,end,duration_days,slack_days,deps,status,critical,progress_percent,overdue,off_window
 pm gantt export --format csv --schedule --output schedule.csv
 
+# Structured JSON schedule for agents / programmatic consumers
+pm gantt export --format json --schedule --output schedule.json
+
 # Export honors the same shaping flags (including --schedule / --critical-only)
 pm gantt export --format html --group-by assignee --critical-path --weeks 12 --output team.html
 pm gantt export --format mermaid --schedule --group-by sprint --output plan.mmd
@@ -123,8 +126,10 @@ Both `pm gantt` and `pm gantt export` accept the shaping flags:
 
 | Flag | Values | Default | Description |
 |------|--------|---------|-------------|
-| `--format <fmt>` | `mermaid` \| `html` \| `ascii` \| `csv` | `mermaid` | Output format |
+| `--format <fmt>` | `mermaid` \| `html` \| `ascii` \| `csv` \| `json` | `mermaid` | Output format |
 | `--output <file>` | path | stdout | File to write (prints to stdout if omitted) |
+
+`json` emits the computed schedule as structured, machine-readable data — `window`, `options`, a `summary` (project span, critical-path length, total task-days, per-group workload), `milestones`, and an `items[]` array where each entry carries `id`, `title`, `type`, `status`, `group`, ISO `start`/`end`, `durationDays`, `slackDays`, `progress`, `critical`, `overdue`, `infeasible`, `offWindow`, and gating `deps`. Unlike `pm --json gantt` (which returns the rendered ASCII chart plus summary counts), this is the full per-item plan, so agents and scripts can reason about the schedule without parsing a chart or CSV. Output is deterministic (no embedded wall-clock), so identical input produces byte-identical JSON. Pair with `--schedule` for dependency-derived dates and slack.
 
 `csv` emits a schedule table: `id,title,start,end,duration_days,slack_days,deps,status,critical,progress_percent,overdue,off_window` (deps = space-separated blocking ids). Pair it with `--schedule` for dependency-derived dates and slack. `slack_days` is the total float in days (only populated under `--schedule`; blank otherwise): `0` marks a critical-path item, a positive value is how many days the task can slip without delaying the project, and a **negative** value means the plan is already late for a downstream deadline. The trailing risk columns make the CSV useful directly in spreadsheets and portfolio reports: `critical`/`overdue` are `yes`/`no`, `progress_percent` is `0..100`, and `off_window` distinguishes `before`, `after`, and `undated` rows.
 
