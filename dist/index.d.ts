@@ -203,6 +203,23 @@ declare function computeSlack(items: PmItem[], schedule: Map<string, ScheduleEnt
 declare function buildRows(items: PmItem[], opts: GanttOptions, windowStart: Date): GanttRow[];
 declare function renderGantt(rows: GanttRow[], opts: GanttOptions, windowStart: Date): string;
 declare function renderMermaid(rows: GanttRow[], opts: GanttOptions, windowStart: Date): string;
+/**
+ * Render rows as a CSV schedule:
+ * id,title,start,end,duration_days,slack_days,deps,status.
+ * `start`/`end` use the row's computed bounds (scheduler- or date-derived);
+ * `duration_days` is the inclusive day span, blank when undated. `slack_days`
+ * is the backward-pass total float (only populated under `--schedule`; blank
+ * otherwise) — 0 marks a critical-path item, negative means the plan is already
+ * late for a downstream deadline. The trailing risk columns make CSV exports
+ * directly usable for portfolio reporting: critical, progress_percent, overdue,
+ * off_window. `deps` is a space-separated list of blocking dependency ids.
+ *
+ * Milestones (from `--milestones`) are appended as extra rows so the timeline's
+ * fixed dates round-trip in the same table: `id` = `milestone:<name>`, `title`
+ * = the milestone name, `start` = `end` = the milestone date, `status` =
+ * `milestone`, all other columns blank. They sort after the item rows.
+ * Exported for tests.
+ */
 declare function renderCsv(rows: GanttRow[], milestones?: Milestone[]): string;
 /** The computed CPM schedule as structured JSON. Unlike the ASCII chart (a
  *  rendered string) or `pm --json gantt` (chart string + summary counts), this

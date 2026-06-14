@@ -1332,6 +1332,18 @@ function csvField(value: string): string {
   return value;
 }
 
+/** IDs of the dependencies that gate scheduling (blocking kinds only —
+ *  informational links like related/relates_to/duplicate are excluded).
+ *  Shared by the CSV and JSON exporters so both report the same edge set. */
+function gatingDepIds(item: PmItem): string[] {
+  return (item.dependencies ?? [])
+    .filter((d) => {
+      const kind = (d.kind ?? "blocked_by").toLowerCase();
+      return kind !== "related" && kind !== "relates_to" && kind !== "duplicate";
+    })
+    .map((d) => d.id);
+}
+
 /**
  * Render rows as a CSV schedule:
  * id,title,start,end,duration_days,slack_days,deps,status.
@@ -1349,18 +1361,6 @@ function csvField(value: string): string {
  * `milestone`, all other columns blank. They sort after the item rows.
  * Exported for tests.
  */
-/** IDs of the dependencies that gate scheduling (blocking kinds only —
- *  informational links like related/relates_to/duplicate are excluded).
- *  Shared by the CSV and JSON exporters so both report the same edge set. */
-function gatingDepIds(item: PmItem): string[] {
-  return (item.dependencies ?? [])
-    .filter((d) => {
-      const kind = (d.kind ?? "blocked_by").toLowerCase();
-      return kind !== "related" && kind !== "relates_to" && kind !== "duplicate";
-    })
-    .map((d) => d.id);
-}
-
 function renderCsv(rows: GanttRow[], milestones: Milestone[] = []): string {
   const header = "id,title,start,end,duration_days,slack_days,deps,status,critical,progress_percent,overdue,off_window";
   const lines = [header];
