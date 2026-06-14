@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Add structured JSON output format to the gantt exporter ([pm-gantt-chart-53tr](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-53tr.toon))
+
 ## 2026.6.9 - 2026-06-09
 
 ### Added
