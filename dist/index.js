@@ -1400,7 +1400,7 @@ ${workloadRows}
 </head>
 <body>
 <h1>${htmlEscape(title)}</h1>
-<table>
+<table style="width:${opts.width}px">
 <thead>
 <tr><th>Group</th><th>Item</th><th>Status</th>${headCols}</tr>
 </thead>
@@ -1427,6 +1427,172 @@ ${workloadBlock}
 </div>
 </body>
 </html>`;
+}
+// ---------------------------------------------------------------------------
+// Rendering — standalone SVG (vector Gantt)
+//
+// A self-contained SVG document mirroring the HTML table render: grouped rows,
+// week columns, status-colored bars, critical-path highlighting, overdue,
+// off-window hints, today marker, milestone diamonds, and a --progress fill.
+// The chart width is controlled by --width (default 1000); the left label
+// gutter and per-week column width are derived from it so the layout scales.
+// ---------------------------------------------------------------------------
+/** Escape a string for safe use inside SVG text nodes / attribute values. */
+function svgEscape(s) {
+    return s
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+}
+function renderSvg(rows, opts, windowStart) {
+    const weeks = opts.weeks;
+    const weekLabels = [];
+    for (let w = 0; w < weeks; w++)
+        weekLabels.push(weekLabel(addWeeks(windowStart, w)));
+    // Layout constants (px). The left gutter holds the group + item + status
+    // labels; the chart area fills the remaining width. Width is taken from
+    // --width (clamped to a sane minimum so very small widths don't collapse).
+    const W = Math.max(640, Math.round(opts.width || 1000));
+    const PAD = 16;
+    const GROUP_W = 120;
+    const ITEM_W = 190;
+    const STATUS_W = 56;
+    const GUTTER = GROUP_W + ITEM_W + STATUS_W;
+    const chartW = Math.max(weeks * 24, W - PAD - GUTTER - PAD);
+    const colW = chartW / weeks;
+    const rowH = 26;
+    const headerH = 86; // title + week labels + today/milestone marker rows
+    const legendH = 64;
+    const H = PAD + headerH + rows.length * rowH + PAD + legendH;
+    const chartX = PAD + GUTTER;
+    const chartY = PAD + headerH;
+    const today = opts.today;
+    const windowEnd = addWeeks(windowStart, weeks);
+    const todayWeek = today >= windowStart && today < windowEnd
+        ? Math.floor((today.getTime() - windowStart.getTime()) / (7 * DAY_MS))
+        : -1;
+    // Bar color by status / critical / overdue.
+    const barColor = (row) => {
+        if (row.overdue)
+            return "#c23b3b";
+        if (row.critical)
+            return "#e05c5c";
+        if (row.item.status === "in_progress" || row.item.status === "blocked")
+            return "#2b7de9";
+        return "#b3d4fc";
+    };
+    const parts = [];
+    parts.push(`<?xml version="1.0" encoding="UTF-8"?>`);
+    parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">`);
+    parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="#fafafa"/>`);
+    // Title
+    parts.push(`<text x="${PAD}" y="${PAD + 16}" font-size="13" font-weight="600" fill="#1a1a1a">` +
+        `pm gantt \u2014 ${weeks} weeks from ${isoDay(windowStart)}` +
+        (opts.criticalPath ? " \u2022 critical path marked" : "") +
+        `</text>`);
+    // Header: column labels (W1..Wn) with week dates.
+    parts.push(`<text x="${PAD}" y="${PAD + 40}" font-size="10" font-weight="600" fill="#555">GROUP</text>`);
+    parts.push(`<text x="${PAD + GROUP_W}" y="${PAD + 40}" font-size="10" font-weight="600" fill="#555">ITEM</text>`);
+    parts.push(`<text x="${PAD + GROUP_W + ITEM_W}" y="${PAD + 40}" font-size="10" font-weight="600" fill="#555">STATUS</text>`);
+    for (let w = 0; w < weeks; w++) {
+        const x = chartX + w * colW;
+        const cls = w === todayWeek ? " fill=\"#d33\" font-weight=\"700\"" : " fill=\"#888\"";
+        parts.push(`<text x="${x + 2}" y="${PAD + 40}" font-size="9"${cls}>W${w + 1}</text>`);
+        parts.push(`<text x="${x + 2}" y="${PAD + 52}" font-size="8" fill="#aaa">${svgEscape(weekLabels[w])}</text>`);
+    }
+    // TODAY vertical rule across the chart area.
+    if (todayWeek >= 0) {
+        const tx = chartX + todayWeek * colW + colW / 2;
+        parts.push(`<line x1="${tx}" y1="${chartY - 6}" x2="${tx}" y2="${chartY + rows.length * rowH}" stroke="#d33" stroke-width="1" stroke-dasharray="3 3"/>`);
+        parts.push(`<text x="${tx + 2}" y="${chartY - 8}" font-size="8" font-weight="700" fill="#d33">\u25bc today</text>`);
+    }
+    // Milestone diamonds (in-window only).
+    for (const m of opts.milestones) {
+        const mw = milestoneWeek(m.date, windowStart, weeks);
+        if (mw < 0)
+            continue;
+        const mx = chartX + mw * colW + colW / 2;
+        const my = chartY - 18;
+        parts.push(`<polygon points="${mx},${my - 5} ${mx + 5},${my} ${mx},${my + 5} ${mx - 5},${my}" fill="#d4a017" stroke="#8a6d00"/>`);
+        parts.push(`<text x="${mx + 7}" y="${my + 3}" font-size="8" font-weight="600" fill="#8a6d00">${svgEscape(m.name)}</text>`);
+    }
+    // Header separator.
+    parts.push(`<line x1="${PAD}" y1="${chartY}" x2="${W - PAD}" y2="${chartY}" stroke="#ddd"/>`);
+    // Body rows.
+    let lastGroup = "";
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const y = chartY + i * rowH;
+        // Alternating row background for legibility.
+        if (i % 2 === 1) {
+            parts.push(`<rect x="${PAD}" y="${y}" width="${W - PAD * 2}" height="${rowH}" fill="#f4f4f4"/>`);
+        }
+        const showGroup = row.group !== lastGroup;
+        lastGroup = row.group;
+        if (showGroup) {
+            parts.push(`<text x="${PAD + 2}" y="${y + 16}" font-size="10" font-weight="600" fill="#333">${svgEscape(row.group)}</text>`);
+        }
+        const titlePrefix = row.critical ? "* " : "";
+        parts.push(`<text x="${PAD + GROUP_W + 2}" y="${y + 16}" font-size="10" fill="#1a1a1a">${svgEscape(titlePrefix + row.item.title)}</text>`);
+        parts.push(`<text x="${PAD + GROUP_W + 2}" y="${y + 16 + 11}" font-size="8" fill="#aaa">${svgEscape(row.item.id)}</text>`);
+        parts.push(`<text x="${PAD + GROUP_W + ITEM_W + 4}" y="${y + 16}" font-size="9" fill="#555">${svgEscape(row.item.status)}</text>`);
+        // Bars / off-window hints per week column.
+        for (let w = 0; w < weeks; w++) {
+            const cx = chartX + w * colW;
+            if (row.startWeek === null) {
+                if (row.offWindow === "before" && w === 0) {
+                    parts.push(`<text x="${cx + colW / 2}" y="${y + 17}" font-size="12" font-weight="700" fill="#b07000" text-anchor="middle">\u2190</text>`);
+                }
+                else if (row.offWindow === "after" && w === weeks - 1) {
+                    parts.push(`<text x="${cx + colW / 2}" y="${y + 17}" font-size="12" font-weight="700" fill="#b07000" text-anchor="middle">\u2192</text>`);
+                }
+                continue;
+            }
+            if (w >= row.startWeek && w <= (row.endWeek ?? row.startWeek)) {
+                const fill = barColor(row);
+                const bx = cx + 1;
+                const by = y + 5;
+                const bw = Math.max(1, colW - 2);
+                const bh = rowH - 10;
+                parts.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="2" fill="${fill}"/>`);
+                // --progress fill overlay sized to completion ratio.
+                if (opts.progress) {
+                    const fw = Math.max(0, Math.min(bw, (row.progress / 100) * bw));
+                    if (fw > 0) {
+                        parts.push(`<rect x="${bx}" y="${by}" width="${fw}" height="${bh}" rx="2" fill="rgba(0,0,0,0.35)"/>`);
+                    }
+                    parts.push(`<text x="${bx + bw + 3}" y="${y + 16}" font-size="8" font-weight="600" fill="#2b7de9">${row.progress}%</text>`);
+                }
+            }
+        }
+        // Overdue marker after the chart area.
+        if (row.overdue) {
+            parts.push(`<text x="${W - PAD - 2}" y="${y + 16}" font-size="8" font-weight="700" fill="#c23b3b" text-anchor="end">\u203c overdue</text>`);
+        }
+    }
+    // Bottom separator + legend.
+    const legendY = chartY + rows.length * rowH + PAD;
+    parts.push(`<line x1="${PAD}" y1="${legendY}" x2="${W - PAD}" y2="${legendY}" stroke="#ddd"/>`);
+    const swatches = [
+        { color: "#2b7de9", label: "in_progress / blocked" },
+        { color: "#b3d4fc", label: "open / planned" },
+    ];
+    if (opts.criticalPath)
+        swatches.push({ color: "#e05c5c", label: "critical path" });
+    if (rows.some((r) => r.overdue))
+        swatches.push({ color: "#c23b3b", label: "overdue" });
+    if (opts.progress)
+        swatches.push({ color: "rgba(0,0,0,0.35)", label: "% complete" });
+    let lx = PAD;
+    for (const sw of swatches) {
+        parts.push(`<rect x="${lx}" y="${legendY + 8}" width="12" height="12" rx="2" fill="${sw.color}"/>`);
+        parts.push(`<text x="${lx + 16}" y="${legendY + 18}" font-size="9" fill="#555">${svgEscape(sw.label)}</text>`);
+        lx += 16 + sw.label.length * 5 + 16;
+    }
+    parts.push(`</svg>`);
+    return parts.join("\n");
 }
 // ---------------------------------------------------------------------------
 // Shared option parsing + data fetch
@@ -1460,7 +1626,8 @@ function resolveGanttOptions(options) {
     const criticalPath = readBoolOption(options, "critical-path", "criticalPath");
     const criticalOnly = readBoolOption(options, "critical-only", "criticalOnly");
     const schedule = readBoolOption(options, "schedule");
-    const progress = readBoolOption(options, "progress");
+    // --show-progress is an alias for --progress (both opt-in to % complete on bars).
+    const progress = readBoolOption(options, "progress", "show-progress", "showProgress");
     const rawDefaultDuration = readOption(options, "default-duration", "defaultDuration");
     let defaultDuration = 5;
     if (rawDefaultDuration !== undefined) {
@@ -1469,6 +1636,18 @@ function resolveGanttOptions(options) {
             throw new CommandError(`Invalid --default-duration "${rawDefaultDuration}" (expected a positive integer of days).`, EXIT_CODE.USAGE);
         }
         defaultDuration = Math.min(365, parsed);
+    }
+    // --width controls the render width (px) of vector/graphical formats (SVG,
+    // and the HTML chart). It is ignored by ASCII/Mermaid/CSV/JSON. Default 1000;
+    // clamped to [320, 8192] so absurd values never produce a broken canvas.
+    const rawWidth = readOption(options, "width");
+    let width = 1000;
+    if (rawWidth !== undefined) {
+        const parsed = parseInt(String(rawWidth), 10);
+        if (isNaN(parsed) || parsed < 1) {
+            throw new CommandError(`Invalid --width "${rawWidth}" (expected a positive integer of pixels).`, EXIT_CODE.USAGE);
+        }
+        width = Math.max(320, Math.min(8192, parsed));
     }
     const milestones = parseMilestones(readOption(options, "milestones"));
     const today = new Date();
@@ -1514,6 +1693,7 @@ function resolveGanttOptions(options) {
         schedule,
         defaultDuration,
         progress,
+        width,
         milestones,
         windowStart,
     };
@@ -1558,11 +1738,12 @@ export function offWindowMilestones(milestones, windowStart, weeks) {
         .filter((m) => milestoneWeek(m.date, windowStart, weeks) < 0)
         .map((m) => `${m.name} (${isoDay(m.date)})`);
 }
-const EXPORT_FORMATS = ["mermaid", "html", "ascii", "csv", "json"];
+const EXPORT_FORMATS = ["mermaid", "html", "ascii", "csv", "json", "svg"];
 function renderForFormat(format, rows, opts, windowStart) {
     switch (format) {
         case "mermaid": return renderMermaid(rows, opts, windowStart);
         case "html": return renderHtml(rows, opts, windowStart);
+        case "svg": return renderSvg(rows, opts, windowStart);
         case "ascii": return renderGantt(rows, opts, windowStart);
         case "csv": return renderCsv(rows, opts.milestones);
         case "json": return renderJson(rows, opts, windowStart, opts.milestones);
@@ -1572,6 +1753,7 @@ function defaultExtension(format) {
     switch (format) {
         case "mermaid": return "mmd";
         case "html": return "html";
+        case "svg": return "svg";
         case "ascii": return "txt";
         case "csv": return "csv";
         case "json": return "json";
@@ -1582,7 +1764,7 @@ function defaultExtension(format) {
 // ---------------------------------------------------------------------------
 export default defineExtension({
     name: "pm-gantt-chart",
-    version: "2026.7.6",
+    version: "2026.7.6-1",
     activate(api) {
         api.registerCommand({
             name: "gantt",
@@ -1601,6 +1783,7 @@ export default defineExtension({
                 "pm gantt --critical-path",
                 "pm gantt --critical-only --schedule",
                 "pm gantt --progress",
+                "pm gantt --show-progress",
                 "pm gantt --milestones \"v1.0=2026-06-30,v1.1=2026-08-15\"",
             ],
             flags: [
@@ -1649,6 +1832,15 @@ export default defineExtension({
                 {
                     long: "--progress",
                     description: "Show each item's % complete on its bar (closed/canceled 100%, in_progress 50% or acceptance-criteria ratio, open 0%)",
+                },
+                {
+                    long: "--show-progress",
+                    description: "Alias for --progress: show each item's % complete on its bar",
+                },
+                {
+                    long: "--width",
+                    value_name: "px",
+                    description: "Render width in pixels for vector/graphical formats (SVG export, HTML chart). Default: 1000; clamped to 320..8192",
                 },
                 {
                     long: "--milestones",
@@ -1838,5 +2030,5 @@ export default defineExtension({
 // runtime extension contract; the default export above is. Keeping them as
 // named exports lets test/*.test.ts import them without touching pm internals.
 // ---------------------------------------------------------------------------
-export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderJson, renderMermaid, renderGantt, renderHtml, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, };
+export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderJson, renderMermaid, renderGantt, renderHtml, renderSvg, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, };
 //# sourceMappingURL=index.js.map

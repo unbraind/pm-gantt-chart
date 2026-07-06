@@ -42,6 +42,7 @@ interface GanttOptions {
     schedule: boolean;
     defaultDuration: number;
     progress: boolean;
+    width: number;
     milestones: Milestone[];
 }
 /** Why a row has no in-window bar.
@@ -248,6 +249,7 @@ interface GanttSummary {
 /** Compute the footer summary stats shared by the HTML export. */
 declare function computeSummary(rows: GanttRow[]): GanttSummary;
 declare function renderHtml(rows: GanttRow[], opts: GanttOptions, windowStart: Date): string;
+declare function renderSvg(rows: GanttRow[], opts: GanttOptions, windowStart: Date): string;
 interface ResolvedOptions extends GanttOptions {
     windowStart: Date;
 }
@@ -270,6 +272,6 @@ declare const _default: {
     activate(api: ExtensionApi): void;
 };
 export default _default;
-export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderJson, renderMermaid, renderGantt, renderHtml, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, };
+export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderJson, renderMermaid, renderGantt, renderHtml, renderSvg, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, };
 export type { PmItem, GanttOptions, GanttRow, GroupBy, ScheduleEntry, SlackEntry, GanttSummary, OffWindow, Milestone };
 //# sourceMappingURL=index.d.ts.map
