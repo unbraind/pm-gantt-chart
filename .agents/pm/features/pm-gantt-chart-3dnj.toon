@@ -1,0 +1,14 @@
+id: pm-gantt-chart-3dnj
+title: "Add SVG export, chart width control, and progress alias to gantt"
+description: ""
+type: Feature
+status: closed
+priority: 2
+tags: []
+created_at: "2026-07-06T22:51:03.971Z"
+updated_at: "2026-07-06T22:51:15.156Z"
+author: codex
+acceptance_criteria: "gantt export supports a new svg vector format producing a self-contained well-formed SVG document; a new width option controls the SVG and HTML canvas width (default 1000, clamped 320 to 8192); a new show-progress flag is an alias for the existing progress flag; group-by sprint/type/assignee and critical-path highlighting verified; existing formats unchanged; tests and typecheck pass; not pushed."
+resolution: "Added svg to ExportFormat and EXPORT_FORMATS plus a renderSvg function emitting a self-contained vector chart (grouped rows, week columns, status bars, critical, overdue, off-window, today, milestone diamonds, progress fill). Added a width field to GanttOptions resolved in resolveGanttOptions (default 1000, clamped 320-8192) governing the SVG canvas and HTML table width. Added show-progress as an alias for progress. 16 new tests in test/svg.test.ts; 76 tests pass; typecheck clean. Bumped to 2026.7.6-1."
+close_reason: "Implemented SVG export, width control, and progress alias with tests and docs"
+body: ""
