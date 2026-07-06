@@ -8,6 +8,7 @@
 
 ### Other
 
+- Align Node engine with pm CLI runtime ([pm-gantt-chart-bkph](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-bkph.toon))
 - Regenerate CHANGELOG after pm close item ([pm-gantt-chart-2r7k](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-2r7k.toon))
 
 ## 2026.6.14 - 2026-06-14
