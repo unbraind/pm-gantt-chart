@@ -1,15 +1,10 @@
 # Changelog
 
-## 2026.7.6 - 2026-07-06
+## 2026.7.6-1 - 2026-07-07
 
-### Fixed
+### Added
 
-- Fix release CI ordering (publish-before-tag) ([pm-gantt-chart-m3y4](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-m3y4.toon))
-
-### Other
-
-- Align Node engine with pm CLI runtime ([pm-gantt-chart-bkph](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-bkph.toon))
-- Regenerate CHANGELOG after pm close item ([pm-gantt-chart-2r7k](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-2r7k.toon))
+- Add SVG export, chart width control, and progress alias to gantt ([pm-gantt-chart-3dnj](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-3dnj.toon))
 
 ## 2026.6.14 - 2026-06-14
 
