@@ -266,6 +266,8 @@ declare function infeasibleWarnings(rows: GanttRow[]): string[];
  * cannot be drawn). Returned for a one-line stderr note. Exported for tests.
  */
 export declare function offWindowMilestones(milestones: Milestone[], windowStart: Date, weeks: number): string[];
+type ExportFormat = "mermaid" | "html" | "ascii" | "csv" | "json" | "svg";
+export declare const EXPORT_FORMATS: ExportFormat[];
 declare const _default: {
     name: string;
     version: string;

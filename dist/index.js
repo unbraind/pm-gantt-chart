@@ -1452,15 +1452,18 @@ function renderSvg(rows, opts, windowStart) {
     for (let w = 0; w < weeks; w++)
         weekLabels.push(weekLabel(addWeeks(windowStart, w)));
     // Layout constants (px). The left gutter holds the group + item + status
-    // labels; the chart area fills the remaining width. Width is taken from
-    // --width (clamped to a sane minimum so very small widths don't collapse).
-    const W = Math.max(640, Math.round(opts.width || 1000));
+    // labels; the chart area fills the remaining width. The canvas honors
+    // --width, but is raised to the minimum content width (gutter + a 24px
+    // column per week + padding) when needed so the chart can neither collapse
+    // nor overflow the viewBox on long timelines.
     const PAD = 16;
     const GROUP_W = 120;
     const ITEM_W = 190;
     const STATUS_W = 56;
     const GUTTER = GROUP_W + ITEM_W + STATUS_W;
-    const chartW = Math.max(weeks * 24, W - PAD - GUTTER - PAD);
+    const minContentW = PAD + GUTTER + weeks * 24 + PAD;
+    const W = Math.max(minContentW, Math.round(opts.width || 1000));
+    const chartW = W - PAD - GUTTER - PAD;
     const colW = chartW / weeks;
     const rowH = 26;
     const headerH = 86; // title + week labels + today/milestone marker rows
@@ -1501,12 +1504,6 @@ function renderSvg(rows, opts, windowStart) {
         const cls = w === todayWeek ? " fill=\"#d33\" font-weight=\"700\"" : " fill=\"#888\"";
         parts.push(`<text x="${x + 2}" y="${PAD + 40}" font-size="9"${cls}>W${w + 1}</text>`);
         parts.push(`<text x="${x + 2}" y="${PAD + 52}" font-size="8" fill="#aaa">${svgEscape(weekLabels[w])}</text>`);
-    }
-    // TODAY vertical rule across the chart area.
-    if (todayWeek >= 0) {
-        const tx = chartX + todayWeek * colW + colW / 2;
-        parts.push(`<line x1="${tx}" y1="${chartY - 6}" x2="${tx}" y2="${chartY + rows.length * rowH}" stroke="#d33" stroke-width="1" stroke-dasharray="3 3"/>`);
-        parts.push(`<text x="${tx + 2}" y="${chartY - 8}" font-size="8" font-weight="700" fill="#d33">\u25bc today</text>`);
     }
     // Milestone diamonds (in-window only).
     for (const m of opts.milestones) {
@@ -1563,7 +1560,11 @@ function renderSvg(rows, opts, windowStart) {
                     if (fw > 0) {
                         parts.push(`<rect x="${bx}" y="${by}" width="${fw}" height="${bh}" rx="2" fill="rgba(0,0,0,0.35)"/>`);
                     }
-                    parts.push(`<text x="${bx + bw + 3}" y="${y + 16}" font-size="8" font-weight="600" fill="#2b7de9">${row.progress}%</text>`);
+                    // Emit the % label once, after the bar's final week cell (a
+                    // per-week label would stack duplicates on multi-week bars).
+                    if (w === (row.endWeek ?? row.startWeek)) {
+                        parts.push(`<text x="${bx + bw + 3}" y="${y + 16}" font-size="8" font-weight="600" fill="#2b7de9">${row.progress}%</text>`);
+                    }
                 }
             }
         }
@@ -1571,6 +1572,13 @@ function renderSvg(rows, opts, windowStart) {
         if (row.overdue) {
             parts.push(`<text x="${W - PAD - 2}" y="${y + 16}" font-size="8" font-weight="700" fill="#c23b3b" text-anchor="end">\u203c overdue</text>`);
         }
+    }
+    // TODAY vertical rule across the chart area. Drawn after the body rows so
+    // the alternating row-background rects cannot paint over it.
+    if (todayWeek >= 0) {
+        const tx = chartX + todayWeek * colW + colW / 2;
+        parts.push(`<line x1="${tx}" y1="${chartY - 6}" x2="${tx}" y2="${chartY + rows.length * rowH}" stroke="#d33" stroke-width="1" stroke-dasharray="3 3"/>`);
+        parts.push(`<text x="${tx + 2}" y="${chartY - 8}" font-size="8" font-weight="700" fill="#d33">\u25bc today</text>`);
     }
     // Bottom separator + legend.
     const legendY = chartY + rows.length * rowH + PAD;
@@ -1738,7 +1746,7 @@ export function offWindowMilestones(milestones, windowStart, weeks) {
         .filter((m) => milestoneWeek(m.date, windowStart, weeks) < 0)
         .map((m) => `${m.name} (${isoDay(m.date)})`);
 }
-const EXPORT_FORMATS = ["mermaid", "html", "ascii", "csv", "json", "svg"];
+export const EXPORT_FORMATS = ["mermaid", "html", "ascii", "csv", "json", "svg"];
 function renderForFormat(format, rows, opts, windowStart) {
     switch (format) {
         case "mermaid": return renderMermaid(rows, opts, windowStart);
@@ -1840,7 +1848,7 @@ export default defineExtension({
                 {
                     long: "--width",
                     value_name: "px",
-                    description: "Render width in pixels for vector/graphical formats (SVG export, HTML chart). Default: 1000; clamped to 320..8192",
+                    description: "Render width in pixels for vector/graphical formats (SVG export, HTML chart). Default: 1000; clamped to 320..8192 (the SVG canvas is raised to its minimum content width when needed)",
                 },
                 {
                     long: "--milestones",
