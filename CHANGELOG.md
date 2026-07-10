@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Add % complete (progress) rendering to Gantt bars ([pm-gantt-chart-gtqn](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-gtqn.toon))
+- Highlight overdue / deadline-risk items in Gantt charts ([pm-gantt-chart-30wt](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-30wt.toon))
+- Distinguish off-window items from genuinely undated items in ASCII/HTML ([pm-gantt-chart-htj5](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-htj5.toon))
+- Add a TODAY marker to the HTML Gantt export (parity with ASCII/Mermaid) ([pm-gantt-chart-169m](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-169m.toon))
+
+### Fixed
+
+- Adversarial review pass 2026-07-10 ([pm-gantt-chart-nqio](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-nqio.toon))
+
+### Other
+
+- Production-readiness audit 2026-05-28 ([pm-gantt-chart-kwkp](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-kwkp.toon))
+- Full-cycle hardening wave: pm-gantt-chart ([pm-gantt-chart-t9de](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-t9de.toon))
+- Harden release bun-verify so registry-mirror lag cannot block the GitHub release ([pm-gantt-chart-nq00](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-nq00.toon))
+
 ## 2026.7.10 - 2026-07-10
 
 ### Added
