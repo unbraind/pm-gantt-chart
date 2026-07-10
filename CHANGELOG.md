@@ -11,6 +11,7 @@
 
 ### Fixed
 
+- Fix SVG progress label duplication, canvas sizing, and TODAY rule layering ([pm-gantt-chart-3mqi](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-3mqi.toon))
 - Adversarial review pass 2026-07-10 ([pm-gantt-chart-nqio](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-nqio.toon))
 
 ### Other
