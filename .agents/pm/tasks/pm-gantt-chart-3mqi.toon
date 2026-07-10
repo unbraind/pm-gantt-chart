@@ -1,0 +1,13 @@
+id: pm-gantt-chart-3mqi
+title: "Fix SVG progress label duplication, canvas sizing, and TODAY rule layering"
+description: ""
+type: Task
+status: in_progress
+priority: 1
+tags[2]: "area:rendering","area:svg"
+created_at: "2026-07-10T19:48:35.629Z"
+updated_at: "2026-07-10T19:48:36.149Z"
+author: codex
+acceptance_criteria: "SVG progress labels emit once per task; canvas sizing uses readable 24px min per week; TODAY rule drawn after bars; release:check green; Greptile clean; PR merged"
+why_now: Progress labels duplicated on multi-week bars; canvas sizing had unnecessary rightPad complexity; TODAY rule could be painted over
+body: ""

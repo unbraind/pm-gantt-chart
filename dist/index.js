@@ -1452,21 +1452,17 @@ function renderSvg(rows, opts, windowStart) {
     for (let w = 0; w < weeks; w++)
         weekLabels.push(weekLabel(addWeeks(windowStart, w)));
     // Layout constants (px). The left gutter holds the group + item + status
-    // labels; the chart area fills the remaining width. The canvas honors
-    // --width, but is raised to the minimum content width (gutter + a 24px
-    // column per week + padding) when needed so the chart can neither collapse
-    // nor overflow the viewBox on long timelines.
+    // labels; the chart area fills the remaining width. --width is the requested
+    // canvas width, but long timelines expand it enough to retain a readable
+    // 24px minimum per week instead of drawing beyond the viewBox.
+    const requestedW = Math.max(320, Math.round(opts.width || 1000));
     const PAD = 16;
     const GROUP_W = 120;
     const ITEM_W = 190;
     const STATUS_W = 56;
     const GUTTER = GROUP_W + ITEM_W + STATUS_W;
-    // Progress labels are drawn just after the final bar cell. Reserve enough
-    // right-side space to keep a last-week label inside the SVG viewBox.
-    const rightPad = opts.progress ? PAD + 24 : PAD;
-    const minContentW = PAD + GUTTER + weeks * 24 + rightPad;
-    const W = Math.max(minContentW, Math.round(opts.width || 1000));
-    const chartW = W - PAD - GUTTER - rightPad;
+    const W = Math.max(requestedW, PAD + GUTTER + PAD + weeks * 24);
+    const chartW = W - PAD - GUTTER - PAD;
     const colW = chartW / weeks;
     const rowH = 26;
     const headerH = 86; // title + week labels + today/milestone marker rows
@@ -1563,21 +1559,23 @@ function renderSvg(rows, opts, windowStart) {
                     if (fw > 0) {
                         parts.push(`<rect x="${bx}" y="${by}" width="${fw}" height="${bh}" rx="2" fill="rgba(0,0,0,0.35)"/>`);
                     }
-                    // Emit the % label once, after the bar's final week cell (a
-                    // per-week label would stack duplicates on multi-week bars).
-                    if (w === (row.endWeek ?? row.startWeek)) {
-                        parts.push(`<text x="${bx + bw + 3}" y="${y + 16}" font-size="8" font-weight="600" fill="#2b7de9">${row.progress}%</text>`);
-                    }
                 }
             }
+        }
+        // Emit one progress label per task, after all of its week cells, so a
+        // multi-week bar cannot produce duplicated/overlapping percentage text.
+        if (opts.progress && row.startWeek !== null) {
+            const lastWeek = Math.min(weeks - 1, row.endWeek ?? row.startWeek);
+            const px = chartX + (lastWeek + 1) * colW - 3;
+            parts.push(`<text x="${px}" y="${y + 16}" font-size="8" font-weight="600" fill="#2b7de9" text-anchor="end">${row.progress}%</text>`);
         }
         // Overdue marker after the chart area.
         if (row.overdue) {
             parts.push(`<text x="${W - PAD - 2}" y="${y + 16}" font-size="8" font-weight="700" fill="#c23b3b" text-anchor="end">\u203c overdue</text>`);
         }
     }
-    // TODAY vertical rule across the chart area. Drawn after the body rows so
-    // the alternating row-background rects cannot paint over it.
+    // Draw TODAY after row backgrounds and bars so the rule remains visible
+    // across every row rather than being painted over by later SVG elements.
     if (todayWeek >= 0) {
         const tx = chartX + todayWeek * colW + colW / 2;
         parts.push(`<line x1="${tx}" y1="${chartY - 6}" x2="${tx}" y2="${chartY + rows.length * rowH}" stroke="#d33" stroke-width="1" stroke-dasharray="3 3"/>`);
@@ -1851,7 +1849,7 @@ export default defineExtension({
                 {
                     long: "--width",
                     value_name: "px",
-                    description: "Render width in pixels for vector/graphical formats (SVG export, HTML chart). Default: 1000; clamped to 320..8192 (the SVG canvas is raised to its minimum content width when needed)",
+                    description: "Render width in pixels for vector/graphical formats (SVG export, HTML chart). Default: 1000; clamped to 320..8192",
                 },
                 {
                     long: "--milestones",

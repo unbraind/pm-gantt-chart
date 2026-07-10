@@ -91,8 +91,7 @@ pm gantt export --format mermaid --output roadmap.mmd
 pm gantt export --format html --output roadmap.html
 
 # Scalable Vector Graphic (SVG) — a self-contained vector render of the chart.
-# Use --width to control the canvas width in pixels (default 1000, clamped 320..8192;
-# the SVG canvas is additionally raised to its minimum content width when needed).
+# Use --width to request the canvas width in pixels (default 1000, clamped 320..8192).
 pm gantt export --format svg --width 1600 --output roadmap.svg
 
 # Plain ASCII (the same chart `pm gantt` prints)
@@ -128,7 +127,7 @@ Both `pm gantt` and `pm gantt export` accept the shaping flags:
 | `--critical-only` | flag | off | Show only items on the critical path (implies critical-path computation) |
 | `--progress` | flag | off | Show each item's **% complete** on its bar |
 | `--show-progress` | flag | off | Alias for `--progress` — show each item's % complete on its bar |
-| `--width <px>` | integer ≥ 1 | `1000` | Render width in pixels for the **SVG** and **HTML** exports (clamped 320..8192; the SVG canvas is raised to its minimum content width — gutter + 24px per week — when the requested width cannot fit the chart; ignored by ASCII/Mermaid/CSV/JSON) |
+| `--width <px>` | integer ≥ 1 | `1000` | Requested render width in pixels for **SVG** and **HTML** (clamped 320..8192; SVG expands when needed to preserve readable week columns; ignored by ASCII/Mermaid/CSV/JSON) |
 | `--milestones <list>` | `name=YYYY-MM-DD,…` | — | Draw fixed release/deadline dates as labeled vertical markers on the timeline |
 
 `pm gantt export` adds:
@@ -142,7 +141,7 @@ Both `pm gantt` and `pm gantt export` accept the shaping flags:
 
 `csv` emits a schedule table: `id,title,start,end,duration_days,slack_days,deps,status,critical,progress_percent,overdue,off_window` (deps = space-separated blocking ids). Pair it with `--schedule` for dependency-derived dates and slack. `slack_days` is the total float in days (only populated under `--schedule`; blank otherwise): `0` marks a critical-path item, a positive value is how many days the task can slip without delaying the project, and a **negative** value means the plan is already late for a downstream deadline. The trailing risk columns make the CSV useful directly in spreadsheets and portfolio reports: `critical`/`overdue` are `yes`/`no`, `progress_percent` is `0..100`, and `off_window` distinguishes `before`, `after`, and `undated` rows.
 
-`svg` emits a self-contained, scalable vector graphic of the chart — the same grouped rows, week columns, status-colored bars, critical-path highlighting, overdue markers, off-window hints, today rule, milestone diamonds, and `--progress` fill as the HTML render, but as resolution-independent SVG primitives. Use `--width` to control the canvas width in pixels (default 1000, clamped to 320..8192, and raised to the minimum content width — gutter + 24px per week — when the requested width cannot fit the chart); the per-week column width and total height are derived from it. The output is a single `<svg>` document (with an `<?xml?>` prologue) suitable for embedding in docs, slides, or websites, or for rendering at any zoom level without pixelation.
+`svg` emits a self-contained, scalable vector graphic of the chart — the same grouped rows, week columns, status-colored bars, critical-path highlighting, overdue markers, off-window hints, today rule, milestone diamonds, and `--progress` fill as the HTML render, but as resolution-independent SVG primitives. Use `--width` to request the canvas width in pixels (default 1000, clamped to 320..8192). For long timelines the SVG expands beyond that request rather than clipping the chart, preserving a readable 24px minimum per week. The output is a single `<svg>` document (with an `<?xml?>` prologue) suitable for embedding in docs, slides, or websites, or for rendering at any zoom level without pixelation.
 
 ### Slack / float, critical path & infeasible deadlines
 

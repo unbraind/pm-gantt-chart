@@ -1,0 +1,14 @@
+id: pm-gantt-chart-nqio
+title: Adversarial review pass 2026-07-10
+description: "Adversarial diff review of pm-gantt-chart. Findings: (1) BLOCKER FIXED: release.yml paths array included dist which exits 1 under set -euo pipefail when dist is gitignored — removed dist from paths. (2) INFO: SVG width expansion for long timelines, TODAY marker z-order fix, progress label dedup, EXPORT_FORMATS exported. (3) LOW: manifest uses pm.compatibility v2 schema without version-specific compatibility.pm field (pre-existing, not introduced by diff). All checks pass: typecheck, build, 77 tests, audit 0 vulns, pack:dry-run, changelog:check."
+type: Chore
+status: closed
+priority: 2
+tags[4]: adversarial,audit,dist-removal-fix,review
+created_at: "2026-07-10T19:21:20.275Z"
+updated_at: "2026-07-10T19:21:20.275Z"
+closed_at: "2026-07-10T19:21:20.275Z"
+author: pi-adversarial-review
+acceptance_criteria: "All diffs reviewed; release workflow dist reference fixed; release:check suite passes."
+close_reason: "BLOCKER fixed: removed dist from release.yml paths array. All checks green."
+body: ""
