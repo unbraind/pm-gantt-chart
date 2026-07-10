@@ -1,0 +1,15 @@
+id: pm-gantt-chart-f8vx
+title: Ecosystem release readiness pass 2026-07-06
+description: "July 6, 2026 fleet readiness pass for the pm package ecosystem."
+type: Task
+status: in_progress
+priority: 1
+tags[4]: agent-audit,context-management,ecosystem,release-readiness
+created_at: "2026-07-06T15:33:32.722Z"
+updated_at: "2026-07-10T11:04:44.841Z"
+assignee: codex
+author: codex
+acceptance_criteria: Package uses current pm CLI/SDK and pm-changelog; release/check scripts pass; pm items capture decisions; no tracked secrets/private data are introduced; GitHub PR/release state is reviewed.
+comments[1]{created_at,author,text}:
+  "2026-07-10T11:04:44.841Z",codex,"PR #20 clean verification (2026-07-10): npm ci + build passed; test suite passed 80/80 at PR head. Functional throwaway install passed: pm --help returned within timeout; --format svg emitted a self-contained 1600px SVG; --width applied to SVG/HTML and clamped safely; --show-progress matched --progress byte-for-byte; malformed width/format/milestone inputs exited 2 with clean errors/no stack traces; default no-new-flags output matched origin/main byte-for-byte (4,147 bytes). Bot audit found two unreplied valid Gemini comments: historical canvas growth concern was already fixed in 0e4bce1; final-week progress labels could clip. Fixed the latter in 26bdeb4 by reserving right padding and adding regression coverage; rebuilt suite passes 81/81. Reacted +1 and replied to both threads; posted one combined bot re-review request. PR is merge-ready pending refreshed checks/reviews."
+body: "Track the July 6, 2026 fleet pass: align package metadata with latest pm CLI/SDK and pm-changelog, verify daily release automation, run build/test/audit/package checks with real workspace data where practical, inspect GitHub state, and record privacy/history findings without changing pm-cli itself."

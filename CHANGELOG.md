@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Add SVG export, chart width control, and progress alias to gantt ([pm-gantt-chart-3dnj](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-3dnj.toon))
+
 ## 2026.7.6 - 2026-07-06
 
 ### Fixed
