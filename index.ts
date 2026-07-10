@@ -2130,7 +2130,7 @@ function defaultExtension(format: ExportFormat): string {
 
 export default defineExtension({
   name: "pm-gantt-chart",
-  version: "2026.7.6-1",
+  version: "2026.7.7",
 
   activate(api: ExtensionApi) {
     api.registerCommand({
