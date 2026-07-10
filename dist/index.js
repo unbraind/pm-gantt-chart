@@ -1461,9 +1461,12 @@ function renderSvg(rows, opts, windowStart) {
     const ITEM_W = 190;
     const STATUS_W = 56;
     const GUTTER = GROUP_W + ITEM_W + STATUS_W;
-    const minContentW = PAD + GUTTER + weeks * 24 + PAD;
+    // Progress labels are drawn just after the final bar cell. Reserve enough
+    // right-side space to keep a last-week label inside the SVG viewBox.
+    const rightPad = opts.progress ? PAD + 24 : PAD;
+    const minContentW = PAD + GUTTER + weeks * 24 + rightPad;
     const W = Math.max(minContentW, Math.round(opts.width || 1000));
-    const chartW = W - PAD - GUTTER - PAD;
+    const chartW = W - PAD - GUTTER - rightPad;
     const colW = chartW / weeks;
     const rowH = 26;
     const headerH = 86; // title + week labels + today/milestone marker rows

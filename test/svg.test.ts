@@ -242,3 +242,29 @@ test("renderSvg emits the progress % label once per bar, not once per week", () 
   const openRows = rows.filter((r: any) => r.item.status === "open" && r.startWeek !== null).length;
   assert.equal(zeroLabels, openRows, "one 0% label per open bar regardless of bar length");
 });
+
+test("renderSvg keeps a final-week progress label inside the viewBox", () => {
+  const opts = resolveGanttOptions({
+    "show-progress": true,
+    from: FROM,
+    weeks: "6",
+    width: "320",
+  });
+  const items: any[] = [{
+    id: "LAST",
+    title: "Last week",
+    status: "closed",
+    created_at: "2026-07-06",
+    deadline: "2026-07-12",
+    dependencies: [],
+  }];
+  const rows = buildRows(items, opts, opts.windowStart);
+  assert.equal(rows[0]?.startWeek, 5);
+  const svg = renderSvg(rows, opts, opts.windowStart);
+  const canvasWidth = Number(svg.match(/viewBox="0 0 (\d+) \d+"/)?.[1]);
+  const labelX = Number(svg.match(/<text x="([\d.]+)"[^>]*>100%<\/text>/)?.[1]);
+
+  assert.ok(Number.isFinite(canvasWidth));
+  assert.ok(Number.isFinite(labelX));
+  assert.ok(labelX + 21 <= canvasWidth, "100% label has room inside the canvas");
+});
