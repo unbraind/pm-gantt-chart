@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Other
+
+- Adopt pm field-aware merge driver for multi-agent branch-merge safety ([pm-gantt-chart-xcqd](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-xcqd.toon))
+
 ## 2026.7.10-1 - 2026-07-10
 
 ### Added
