@@ -2058,21 +2058,21 @@ function resolveGanttOptions(options: Record<string, unknown>): ResolvedOptions 
 // status null and EMPTY stderr, so the failure surfaces with nothing to diagnose
 // (and at larger sizes stdout is genuinely truncated mid-document).
 // 64 MiB matches the cap the sibling pm packages settled on.
-const PM_JSON_MAX_BUFFER = resolvePmJsonMaxBuffer();
-
-/** 64 MiB by default; override with the `PM_JSON_MAX_BUFFER` env var (bytes) for
- * workspaces larger than that. Invalid or non-positive values fall back to the
- * default rather than silently disabling the guard. */
-function resolvePmJsonMaxBuffer(): number {
+/** Read-buffer cap for `pm` output, in bytes. 64 MiB by default; override with the
+ * `PM_JSON_MAX_BUFFER` env var. Resolved per call so the override takes effect
+ * without an import-order dependency. Invalid or non-positive values fall back to
+ * the default rather than silently disabling the guard. */
+function pmJsonMaxBuffer(): number {
   const raw = Number.parseInt(process.env.PM_JSON_MAX_BUFFER ?? "", 10);
   return Number.isFinite(raw) && raw > 0 ? raw : 64 * 1024 * 1024;
 }
 
 function fetchItems(pmRoot: string): PmItem[] {
+  const maxBuffer = pmJsonMaxBuffer();
   const result = spawnSync(
     "pm",
     ["--path", pmRoot, "list-all", "--json", "--include-body"],
-    { encoding: "utf-8", maxBuffer: PM_JSON_MAX_BUFFER },
+    { encoding: "utf-8", maxBuffer },
   );
   if (result.error || result.status !== 0) {
     throw new CommandError(
