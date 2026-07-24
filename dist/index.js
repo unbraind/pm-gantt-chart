@@ -1707,8 +1707,14 @@ function resolveGanttOptions(options) {
         windowStart,
     };
 }
+// Node's spawnSync defaults to a 1 MiB stdout cap, which a mature tracker's JSON
+// dump passes at a few hundred items. Past that the child is killed with ENOBUFS,
+// status null and EMPTY stderr, so the failure surfaces with nothing to diagnose
+// (and at larger sizes stdout is genuinely truncated mid-document).
+// 64 MiB matches the cap the sibling pm packages settled on.
+const PM_JSON_MAX_BUFFER = 64 * 1024 * 1024;
 function fetchItems(pmRoot) {
-    const result = spawnSync("pm", ["--path", pmRoot, "list-all", "--json", "--include-body"], { encoding: "utf-8" });
+    const result = spawnSync("pm", ["--path", pmRoot, "list-all", "--json", "--include-body"], { encoding: "utf-8", maxBuffer: PM_JSON_MAX_BUFFER });
     if (result.error || result.status !== 0) {
         throw new CommandError(`Failed to fetch pm items (exit ${result.status ?? "unknown"}): ${result.stderr?.trim() || result.error?.message || "no output"}`);
     }
@@ -1773,7 +1779,7 @@ function defaultExtension(format) {
 // ---------------------------------------------------------------------------
 export default defineExtension({
     name: "pm-gantt-chart",
-    version: "2026.7.10",
+    version: "2026.7.23",
     activate(api) {
         api.registerCommand({
             name: "gantt",

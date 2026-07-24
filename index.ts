@@ -2053,11 +2053,18 @@ function resolveGanttOptions(options: Record<string, unknown>): ResolvedOptions 
   };
 }
 
+// Node's spawnSync defaults to a 1 MiB stdout cap, which a mature tracker's JSON
+// dump passes at a few hundred items. Past that the child is killed with ENOBUFS,
+// status null and EMPTY stderr, so the failure surfaces with nothing to diagnose
+// (and at larger sizes stdout is genuinely truncated mid-document).
+// 64 MiB matches the cap the sibling pm packages settled on.
+const PM_JSON_MAX_BUFFER = 64 * 1024 * 1024;
+
 function fetchItems(pmRoot: string): PmItem[] {
   const result = spawnSync(
     "pm",
     ["--path", pmRoot, "list-all", "--json", "--include-body"],
-    { encoding: "utf-8" },
+    { encoding: "utf-8", maxBuffer: PM_JSON_MAX_BUFFER },
   );
   if (result.error || result.status !== 0) {
     throw new CommandError(
