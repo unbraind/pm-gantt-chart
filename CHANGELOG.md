@@ -2,6 +2,12 @@
 
 ## 2026.7.26 - 2026-07-26
 
+### Removed
+
+- Adopt pm-cli 2026.7.26 typed authoring contracts and remove the any-cast defineExtension shim ([pm-gantt-chart-cg0u](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-cg0u.toon))
+
+## 2026.7.26 - 2026-07-26
+
 ### Other
 
 - Enable governance duplicate-detection advisory mode and adopt pm-cli 2026.7.25 ([pm-gantt-chart-0m58](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-0m58.toon))
