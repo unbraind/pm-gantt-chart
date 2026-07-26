@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+
+- Adopt pm-cli 2026.7.26 typed authoring contracts and remove the any-cast defineExtension shim ([pm-gantt-chart-cg0u](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-cg0u.toon))
+
 ## 2026.7.26 - 2026-07-26
 
 ### Other

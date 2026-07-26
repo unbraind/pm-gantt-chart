@@ -1,7 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-const defineExtension = ((extension) => extension);
 // ---------------------------------------------------------------------------
 // Error contract
 // ---------------------------------------------------------------------------
@@ -1788,6 +1787,15 @@ function defaultExtension(format) {
 // ---------------------------------------------------------------------------
 // Extension entry point
 // ---------------------------------------------------------------------------
+/**
+ * Local stand-in for the SDK's `defineExtension` identity helper.
+ *
+ * Declared here rather than imported so this package keeps a type-only
+ * dependency on `@unbrained/pm-cli` and adds no runtime module edge. The
+ * generic constraint is the SDK's own, so the extension object is contract-
+ * checked against {@link ExtensionModule} exactly as the imported helper would.
+ */
+const defineExtension = (module) => module;
 export default defineExtension({
     name: "pm-gantt-chart",
     version: "2026.7.25",
