@@ -1,0 +1,23 @@
+id: pm-gantt-chart-gwbg
+title: Adopt pm-cli 2026.7.27 dependency ranges
+description: Bump @unbrained/pm-cli peer and dev dependency ranges from 2026.7.26 to 2026.7.27
+type: Chore
+status: closed
+priority: 2
+tags[3]: 2026.7.27,bump,pm-cli
+created_at: "2026-07-27T13:45:26.272Z"
+updated_at: "2026-07-27T13:45:59.588Z"
+closed_at: "2026-07-27T13:45:59.587Z"
+claim_principal: pi-agent
+author: pi-agent
+estimated_minutes: 30
+acceptance_criteria: All gates pass; activation proof on 2026.7.27 CLI shows extension active; no host-owned flag collisions
+resolution: Bumped @unbrained/pm-cli peer and dev ranges to 2026.7.27. All gates pass. Activation proof confirms extension active on 2026.7.27 CLI with no host-owned flag collisions.
+expected_result: All gates pass; extension activates on 2026.7.27 CLI; no host-owned flag collisions.
+actual_result: "All gates pass: build, typecheck, check, 78 tests, changelog:full, changelog:check. Activation proof: pm gantt --help exit 0, extension active, pm gantt and pm gantt --weeks 2 --group-by type both exit 0. Flag audit clean."
+notes[3]{created_at,author,text}:
+  "2026-07-27T13:45:53.751Z",pi-agent,Bumped peerDependencies @unbrained/pm-cli from >=2026.7.26 to >=2026.7.27 and devDependencies from ^2026.7.26 to ^2026.7.27. Package version was already 2026.7.27 from the release bot commit. Ran npm install; confirmed installed CLI version is 2026.7.27.
+  "2026-07-27T13:45:54.100Z",pi-agent,"Flag-collision grep: grep -nE on index.ts src/*.ts found 3 hits (index.ts:1423 comment, index.ts:2077 programmatic pm invocation passing --json to pm list-all, index.ts:2296 comment). No host-owned global flags declared in the single flags: array. Extension flags are --weeks, --group-by, --status, --from, --to, --schedule, --default-duration, --critical-path, --critical-only, --progress, --show-progress, --width, --milestones. Audit clean."
+  "2026-07-27T13:45:54.545Z",pi-agent,"Gates: build OK, typecheck OK, check OK, 78/78 tests pass. changelog:full OK, changelog:check OK. Activation proof: pm gantt --help exit 0, extension active. Exercised pm gantt (exit 0) and pm gantt --weeks 2 --group-by type (exit 0). Also rebuilt dist/ to 2026.7.27 (release bot had not rebuilt it)."
+close_reason: Adoption verified and complete
+body: ""
