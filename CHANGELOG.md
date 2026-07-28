@@ -4,6 +4,7 @@
 
 ### Other
 
+- Adopt pm-cli 2026.7.28 and migrate activation tests to the real SDK harness ([pm-gantt-chart-y6ad](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-y6ad.toon))
 - Adopt pm-cli 2026.7.27 dependency ranges ([pm-gantt-chart-gwbg](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-gwbg.toon))
 
 ## 2026.7.27 - 2026-07-27
