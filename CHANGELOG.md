@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Other
+
+- Ecosystem release readiness pass 2026-07-06 ([pm-gantt-chart-f8vx](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-f8vx.toon))
+- Adopt --respect-item-release in changelog scripts and bump pm-changelog to 2026.7.24 ([pm-gantt-chart-596n](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-596n.toon))
+
 ## 2026.7.28 - 2026-07-28
 
 ### Other
