@@ -1,0 +1,13 @@
+id: pm-gantt-chart-y6ad
+title: Adopt pm-cli 2026.7.28 and migrate activation tests to the real SDK harness
+description: ""
+type: Chore
+status: closed
+priority: 2
+tags: []
+created_at: "2026-07-28T03:34:58.259Z"
+updated_at: "2026-07-28T03:35:03.405Z"
+closed_at: "2026-07-28T03:35:03.401Z"
+author: pi-agent
+close_reason: "Bumped pm-cli to 2026.7.28 and replaced the hand-rolled api double in test/smoke.test.ts with createExtensionTestHarness so the real activation engine validates command, exporter, and preflight registration. Release check passes."
+body: ""
