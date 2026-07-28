@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { createExtensionTestHarness, type ExtensionTestHarness } from "@unbrained/pm-cli/sdk/testing";
+
 import extension from "../dist/index.js";
 
 test("extension has required shape", () => {
@@ -11,26 +13,22 @@ test("extension has required shape", () => {
   assert.strictEqual(typeof extension.activate, "function", "activate should be a function");
 });
 
-test("extension registers the gantt command and exporter", () => {
-  const registered: string[] = [];
-  const noop = () => {};
-  // Mirror the full ExtensionApi surface so activate() can register every
-  // capability the extension uses (command + exporter). A partial mock would
-  // throw a TypeError the moment activate() touched an absent method.
-  const api = {
-    registerCommand: () => { registered.push("command"); },
-    registerParser: noop,
-    registerPreflight: () => { registered.push("preflight"); },
-    registerService: noop,
-    registerFlags: noop, registerItemFields: noop, registerItemTypes: noop,
-    registerMigration: noop, registerRenderer: noop,
-    registerImporter: () => { registered.push("importer"); },
-    registerExporter: () => { registered.push("exporter"); },
-    registerSearchProvider: noop, registerVectorStoreAdapter: noop,
-    hooks: { beforeCommand: noop, afterCommand: noop, onWrite: noop, onRead: noop, onIndex: noop },
-  };
-  extension.activate(api as any);
-  assert.ok(registered.includes("command"), "should register the gantt command");
-  assert.ok(registered.includes("exporter"), "should register the gantt exporter");
-  assert.ok(registered.includes("preflight"), "should register the preflight gate");
+// ---------------------------------------------------------------------------
+// Activation proof: drive the extension through pm's REAL registration
+// validation and activation engine via createExtensionTestHarness, so a host
+// rejection (e.g. a host-owned flag collision that aborts command registration)
+// fails this suite instead of staying green against a hand-rolled api double.
+// ---------------------------------------------------------------------------
+
+let harness: ExtensionTestHarness;
+
+test("extension activates cleanly and registers the gantt command, exporter, and preflight gate", async () => {
+  harness = await createExtensionTestHarness(extension, {
+    name: "pm-gantt-chart",
+    capabilities: ["commands", "schema", "importers", "preflight"],
+  });
+  assert.deepEqual(harness.activation.failed, [], "activation must not fail");
+  harness.assertCommandContract({ command: "gantt" });
+  harness.assertExporter({ exporter: "gantt" });
+  harness.assertPreflightOverride();
 });
