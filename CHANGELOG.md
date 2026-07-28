@@ -25,6 +25,10 @@
 
 - pm item reads are capped at Node's 1 MiB spawnSync default, so a mature tracker fails with no diagnosis ([pm-gantt-chart-b0hm](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-b0hm.toon))
 
+### Other
+
+- Adopt --respect-item-release in changelog scripts and bump pm-changelog to 2026.7.24 ([pm-gantt-chart-596n](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-596n.toon))
+
 ## 2026.7.23 - 2026-07-23
 
 ### Fixed
@@ -60,6 +64,10 @@
 ### Added
 
 - Add SVG export, chart width control, and progress alias to gantt ([pm-gantt-chart-3dnj](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-3dnj.toon))
+
+### Other
+
+- Ecosystem release readiness pass 2026-07-06 ([pm-gantt-chart-f8vx](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-f8vx.toon))
 
 ## 2026.7.6 - 2026-07-06
 
