@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Enforce a real coverage gate by running tests against TypeScript sources ([pm-gantt-chart-jen6](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-jen6.toon))
+
 ## 2026.7.28 - 2026-07-28
 
 ### Other

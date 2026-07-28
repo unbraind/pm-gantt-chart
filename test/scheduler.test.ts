@@ -18,7 +18,7 @@ import {
   itemProgress,
   isOverdue,
   classifyOffWindow,
-} from "../dist/index.js";
+} from "../index.ts";
 
 // A small, deterministic project: A -> B -> C chain plus an isolated item.
 //   A (Design)      estimate 480m  = 1 working day
