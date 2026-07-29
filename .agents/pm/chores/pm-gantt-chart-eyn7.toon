@@ -1,0 +1,18 @@
+id: pm-gantt-chart-eyn7
+title: Adopt pm-cli 2026.7.29
+description: "Bump @unbrained/pm-cli devDependency to 2026.7.29 and peerDependency to >=2026.7.29. Audit for removed --all flag usage, audit for newly-fixed upstream workarounds (GH-651/672/676/785/792/794), run all quality gates, regenerate changelog."
+type: Chore
+status: closed
+priority: 2
+tags: []
+created_at: "2026-07-29T04:40:15.835Z"
+updated_at: "2026-07-29T05:02:40.301Z"
+closed_at: "2026-07-29T04:41:09.424Z"
+completed_at: "2026-07-29T04:41:09.424Z"
+author: pi-agent
+comments[1]{created_at,author,text}:
+  "2026-07-29T04:40:48.029Z",pi-agent,"Audit results: --all flag: no hits. GH-651 (signed window): no hits, not applicable. GH-672 (context low_level): no hits, not applicable. GH-676 (list --tag CSV): no hits, not applicable. GH-785/792 (health runtime/extension dirs): no hits, not applicable. GH-794 (output_format override): no hits - the output format reference at index.ts:2380 is about registerRenderer supporting toon|json, not the identity output_format service override. No workarounds removed."
+notes[1]{created_at,author,text}:
+  "2026-07-29T05:02:40.300Z",claude-orchestrator,"Orchestrator follow-up from Greptile review on pm-jira#48, applied fleet-wide after checking all 18 READMEs. The Requirements section still advertised a pm-cli floor of 2026.7.5 while peerDependencies now demands >=2026.7.29, which misleads installers and invites strict-peer install failures for versions the docs present as supported. Updated the floor to >=2026.7.29. Only three packages carried a stale requirement floor (pm-gantt-chart, pm-jira, pm-linear); the other pm-cli version references across the fleet are feature-availability notes such as the 2026.7.19 atomic-import and 2026.7.22 merge-reconcile lines, which remain historically accurate and were deliberately left alone."
+close_reason: "Bumped @unbrained/pm-cli devDependency to ^2026.7.29 and peerDependency to >=2026.7.29. Audited for removed --all flag: no hits. Audited for GH-651/672/676/785/792/794 workarounds: none applicable, none removed. All quality gates green: 78 tests pass, coverage lines 88.92%, branches 87.68%, functions 90.43% (thresholds met). Changelog check and audit:prod clean."
+body: ""

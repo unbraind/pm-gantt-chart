@@ -270,7 +270,7 @@ pm install .     # load the built extension locally
 
 ## Requirements
 
-- pm-cli `>=2026.7.5`
+- pm-cli `>=2026.7.29`
 - Node.js `>=22.18.0`
 
 ## License
