@@ -6,6 +6,10 @@
 
 - Enforce a real coverage gate by running tests against TypeScript sources ([pm-gantt-chart-jen6](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-jen6.toon))
 
+### Other
+
+- Adopt pm-cli 2026.7.29 ([pm-gantt-chart-eyn7](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-eyn7.toon))
+
 ## 2026.7.28 - 2026-07-28
 
 ### Other
