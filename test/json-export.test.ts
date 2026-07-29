@@ -5,7 +5,7 @@ import {
   buildRows,
   resolveGanttOptions,
   renderJson,
-} from "../dist/index.js";
+} from "../index.ts";
 
 // Same deterministic A -> B -> C chain (+ isolated D) used by scheduler.test.ts.
 function chainItems(): any[] {

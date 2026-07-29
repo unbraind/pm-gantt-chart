@@ -8,7 +8,7 @@ import {
   resolveGanttOptions,
   getGroupKey,
   EXPORT_FORMATS,
-} from "../dist/index.js";
+} from "../index.ts";
 
 // Deterministic chain + isolated item, anchored on a Monday.
 function chainItems(): any[] {

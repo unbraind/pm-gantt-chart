@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { createExtensionTestHarness, type ExtensionTestHarness } from "@unbrained/pm-cli/sdk/testing";
 
-import extension from "../dist/index.js";
+import extension from "../index.ts";
 
 test("extension has required shape", () => {
   assert.ok(extension, "module should export a default value");

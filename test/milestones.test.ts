@@ -10,7 +10,7 @@ import {
   renderCsv,
   buildRows,
   resolveGanttOptions,
-} from "../dist/index.js";
+} from "../index.ts";
 
 // A Monday anchor so the window starts cleanly on a week boundary.
 const FROM = "2026-06-01"; // Monday

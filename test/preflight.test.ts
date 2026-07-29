@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { detectCycles, dataSanityReport } from "../dist/index.js";
+import { detectCycles, dataSanityReport } from "../index.ts";
 
 // Minimal item shape for the data-sanity helpers.
 function item(id: string, opts: Partial<any> = {}): any {
