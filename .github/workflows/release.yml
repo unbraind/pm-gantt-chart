@@ -127,6 +127,11 @@ jobs:
           paths=(package.json package-lock.json manifest.json CHANGELOG.md)
           [[ -f index.ts ]] && paths+=(index.ts)
           [[ -d src ]] && paths+=(src)
+          # dist/ is tracked here because this package is installed by copying the
+          # repository, which never runs a build — so the release commit has to
+          # carry the rebuilt output or the committed copy stays at the previous
+          # version forever.
+          git ls-files --error-unmatch 'dist/' > /dev/null 2>&1 && paths+=('dist/')
           git add "${paths[@]}"
           if git diff --cached --quiet; then
             echo "Release files are already current; tagging existing commit."
