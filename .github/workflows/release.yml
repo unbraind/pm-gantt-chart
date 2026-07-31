@@ -131,7 +131,18 @@ jobs:
           # repository, which never runs a build — so the release commit has to
           # carry the rebuilt output or the committed copy stays at the previous
           # version forever.
-          git ls-files --error-unmatch 'dist/' > /dev/null 2>&1 && paths+=('dist/')
+          #
+          # Untracked dist/ is a hard failure, exactly as it is in CI. Skipping it
+          # silently would let a release rebuild the output, publish it to npm, and
+          # commit a release without it — after which CI's clean-rebuild comparison
+          # fails on main, on a commit that looks unrelated to the cause. That is the
+          # same release-versus-CI asymmetry this gate exists to remove, so the two
+          # jobs have to agree about it. Caught in review on pm-gantt-chart#45.
+          if ! git ls-files --error-unmatch 'dist/' > /dev/null 2>&1; then
+            echo "::error::dist/ is not tracked, but this release job stages it. Either commit the build output or remove the dist gate from CI so the two agree."
+            exit 1
+          fi
+          paths+=('dist/')
           git add "${paths[@]}"
           if git diff --cached --quiet; then
             echo "Release files are already current; tagging existing commit."
