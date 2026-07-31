@@ -95,6 +95,13 @@ jobs:
           set -euo pipefail
           npm version "${{ steps.decide.outputs.npm_version }}" --no-git-tag-version --allow-same-version
           node -e "const fs=require('node:fs');const version=JSON.parse(fs.readFileSync('package.json','utf8')).version;for(const file of ['manifest.json']){if(!fs.existsSync(file))continue;const json=JSON.parse(fs.readFileSync(file,'utf8'));json.version=version;fs.writeFileSync(file,JSON.stringify(json,null,2)+'\n');}if(fs.existsSync('index.ts')){const source=fs.readFileSync('index.ts','utf8');const next=source.replace(/version:\s*[\"'][^\"']+[\"']/,'version: \"'+version+'\"');if(next!==source)fs.writeFileSync('index.ts',next);}"
+          # Clean before building, for the same reason CI does: tsc never removes
+          # output for a source that was deleted or renamed, so an orphaned artifact
+          # survives a plain rebuild. Without this the release stages the orphan,
+          # publishes it, and commits it to main - where CI's clean-rebuild
+          # comparison then fails, so a release would break the branch it just
+          # landed on. Caught in review on pm-graph#48.
+          rm -rf dist
           npm run build
 
       - name: Generate changelog and release notes
@@ -120,6 +127,11 @@ jobs:
           paths=(package.json package-lock.json manifest.json CHANGELOG.md)
           [[ -f index.ts ]] && paths+=(index.ts)
           [[ -d src ]] && paths+=(src)
+          # dist/ is tracked here because this package is installed by copying the
+          # repository, which never runs a build — so the release commit has to
+          # carry the rebuilt output or the committed copy stays at the previous
+          # version forever.
+          git ls-files --error-unmatch 'dist/' > /dev/null 2>&1 && paths+=('dist/')
           git add "${paths[@]}"
           if git diff --cached --quiet; then
             echo "Release files are already current; tagging existing commit."
