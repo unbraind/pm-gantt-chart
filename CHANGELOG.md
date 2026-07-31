@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Release commits discard the rebuilt dist, so the git-install path serves the previous version ([pm-gantt-chart-2vy7](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-2vy7.toon))
+
 ## 2026.7.29 - 2026-07-29
 
 ### Added
