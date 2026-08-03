@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Other
+
+- Resolve pm-changelog to the release that derives release dates in UTC ([pm-gantt-chart-lfn2](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-lfn2.toon))
+
 ## 2026.8.1 - 2026-08-01
 
 ### Fixed
