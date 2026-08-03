@@ -2167,7 +2167,7 @@ const defineExtension = <TModule extends ExtensionModule>(module: TModule): TMod
 
 export default defineExtension({
   name: "pm-gantt-chart",
-  version: "2026.8.1",
+  version: "2026.8.3",
 
   activate(api: ExtensionApi) {
     api.registerCommand({
