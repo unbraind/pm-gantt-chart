@@ -4,7 +4,7 @@
 
 ### Other
 
-- Gate CI on pm health so a silently discarded peer edit cannot merge ([pm-gantt-chart-th16](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-th16.toon))
+- Gate CI on pm health for tracker integrity (does not cover discarded peer edits, see pm-cli 922) ([pm-gantt-chart-th16](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-th16.toon))
 
 ## 2026.8.4 - 2026-08-04
 
