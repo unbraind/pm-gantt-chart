@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Other
+
+- Gate CI on strict tracked pm project health ([pm-gantt-chart-th16](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-th16.toon))
+
 ## 2026.8.4 - 2026-08-04
 
 ### Other
