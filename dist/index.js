@@ -1093,7 +1093,10 @@ function mermaidSafe(s) {
  *
  * Mermaid has no per-task status field, so `done,`/`active,`/`crit,` are its
  * closest native signals: closed becomes `done`, in-progress becomes `active`,
- * and canceled becomes `crit` (visually struck). Open/draft carry no tag. Each
+ * and canceled becomes `crit` — Mermaid's critical-task style, which renders
+ * the bar in its emphasis color rather than striking it through, and is
+ * borrowed here only because it is the most visually distinct tag available.
+ * Open/draft carry no tag. Each
  * result is a trailing `, ` so it composes directly with the critical/overdue
  * tag assembled in {@link renderMermaid}.
  *
