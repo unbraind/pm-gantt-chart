@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- The mandatory docstring gate could skip its own scan and still exit zero ([pm-gantt-chart-canw](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-canw.toon))
+
+### Other
+
+- Adopt the canonical pm-ops docstring gate ([pm-gantt-chart-d628](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-d628.toon))
+
 ## 2026.8.7 - 2026-08-07
 
 ### Other

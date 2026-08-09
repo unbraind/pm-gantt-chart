@@ -146,7 +146,19 @@ interface GanttRow {
 // Date helpers
 // ---------------------------------------------------------------------------
 
-/** Returns the Monday of the week containing `d`. */
+/**
+ * Return the local-midnight {@link Date} of the Monday that opens the week
+ * containing `d`.
+ *
+ * Node's `getDay()` counts Sunday as `0`, so a naive "subtract one day" would
+ * push a Sunday into the following week; the `day === 0 ? -6 : 1 - day` shift
+ * folds Sunday back as the last day of its week so the result always lands on a
+ * Monday. The returned date is a fresh object set to local midnight — the input
+ * is not mutated — which keeps the week-column math stable for the whole chart.
+ *
+ * @param d - Any date within the target week.
+ * @returns A new Monday-at-midnight date for that week.
+ */
 function weekStart(d: Date): Date {
   const day = d.getDay(); // 0=Sun … 6=Sat
   const diff = day === 0 ? -6 : 1 - day; // shift to Monday
@@ -412,6 +424,20 @@ export function isOverdue(item: PmItem, today: Date): boolean {
 // Grouping
 // ---------------------------------------------------------------------------
 
+/**
+ * Select the row-group key for `item` under the chosen {@link GroupBy} field.
+ *
+ * A missing value collapses to a parenthesized placeholder (`(no milestone)`,
+ * `(unassigned)`, …) rather than an empty string, so unattributed items gather
+ * into one named fallback bucket instead of scattering as blank-headed rows.
+ * The `tag` field keys on only the first tag, since a Gantt group needs a single
+ * column. `status` is the one field that is always present, so it has no
+ * fallback.
+ *
+ * @param item - The pm item to classify.
+ * @param groupBy - The grouping dimension selected via `--group-by`.
+ * @returns The group label this item belongs under.
+ */
 function getGroupKey(item: PmItem, groupBy: GroupBy): string {
   switch (groupBy) {
     case "milestone":
@@ -454,6 +480,20 @@ function computeCriticalPath(items: PmItem[]): Set<string> {
   const memo = new Map<string, { len: number; path: string[] }>();
   const visiting = new Set<string>();
 
+  /**
+   * Memoized longest dependency chain that *ends* at `id`, following each
+   * item's `dependencies` edges backward to its prerequisites.
+   *
+   * Returns both the chain length and the ordered id path so the caller can
+   * reconstruct the critical sequence. A node already on the recursion stack
+   * contributes a zero-length result, which is the cycle guard: it keeps a
+   * dependency loop from inflating the depth or recursing forever. Results are
+   * cached in `memo` so each node is expanded once across the whole graph.
+   *
+   * @param id - The item id to measure the longest ending chain for.
+   * @returns The deepest chain ending at `id` (length 1, just itself, when it
+   *   has no present prerequisites).
+   */
   function longest(id: string): { len: number; path: string[] } {
     const cached = memo.get(id);
     if (cached) return cached;
@@ -517,6 +557,15 @@ function computeCriticalPath(items: PmItem[]): Set<string> {
  * certainly a data-entry error (e.g. minutes typed where hours were meant). */
 const MAX_SANE_ESTIMATE_MINUTES = 2000 * 60;
 
+/**
+ * Outcome of the preflight data-sanity checks run before any chart is rendered.
+ *
+ * Split into hard failures that make scheduling impossible and must abort the
+ * command, versus soft warnings that still yield a useful chart. The caller
+ * decides how to act on each list; see {@link runDataSanityGate} for the
+ * handler policy that turns a non-empty `fatal` into a thrown
+ * {@link CommandError}.
+ */
 export interface DataSanityReport {
   /** Render-breaking problems. Non-empty ⇒ the command must hard-fail. */
   fatal: string[];
@@ -717,6 +766,20 @@ function computeSchedule(
   const result = new Map<string, ScheduleEntry>();
   const visiting = new Set<string>();
 
+  /**
+   * Recursively forward-schedule a single item and cache its entry.
+   *
+   * The earliest start is the day after the latest finish of every gating
+   * prerequisite (informational `related`/`duplicate` edges are ignored), then
+   * the item is pulled to end on its own deadline when that deadline is still
+   * reachable from that start. A node on the recursion stack returns `null`,
+   * which is the cycle guard: it breaks a dependency loop by contributing no
+   * constraint rather than recursing forever. Each computed entry is stored in
+   * `result` so a prerequisite shared by several dependents is scheduled once.
+   *
+   * @param id - The item id to schedule.
+   * @returns The scheduled entry, or `null` for a missing item or a cycle hit.
+   */
   function schedule(id: string): ScheduleEntry | null {
     const existing = result.get(id);
     if (existing) return existing;
@@ -837,6 +900,20 @@ function computeSlack(
   const latestFinish = new Map<string, Date>();
   const visiting = new Set<string>();
 
+  /**
+   * Latest-feasible finish date for `id` from the CPM backward pass.
+   *
+   * Starts from the project's latest finish, then tightens the bound two ways:
+   * it must end the day before the earliest latest-start of any successor, and
+   * it must finish on or before the item's own deadline. A node on the
+   * recursion stack falls back to the project end, which is the cycle guard that
+   * keeps a loop from deadlocking the pass. Results are cached in
+   * `latestFinish` so each node is solved once.
+   *
+   * @param id - The item id whose latest finish to compute.
+   * @returns The latest date the item may finish without delaying the project
+   *   or breaching a downstream deadline.
+   */
   function lf(id: string): Date {
     const cached = latestFinish.get(id);
     if (cached) return cached;
@@ -902,6 +979,17 @@ function computeSlack(
 // Row building (shared by terminal render and exporters)
 // ---------------------------------------------------------------------------
 
+/**
+ * Sort rank for a status so active work surfaces above finished or shelved items.
+ *
+ * In-progress sorts first, then open, blocked, closed, canceled, and finally
+ * draft, which keeps each group's still-moving work at the top of its block in
+ * {@link buildRows}. The numbers themselves are opaque; only their relative
+ * order is meaningful.
+ *
+ * @param status - The pm item status to rank.
+ * @returns A small integer used only for ordering.
+ */
 function statusOrderValue(status: PmItem["status"]): number {
   const statusOrder: Record<PmItem["status"], number> = {
     in_progress: 0,
@@ -914,6 +1002,23 @@ function statusOrderValue(status: PmItem["status"]): number {
   return statusOrder[status];
 }
 
+/**
+ * Turn the fetched items into render-ready {@link GanttRow} entries.
+ *
+ * Groups items by the configured field, sorts groups (named groups first, then
+ * fallback buckets), and within each group sorts by {@link statusOrderValue}.
+ * Per item it derives the bar bounds (scheduler-driven under `--schedule`,
+ * otherwise `created_at`/deadline), the active week range via
+ * {@link computeWeekRange}, completion via {@link itemProgress}, the overdue
+ * flag, and — only when the item has no in-window bar — the off-window reason
+ * via {@link classifyOffWindow}. `--critical-only` clips the input to the
+ * longest dependency chain before any of the above runs.
+ *
+ * @param items - All fetched pm items (already status-filtered by the caller).
+ * @param opts - The resolved chart options.
+ * @param windowStart - The Monday that opens the chart window.
+ * @returns One row per item, in render order.
+ */
 function buildRows(items: PmItem[], opts: GanttOptions, windowStart: Date): GanttRow[] {
   // --critical-only implies critical-path computation even without --critical-path.
   const needCritical = opts.criticalPath || opts.criticalOnly;
@@ -1016,6 +1121,17 @@ function progressGlyph(pct: number): string {
   return "··";
 }
 
+/**
+ * Single-glyph status marker for the ASCII chart's status column.
+ *
+ * Maps each status to one fixed-width character — `▶` for in-progress, `!` for
+ * blocked, `✓` for closed, `✗` for canceled, and `○` for open/draft — so the
+ * column stays aligned while still readable at a glance. The width-1 contract
+ * matters because the column width is hard-coded in {@link renderGantt}.
+ *
+ * @param status - The pm item status to mark.
+ * @returns One status glyph.
+ */
 function statusSymbol(status: PmItem["status"]): string {
   switch (status) {
     case "in_progress": return "▶";
@@ -1026,6 +1142,21 @@ function statusSymbol(status: PmItem["status"]): string {
   }
 }
 
+/**
+ * Render the chart as a fixed-width ASCII table for the terminal.
+ *
+ * Lays out one column per week with a header, a `▼TODAY` marker in the current
+ * week, labeled `▼<name>` milestone carets, and one row per item whose cells
+ * carry status/critical/progress glyphs across the active week span. Off-window
+ * and undated rows get directional or dotted hints instead of a bar, and a
+ * trailing legend names every glyph used. All widths are hard-coded so the
+ * table aligns in any monospace terminal.
+ *
+ * @param rows - The render-ready rows from {@link buildRows}.
+ * @param opts - The resolved chart options.
+ * @param windowStart - The Monday that opens the chart window.
+ * @returns The complete ASCII chart as a newline-joined string.
+ */
 function renderGantt(
   rows: GanttRow[],
   opts: GanttOptions,
@@ -1222,6 +1353,21 @@ function mermaidSafe(s: string): string {
   return s.replace(/:/g, "-").replace(/\n/g, " ").trim();
 }
 
+/**
+ * Map a status onto the Mermaid `gantt` task-state tag prefix that conveys it.
+ *
+ * Mermaid has no per-task status field, so `done,`/`active,`/`crit,` are its
+ * closest native signals: closed becomes `done`, in-progress becomes `active`,
+ * and canceled becomes `crit` — Mermaid's critical-task style, which renders
+ * the bar in its emphasis color rather than striking it through, and is
+ * borrowed here only because it is the most visually distinct tag available.
+ * Open/draft carry no tag. Each
+ * result is a trailing `, ` so it composes directly with the critical/overdue
+ * tag assembled in {@link renderMermaid}.
+ *
+ * @param status - The pm item status to encode.
+ * @returns The Mermaid tag prefix (including the trailing comma), or "".
+ */
 function mermaidStatusTag(status: PmItem["status"]): string {
   switch (status) {
     case "closed":      return "done, ";
@@ -1231,6 +1377,22 @@ function mermaidStatusTag(status: PmItem["status"]): string {
   }
 }
 
+/**
+ * Render the chart as Mermaid `gantt` diagram source.
+ *
+ * Emits one `section` per group and one task per item, with `done`/`active`/
+ * `crit` tags mapped from status plus a `crit` tag for critical-path and overdue
+ * items. Mermaid's end dates are exclusive, so each inclusive row end is
+ * advanced one day to keep durations honest; undated items get a one-week
+ * placeholder so they still render. Numeric progress and the today line are
+ * preserved as `%%` comments, since Mermaid has no native field for either.
+ * In-window milestones are appended as native zero-duration `milestone` tasks.
+ *
+ * @param rows - The render-ready rows from {@link buildRows}.
+ * @param opts - The resolved chart options.
+ * @param windowStart - The Monday that opens the chart window.
+ * @returns Valid Mermaid gantt source as a newline-joined string.
+ */
 function renderMermaid(rows: GanttRow[], opts: GanttOptions, windowStart: Date): string {
   const lines: string[] = [];
   lines.push("gantt");
@@ -1484,6 +1646,17 @@ function renderJson(
 // Rendering — standalone HTML
 // ---------------------------------------------------------------------------
 
+/**
+ * Escape the HTML-significant characters in `s` for safe text interpolation.
+ *
+ * Replaces `&`, `<`, `>`, and `"` with their entity references so item titles
+ * and ids can be dropped into the generated document without risking markup
+ * injection or broken tags. It deliberately does not escape `'`, because every
+ * attribute value written by {@link renderHtml} is double-quoted.
+ *
+ * @param s - The raw string drawn from item data.
+ * @returns The string with the four dangerous characters entity-encoded.
+ */
 function htmlEscape(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -1546,6 +1719,22 @@ function computeSummary(rows: GanttRow[]): GanttSummary {
   return { projectStart, projectEnd, spanDays, criticalPathLength, totalTaskDays, workload };
 }
 
+/**
+ * Render the chart as a standalone, styled HTML document.
+ *
+ * Builds a table with one column per week, status-colored bar cells (with a
+ * `--progress` fill overlay), critical-path and overdue markers, off-window
+ * directional hints, a highlighted today column, and a footer summary table
+ * (plus a per-assignee workload breakdown when grouping by assignee). All
+ * dynamic text is passed through {@link htmlEscape}, and the layout width
+ * follows `--width`. The returned string is a full document, ready to write to
+ * disk.
+ *
+ * @param rows - The render-ready rows from {@link buildRows}.
+ * @param opts - The resolved chart options.
+ * @param windowStart - The Monday that opens the chart window.
+ * @returns A complete `<!DOCTYPE html>` document as a string.
+ */
 function renderHtml(rows: GanttRow[], opts: GanttOptions, windowStart: Date): string {
   const weeks = opts.weeks;
   const weekLabels: string[] = [];
@@ -1754,6 +1943,22 @@ function svgEscape(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
+/**
+ * Render the chart as a self-contained, scalable SVG document.
+ *
+ * Mirrors the HTML render as vector graphics: a left label gutter, one column
+ * per week, status-colored bars with critical/overdue handling, a dashed today
+ * rule drawn last so it stays visible, milestone diamonds, off-window arrows,
+ * and a `--progress` fill overlay. The canvas width follows `--width` but grows
+ * for long timelines to keep a readable minimum per-week column. All dynamic
+ * text is passed through {@link svgEscape}, and the result is a complete
+ * `<?xml …><svg …>` document.
+ *
+ * @param rows - The render-ready rows from {@link buildRows}.
+ * @param opts - The resolved chart options.
+ * @param windowStart - The Monday that opens the chart window.
+ * @returns A complete SVG document as a string.
+ */
 function renderSvg(rows: GanttRow[], opts: GanttOptions, windowStart: Date): string {
   const weeks = opts.weeks;
   const weekLabels: string[] = [];
@@ -1928,6 +2133,19 @@ function renderSvg(rows: GanttRow[], opts: GanttOptions, windowStart: Date): str
 // Shared option parsing + data fetch
 // ---------------------------------------------------------------------------
 
+/**
+ * Return the first present, non-null value among the candidate option keys.
+ *
+ * Options arrive as a loose record whose keys may be the kebab-case CLI form
+ * (`group-by`) or a camelCase alias (`groupBy`); this walks the given keys in
+ * order and returns the first that is neither `undefined` nor `null`, so each
+ * flag can accept both spellings without duplicating the lookup. A truly absent
+ * option yields `undefined`, which the callers coerce to a documented default.
+ *
+ * @param options - The raw flag record handed to the command.
+ * @param keys - The candidate key spellings, tried in preference order.
+ * @returns The first present value, or `undefined` when none of the keys are set.
+ */
 function readOption(options: Record<string, unknown>, ...keys: string[]): unknown {
   for (const key of keys) {
     const value = options[key];
@@ -1936,6 +2154,25 @@ function readOption(options: Record<string, unknown>, ...keys: string[]): unknow
   return undefined;
 }
 
+/**
+ * Return the first option whose key is set, coerced to a boolean.
+ *
+ * The presence test is `!== undefined` alone. That is deliberately narrower than
+ * {@link readOption}, which also skips `null` and keeps searching: here an
+ * explicit `null` counts as present and coerces to `false`, ending the search.
+ * Only a key that is entirely absent falls through to the `false` default, so a
+ * flag the user set explicitly always beats that default.
+ *
+ * Coercion is plain `Boolean()`, with the usual JavaScript truthiness that
+ * follows from it — every non-empty string is true, **including `"0"`**. This
+ * helper is therefore only safe for flags the caller knows arrive as booleans or
+ * as absent; do not route a value-taking flag through it and expect `"0"` or
+ * `"false"` to read as false.
+ *
+ * @param options - The raw flag record handed to the command.
+ * @param keys - The candidate key spellings, tried in preference order.
+ * @returns The first present value coerced to boolean, or `false` when none are set.
+ */
 function readBoolOption(options: Record<string, unknown>, ...keys: string[]): boolean {
   for (const key of keys) {
     if (options[key] !== undefined) return Boolean(options[key]);
@@ -1947,6 +2184,21 @@ interface ResolvedOptions extends GanttOptions {
   windowStart: Date;
 }
 
+/**
+ * Validate and normalize raw command flags into a fully resolved options object.
+ *
+ * Reads every supported flag through {@link readOption}/{@link readBoolOption},
+ * coerces enums (`group-by`, `status`) to their typed values with safe
+ * fallbacks, and derives the chart window: `--from` anchors the start (default
+ * the current week's Monday), and `--to` overrides `--weeks` by computing the
+ * column count from the start..end span. Invalid values throw a
+ * {@link CommandError} (USAGE) naming the bad flag rather than silently
+ * substituting a default. The returned object also carries the resolved
+ * `windowStart` for the renderers.
+ *
+ * @param options - The raw flag record handed to the command.
+ * @returns The validated options plus the computed window start date.
+ */
 function resolveGanttOptions(options: Record<string, unknown>): ResolvedOptions {
   const rawGroupBy = readOption(options, "group-by", "groupBy") ?? "milestone";
   const groupBy: GroupBy = (GROUP_BY_VALUES as string[]).includes(String(rawGroupBy))
@@ -2070,6 +2322,18 @@ function pmJsonMaxBuffer(): number {
   return Number.isSafeInteger(raw) && raw > 0 ? raw : 64 * 1024 * 1024;
 }
 
+/**
+ * Shell out to `pm list-all --json` and return the parsed item list.
+ *
+ * Spawns the `pm` binary scoped to `pmRoot` with bodies included, using the
+ * enlarged buffer from {@link pmJsonMaxBuffer} so a large tracker's JSON dump is
+ * not truncated. A non-zero exit, a spawn error, or unparseable stdout each
+ * throw a {@link CommandError} that names the failure, so a broken fetch never
+ * proceeds to render an empty or misleading chart.
+ *
+ * @param pmRoot - The `--path` value pointing at the pm project to read.
+ * @returns The decoded items, or an empty array when the project holds none.
+ */
 function fetchItems(pmRoot: string): PmItem[] {
   const maxBuffer = pmJsonMaxBuffer();
   const result = spawnSync(
@@ -2126,9 +2390,31 @@ export function offWindowMilestones(
     .map((m) => `${m.name} (${isoDay(m.date)})`);
 }
 
+/**
+ * Output formats accepted by the `gantt` and `gantt export` commands.
+ *
+ * The tuple is `as const` so {@link ExportFormat} is the exact string union,
+ * which lets {@link renderForFormat} and {@link defaultExtension} switch over it
+ * exhaustively with no default arm. Order is the order shown in `--help`.
+ */
 export const EXPORT_FORMATS = ["mermaid", "html", "ascii", "csv", "json", "svg"] as const;
 type ExportFormat = (typeof EXPORT_FORMATS)[number];
 
+/**
+ * Dispatch to the renderer for the requested export format.
+ *
+ * A single switch over {@link ExportFormat} selects the matching renderer —
+ * {@link renderMermaid}, {@link renderHtml}, {@link renderSvg},
+ * {@link renderGantt} (ascii), {@link renderCsv}, or {@link renderJson} — so the
+ * command handlers stay agnostic of the concrete output. The union is exhaustive,
+ * so adding a format is a compile error here until a case is supplied.
+ *
+ * @param format - One of {@link EXPORT_FORMATS}.
+ * @param rows - The render-ready rows from {@link buildRows}.
+ * @param opts - The resolved chart options.
+ * @param windowStart - The Monday that opens the chart window.
+ * @returns The fully rendered document string for that format.
+ */
 function renderForFormat(format: ExportFormat, rows: GanttRow[], opts: GanttOptions, windowStart: Date): string {
   switch (format) {
     case "mermaid": return renderMermaid(rows, opts, windowStart);
@@ -2140,6 +2426,17 @@ function renderForFormat(format: ExportFormat, rows: GanttRow[], opts: GanttOpti
   }
 }
 
+/**
+ * File extension to use when writing an export of the given format.
+ *
+ * Each {@link ExportFormat} maps to the extension its toolchain expects —
+ * Mermaid uses `.mmd`, ASCII uses `.txt`, and the rest use their native
+ * extensions — so a bare `--format` without `--output` still lands in a file the
+ * right opener recognises.
+ *
+ * @param format - One of {@link EXPORT_FORMATS}.
+ * @returns The dotted file extension (without the leading path).
+ */
 function defaultExtension(format: ExportFormat): string {
   switch (format) {
     case "mermaid": return "mmd";
