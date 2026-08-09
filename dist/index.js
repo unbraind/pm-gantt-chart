@@ -1820,13 +1820,19 @@ function readOption(options, ...keys) {
     return undefined;
 }
 /**
- * Return the first explicitly-present option coerced to a boolean.
+ * Return the first option whose key is set, coerced to a boolean.
  *
- * Unlike {@link readOption}, a value of `false` counts as "present" and is
- * returned, so a user-set `--no-foo` is honored rather than masked by the
- * default. Only an option whose key is entirely absent falls through to the
- * `false` default. The `Boolean()` coercion matches how the pm runtime parses
- * flag values ("0", "", and `false` all become false).
+ * The presence test is `!== undefined` alone. That is deliberately narrower than
+ * {@link readOption}, which also skips `null` and keeps searching: here an
+ * explicit `null` counts as present and coerces to `false`, ending the search.
+ * Only a key that is entirely absent falls through to the `false` default, so a
+ * flag the user set explicitly always beats that default.
+ *
+ * Coercion is plain `Boolean()`, with the usual JavaScript truthiness that
+ * follows from it — every non-empty string is true, **including `"0"`**. This
+ * helper is therefore only safe for flags the caller knows arrive as booleans or
+ * as absent; do not route a value-taking flag through it and expect `"0"` or
+ * `"false"` to read as false.
  *
  * @param options - The raw flag record handed to the command.
  * @param keys - The candidate key spellings, tried in preference order.
