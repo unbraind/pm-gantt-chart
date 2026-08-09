@@ -113,6 +113,20 @@ export declare function itemProgress(item: PmItem): number;
  * already closed or canceled. Exported for tests.
  */
 export declare function isOverdue(item: PmItem, today: Date): boolean;
+/**
+ * Select the row-group key for `item` under the chosen {@link GroupBy} field.
+ *
+ * A missing value collapses to a parenthesized placeholder (`(no milestone)`,
+ * `(unassigned)`, …) rather than an empty string, so unattributed items gather
+ * into one named fallback bucket instead of scattering as blank-headed rows.
+ * The `tag` field keys on only the first tag, since a Gantt group needs a single
+ * column. `status` is the one field that is always present, so it has no
+ * fallback.
+ *
+ * @param item - The pm item to classify.
+ * @param groupBy - The grouping dimension selected via `--group-by`.
+ * @returns The group label this item belongs under.
+ */
 declare function getGroupKey(item: PmItem, groupBy: GroupBy): string;
 /**
  * Compute the critical path: the longest chain of dependency edges across the
@@ -123,6 +137,15 @@ declare function getGroupKey(item: PmItem, groupBy: GroupBy): string;
  * latest deadline, then by lexical id for determinism).
  */
 declare function computeCriticalPath(items: PmItem[]): Set<string>;
+/**
+ * Outcome of the preflight data-sanity checks run before any chart is rendered.
+ *
+ * Split into hard failures that make scheduling impossible and must abort the
+ * command, versus soft warnings that still yield a useful chart. The caller
+ * decides how to act on each list; see {@link runDataSanityGate} for the
+ * handler policy that turns a non-empty `fatal` into a thrown
+ * {@link CommandError}.
+ */
 export interface DataSanityReport {
     /** Render-breaking problems. Non-empty ⇒ the command must hard-fail. */
     fatal: string[];
@@ -201,8 +224,56 @@ interface SlackEntry {
  * Exported for tests.
  */
 declare function computeSlack(items: PmItem[], schedule: Map<string, ScheduleEntry>): Map<string, SlackEntry>;
+/**
+ * Turn the fetched items into render-ready {@link GanttRow} entries.
+ *
+ * Groups items by the configured field, sorts groups (named groups first, then
+ * fallback buckets), and within each group sorts by {@link statusOrderValue}.
+ * Per item it derives the bar bounds (scheduler-driven under `--schedule`,
+ * otherwise `created_at`/deadline), the active week range via
+ * {@link computeWeekRange}, completion via {@link itemProgress}, the overdue
+ * flag, and — only when the item has no in-window bar — the off-window reason
+ * via {@link classifyOffWindow}. `--critical-only` clips the input to the
+ * longest dependency chain before any of the above runs.
+ *
+ * @param items - All fetched pm items (already status-filtered by the caller).
+ * @param opts - The resolved chart options.
+ * @param windowStart - The Monday that opens the chart window.
+ * @returns One row per item, in render order.
+ */
 declare function buildRows(items: PmItem[], opts: GanttOptions, windowStart: Date): GanttRow[];
+/**
+ * Render the chart as a fixed-width ASCII table for the terminal.
+ *
+ * Lays out one column per week with a header, a `▼TODAY` marker in the current
+ * week, labeled `▼<name>` milestone carets, and one row per item whose cells
+ * carry status/critical/progress glyphs across the active week span. Off-window
+ * and undated rows get directional or dotted hints instead of a bar, and a
+ * trailing legend names every glyph used. All widths are hard-coded so the
+ * table aligns in any monospace terminal.
+ *
+ * @param rows - The render-ready rows from {@link buildRows}.
+ * @param opts - The resolved chart options.
+ * @param windowStart - The Monday that opens the chart window.
+ * @returns The complete ASCII chart as a newline-joined string.
+ */
 declare function renderGantt(rows: GanttRow[], opts: GanttOptions, windowStart: Date): string;
+/**
+ * Render the chart as Mermaid `gantt` diagram source.
+ *
+ * Emits one `section` per group and one task per item, with `done`/`active`/
+ * `crit` tags mapped from status plus a `crit` tag for critical-path and overdue
+ * items. Mermaid's end dates are exclusive, so each inclusive row end is
+ * advanced one day to keep durations honest; undated items get a one-week
+ * placeholder so they still render. Numeric progress and the today line are
+ * preserved as `%%` comments, since Mermaid has no native field for either.
+ * In-window milestones are appended as native zero-duration `milestone` tasks.
+ *
+ * @param rows - The render-ready rows from {@link buildRows}.
+ * @param opts - The resolved chart options.
+ * @param windowStart - The Monday that opens the chart window.
+ * @returns Valid Mermaid gantt source as a newline-joined string.
+ */
 declare function renderMermaid(rows: GanttRow[], opts: GanttOptions, windowStart: Date): string;
 /**
  * Render rows as a CSV schedule:
@@ -248,11 +319,58 @@ interface GanttSummary {
 }
 /** Compute the footer summary stats shared by the HTML export. */
 declare function computeSummary(rows: GanttRow[]): GanttSummary;
+/**
+ * Render the chart as a standalone, styled HTML document.
+ *
+ * Builds a table with one column per week, status-colored bar cells (with a
+ * `--progress` fill overlay), critical-path and overdue markers, off-window
+ * directional hints, a highlighted today column, and a footer summary table
+ * (plus a per-assignee workload breakdown when grouping by assignee). All
+ * dynamic text is passed through {@link htmlEscape}, and the layout width
+ * follows `--width`. The returned string is a full document, ready to write to
+ * disk.
+ *
+ * @param rows - The render-ready rows from {@link buildRows}.
+ * @param opts - The resolved chart options.
+ * @param windowStart - The Monday that opens the chart window.
+ * @returns A complete `<!DOCTYPE html>` document as a string.
+ */
 declare function renderHtml(rows: GanttRow[], opts: GanttOptions, windowStart: Date): string;
+/**
+ * Render the chart as a self-contained, scalable SVG document.
+ *
+ * Mirrors the HTML render as vector graphics: a left label gutter, one column
+ * per week, status-colored bars with critical/overdue handling, a dashed today
+ * rule drawn last so it stays visible, milestone diamonds, off-window arrows,
+ * and a `--progress` fill overlay. The canvas width follows `--width` but grows
+ * for long timelines to keep a readable minimum per-week column. All dynamic
+ * text is passed through {@link svgEscape}, and the result is a complete
+ * `<?xml …><svg …>` document.
+ *
+ * @param rows - The render-ready rows from {@link buildRows}.
+ * @param opts - The resolved chart options.
+ * @param windowStart - The Monday that opens the chart window.
+ * @returns A complete SVG document as a string.
+ */
 declare function renderSvg(rows: GanttRow[], opts: GanttOptions, windowStart: Date): string;
 interface ResolvedOptions extends GanttOptions {
     windowStart: Date;
 }
+/**
+ * Validate and normalize raw command flags into a fully resolved options object.
+ *
+ * Reads every supported flag through {@link readOption}/{@link readBoolOption},
+ * coerces enums (`group-by`, `status`) to their typed values with safe
+ * fallbacks, and derives the chart window: `--from` anchors the start (default
+ * the current week's Monday), and `--to` overrides `--weeks` by computing the
+ * column count from the start..end span. Invalid values throw a
+ * {@link CommandError} (USAGE) naming the bad flag rather than silently
+ * substituting a default. The returned object also carries the resolved
+ * `windowStart` for the renderers.
+ *
+ * @param options - The raw flag record handed to the command.
+ * @returns The validated options plus the computed window start date.
+ */
 declare function resolveGanttOptions(options: Record<string, unknown>): ResolvedOptions;
 /**
  * Collect infeasible-deadline warnings from scheduled rows. A row is infeasible
@@ -266,6 +384,13 @@ declare function infeasibleWarnings(rows: GanttRow[]): string[];
  * cannot be drawn). Returned for a one-line stderr note. Exported for tests.
  */
 export declare function offWindowMilestones(milestones: Milestone[], windowStart: Date, weeks: number): string[];
+/**
+ * Output formats accepted by the `gantt` and `gantt export` commands.
+ *
+ * The tuple is `as const` so {@link ExportFormat} is the exact string union,
+ * which lets {@link renderForFormat} and {@link defaultExtension} switch over it
+ * exhaustively with no default arm. Order is the order shown in `--help`.
+ */
 export declare const EXPORT_FORMATS: readonly ["mermaid", "html", "ascii", "csv", "json", "svg"];
 declare const _default: {
     name: string;

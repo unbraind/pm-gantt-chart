@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Other
+
+- Adopt the canonical pm-ops docstring gate ([pm-gantt-chart-d628](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-d628.toon))
+
 ## 2026.8.7 - 2026-08-07
 
 ### Other
