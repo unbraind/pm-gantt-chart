@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { PmItem } from "../index.ts";
 import {
   parseMilestones,
   milestoneWeek,
@@ -16,7 +17,7 @@ import {
 const FROM = "2026-06-01"; // Monday
 const ANCHOR = new Date("2026-06-01T00:00:00");
 
-function sampleItems(): any[] {
+function sampleItems(): PmItem[] {
   return [
     { id: "A", title: "Design", status: "in_progress", created_at: "2026-06-02", deadline: "2026-06-10", sprint: "S1", dependencies: [] },
   ];
@@ -150,4 +151,49 @@ test("renderCsv with no milestones is unchanged (backward compatible single-arg)
   const opts = resolveGanttOptions({ from: FROM, weeks: "8" });
   const rows = buildRows(sampleItems(), opts, opts.windowStart);
   assert.equal(renderCsv(rows), renderCsv(rows, []));
+});
+
+// --- Mermaid: date-branch coverage (no --schedule) --------------------------
+//
+// renderMermaid resolves start/end dates from row.start/row.end (set by
+// --schedule) or falls back to item.created_at/deadline. Without --schedule,
+// the four-way if/else (both dates / endDate only / startDate only / undated)
+// must each produce a valid task line.
+
+test("renderMermaid emits a task line for an item with only a deadline (no created_at)", () => {
+  const items: PmItem[] = [
+    { id: "DL", title: "Deadline only", status: "open", deadline: "2026-06-10", sprint: "S1", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ from: FROM, weeks: "8" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const mmd = renderMermaid(rows, opts, opts.windowStart);
+  // endDate-only branch: start is back-derived from deadline (deadline - 1 week),
+  // end is the deadline + 1 day (mermaid exclusive end). Verify the task line
+  // exists and carries the deadline-derived end date.
+  assert.match(mmd, /Deadline only/);
+  assert.match(mmd, /2026-06-11/); // deadline 2026-06-10 + 1 day
+});
+
+test("renderMermaid emits a task line for an item with only created_at (no deadline)", () => {
+  const items: PmItem[] = [
+    { id: "CA", title: "Created only", status: "open", created_at: "2026-06-02", sprint: "S1", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ from: FROM, weeks: "8" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const mmd = renderMermaid(rows, opts, opts.windowStart);
+  // startDate-only branch: end is start + 1 week. Verify the task line exists
+  // and carries the created_at-derived start date.
+  assert.match(mmd, /Created only/);
+  assert.match(mmd, /2026-06-02/); // start = created_at
+});
+
+test("renderMermaid emits a task line for an undated item (no created_at, no deadline)", () => {
+  const items: PmItem[] = [
+    { id: "UD", title: "Undated", status: "open", sprint: "S1", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ from: FROM, weeks: "8" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const mmd = renderMermaid(rows, opts, opts.windowStart);
+  // Undated items get a 1-week marker at the window start (2026-06-01).
+  assert.match(mmd, /Undated.*2026-06-01/);
 });

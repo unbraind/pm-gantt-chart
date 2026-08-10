@@ -2352,5 +2352,5 @@ export default defineExtension({
 // runtime extension contract; the default export above is. Keeping them as
 // named exports lets test/*.test.ts import them without touching pm internals.
 // ---------------------------------------------------------------------------
-export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderJson, renderMermaid, renderGantt, renderHtml, renderSvg, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, };
+export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderJson, renderMermaid, renderGantt, renderHtml, renderSvg, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, defaultExtension, };
 //# sourceMappingURL=index.js.map

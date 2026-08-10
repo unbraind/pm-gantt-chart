@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { PmItem } from "../index.ts";
 import {
   computeSchedule,
   computeSlack,
@@ -25,7 +26,7 @@ import {
 //   B (Build)       estimate 960m  = 2 working days, blocked_by A
 //   C (Integration) estimate 720m  = 2 working days, blocked_by B
 //   D (Docs)        estimate 480m  = 1 working day, no deps, deadline far out
-function chainItems(): any[] {
+function chainItems(): PmItem[] {
   return [
     { id: "A", title: "Design API", status: "closed", estimated_minutes: 480, sprint: "S1", dependencies: [] },
     { id: "B", title: "Build endpoint", status: "in_progress", estimated_minutes: 960, sprint: "S1", dependencies: [{ id: "A", kind: "blocked_by" }] },
@@ -191,7 +192,7 @@ test("computeSlack: critical-path items have 0 slack, off-path slack > 0", () =>
 test("computeSlack: a slack-bearing parallel branch is non-zero, its blocker is 0", () => {
   // Chain A(2d) -> C(2d). Parallel short task B(1d) -> C. B has slack because
   // A is longer; A is critical, B floats.
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "A", title: "A long", status: "open", estimated_minutes: 960, dependencies: [] }, // 2d
     { id: "B", title: "B short", status: "open", estimated_minutes: 480, dependencies: [] }, // 1d
     { id: "C", title: "C join", status: "open", estimated_minutes: 960, dependencies: [
@@ -208,7 +209,7 @@ test("computeSlack: a slack-bearing parallel branch is non-zero, its blocker is 
 test("computeSlack: infeasible deadline is flagged with negative slack", () => {
   // A(2d) -> B(2d), but B has a deadline only 1 day after the anchor. B cannot
   // possibly finish that early because A must complete first -> infeasible.
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "A", title: "A", status: "open", estimated_minutes: 960, dependencies: [] },
     { id: "B", title: "B", status: "open", estimated_minutes: 960, deadline: "2026-06-02",
       dependencies: [{ id: "A", kind: "blocked_by" }] },
@@ -246,7 +247,7 @@ test("renderCsv includes slack_days column (blank without --schedule, filled wit
 
 test("infeasibleWarnings surfaces a line per already-late item", () => {
   const opts = resolveGanttOptions({ schedule: true, weeks: "12", from: "2026-06-01" });
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "A", title: "A", status: "open", estimated_minutes: 960, dependencies: [] },
     { id: "B", title: "Tight", status: "open", estimated_minutes: 960, deadline: "2026-06-02",
       dependencies: [{ id: "A", kind: "blocked_by" }] },
@@ -285,7 +286,7 @@ test("renderGantt omits the TODAY marker when today is outside the window", () =
 // ---------------------------------------------------------------------------
 
 test("computeSummary totals task-days, critical length, and per-group workload", () => {
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "A", title: "A", status: "open", estimated_minutes: 960, assignee: "alice", dependencies: [] },
     { id: "B", title: "B", status: "open", estimated_minutes: 480, assignee: "bob",
       dependencies: [{ id: "A", kind: "blocked_by" }] },
@@ -302,7 +303,7 @@ test("computeSummary totals task-days, critical length, and per-group workload",
 });
 
 test("renderHtml emits a Summary footer, and an assignee-workload table when grouped by assignee", () => {
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "A", title: "A", status: "open", estimated_minutes: 960, assignee: "alice", dependencies: [] },
     { id: "B", title: "B", status: "open", estimated_minutes: 480, assignee: "bob",
       dependencies: [{ id: "A", kind: "blocked_by" }] },
@@ -361,7 +362,7 @@ test("itemProgress: honors an explicit meta.progress (fraction or percentage)", 
 });
 
 test("renderGantt --progress appends NN% and a fill glyph without breaking default output", () => {
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "A", title: "Design", status: "closed", estimated_minutes: 480, sprint: "S1", dependencies: [] },
     { id: "B", title: "Build", status: "in_progress", estimated_minutes: 480, sprint: "S1", dependencies: [] },
   ];
@@ -397,7 +398,7 @@ test("isOverdue: deadline before today on a non-closed item is overdue; closed/f
 test("renderGantt marks overdue items with a ‼ OVERDUE glyph; renderHtml adds an overdue class", () => {
   // Window starts on the current week; give an open item a deadline in the past.
   const past = "2020-01-01";
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "A", title: "Late thing", status: "open", created_at: past, deadline: past, sprint: "S1", dependencies: [] },
     { id: "B", title: "Fine thing", status: "open", sprint: "S1", dependencies: [] },
   ];
@@ -432,7 +433,7 @@ test("classifyOffWindow distinguishes undated, before-window, and after-window",
 });
 
 test("buildRows tags off-window rows so ASCII/HTML render a directional hint, not ··", () => {
-  const items: any[] = [
+  const items: PmItem[] = [
     // genuinely undated
     { id: "U", title: "Undated", status: "open", sprint: "S1", dependencies: [] },
     // dated entirely before the window
@@ -462,7 +463,7 @@ test("buildRows tags off-window rows so ASCII/HTML render a directional hint, no
 // ---------------------------------------------------------------------------
 
 test("renderHtml adds a TODAY column when today is in-window, omits it otherwise", () => {
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "A", title: "A", status: "open", sprint: "S1", dependencies: [] },
   ];
   // in-window: default anchor is the current week.
@@ -484,7 +485,7 @@ test("renderHtml adds a TODAY column when today is in-window, omits it otherwise
 });
 
 test("renderHtml --progress emits a fill overlay sized to the completion ratio", () => {
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "A", title: "A", status: "in_progress", created_at: "2026-06-01", deadline: "2026-06-15", sprint: "S1", dependencies: [] },
   ];
   const opts = resolveGanttOptions({ progress: true, from: "2026-06-01", weeks: "6" });
@@ -495,7 +496,7 @@ test("renderHtml --progress emits a fill overlay sized to the completion ratio",
 });
 
 test("renderMermaid keeps valid scaffolding under --progress and flags overdue via crit", () => {
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "A", title: "Late", status: "open", created_at: "2020-01-01", deadline: "2020-01-08", sprint: "S1", dependencies: [] },
   ];
   const opts = resolveGanttOptions({ progress: true }); // today's week
@@ -504,4 +505,193 @@ test("renderMermaid keeps valid scaffolding under --progress and flags overdue v
   assert.match(mmd, /^gantt/m, "still valid gantt scaffolding");
   assert.match(mmd, /progress:/, "progress comment present under --progress");
   assert.match(mmd, /:crit, /, "overdue item carries the crit tag");
+});
+
+// ---------------------------------------------------------------------------
+// classifyOffWindow defensive fallback (dates overlapping the window)
+// ---------------------------------------------------------------------------
+
+test("classifyOffWindow returns 'undated' when dates straddle the window boundary (defensive fallback)", () => {
+  const windowStart = new Date("2026-06-01T00:00:00"); // Monday
+  const weeks = 4; // window = Jun 1 .. Jun 29
+  // start before the window, end inside it -> overlaps -> defensive "undated"
+  assert.equal(
+    classifyOffWindow(new Date("2026-05-25"), new Date("2026-06-10"), windowStart, weeks),
+    "undated",
+  );
+  // start inside, end after the window -> also overlaps
+  assert.equal(
+    classifyOffWindow(new Date("2026-06-20"), new Date("2026-07-10"), windowStart, weeks),
+    "undated",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// readMetaProgress: meta without progress keys falls through
+// ---------------------------------------------------------------------------
+
+test("itemProgress: meta present but without progress keys falls through to status default", () => {
+  // meta has keys but none of progress/percent_complete/percentComplete
+  assert.equal(
+    itemProgress({ id: "a", title: "a", status: "in_progress", meta: { other: "value" } } as any),
+    50,
+  );
+  // meta with only non-numeric progress value -> readMetaProgress skips it -> falls through
+  assert.equal(
+    itemProgress({ id: "a", title: "a", status: "blocked", meta: { progress: "N/A" } } as any),
+    25,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// getGroupKey: tag grouping
+// ---------------------------------------------------------------------------
+
+test("getGroupKey resolves tag grouping with and without tags", () => {
+  assert.equal(getGroupKey({ id: "x", title: "x", status: "open", tags: ["bug"] } as any, "tag"), "bug");
+  assert.equal(getGroupKey({ id: "x", title: "x", status: "open", tags: [] } as any, "tag"), "(no tag)");
+  assert.equal(getGroupKey({ id: "x", title: "x", status: "open" } as any, "tag"), "(no tag)");
+});
+
+// ---------------------------------------------------------------------------
+// computeCriticalPath: tie-breaker among equal-length chains
+// ---------------------------------------------------------------------------
+
+test("computeCriticalPath tie-breaker: prefers later deadline, then lower id among equal-length chains", () => {
+  // Two 2-item chains of equal length. The tie-breaker selects the chain
+  // whose endpoint has the later deadline; when equal, the lower endpoint id.
+
+  // Chain P→A (A deadline 2026-06-15) vs Chain Q→B (B deadline 2026-06-20)
+  // B's later deadline wins -> Q→B is critical.
+  let crit = computeCriticalPath([
+    { id: "P", title: "P", status: "open", dependencies: [] },
+    { id: "A", title: "A", status: "open", deadline: "2026-06-15", dependencies: [{ id: "P", kind: "blocked_by" }] },
+    { id: "Q", title: "Q", status: "open", dependencies: [] },
+    { id: "B", title: "B", status: "open", deadline: "2026-06-20", dependencies: [{ id: "Q", kind: "blocked_by" }] },
+  ] as any[]);
+  assert.ok(crit.has("Q") && crit.has("B"), "chain Q→B is critical (later deadline)");
+  assert.ok(!crit.has("P") && !crit.has("A"), "chain P→A is not critical");
+
+  // Same length, A deadline > B deadline -> P→A is critical.
+  crit = computeCriticalPath([
+    { id: "P", title: "P", status: "open", dependencies: [] },
+    { id: "A", title: "A", status: "open", deadline: "2026-06-20", dependencies: [{ id: "P", kind: "blocked_by" }] },
+    { id: "Q", title: "Q", status: "open", dependencies: [] },
+    { id: "B", title: "B", status: "open", deadline: "2026-06-15", dependencies: [{ id: "Q", kind: "blocked_by" }] },
+  ] as any[]);
+  assert.ok(crit.has("P") && crit.has("A"), "chain P→A is critical (later deadline)");
+
+  // Same deadline, lower endpoint id wins. B processed first, A second -> A.id < B.id -> A replaces.
+  crit = computeCriticalPath([
+    { id: "Q", title: "Q", status: "open", dependencies: [] },
+    { id: "B", title: "B", status: "open", deadline: "2026-06-20", dependencies: [{ id: "Q", kind: "blocked_by" }] },
+    { id: "P", title: "P", status: "open", dependencies: [] },
+    { id: "A", title: "A", status: "open", deadline: "2026-06-20", dependencies: [{ id: "P", kind: "blocked_by" }] },
+  ] as any[]);
+  assert.ok(crit.has("P") && crit.has("A"), "chain P→A is critical (lower endpoint id wins tie)");
+
+  // Same deadline, A processed first, B second -> B.id > A.id -> B does NOT replace.
+  crit = computeCriticalPath([
+    { id: "P", title: "P", status: "open", dependencies: [] },
+    { id: "A", title: "A", status: "open", deadline: "2026-06-20", dependencies: [{ id: "P", kind: "blocked_by" }] },
+    { id: "Q", title: "Q", status: "open", dependencies: [] },
+    { id: "B", title: "B", status: "open", deadline: "2026-06-20", dependencies: [{ id: "Q", kind: "blocked_by" }] },
+  ] as any[]);
+  assert.ok(crit.has("P") && crit.has("A"), "chain P→A stays critical (B.id > A.id, same deadline)");
+  assert.ok(!crit.has("Q") && !crit.has("B"), "chain Q→B is not critical");
+});
+
+// ---------------------------------------------------------------------------
+// computeSlack: unscheduled successor and cycle guard
+// ---------------------------------------------------------------------------
+
+test("computeSlack: an unscheduled successor is skipped and does not constrain its predecessor", () => {
+  // Item A is scheduled; item X is in items[] but NOT in the schedule, and X
+  // depends on A (so X is a successor of A). The successor loop's
+  // `schedule.get("X")` guard returns undefined and `continue`s, so X never
+  // contributes a bound and never reaches `lf`.
+  //
+  // This deliberately does NOT exercise lf's own `!entry` fallback: that branch
+  // is unreachable from computeSlack precisely because this guard runs first,
+  // and index.ts:922-924 is left honestly uncovered rather than reached by
+  // reordering the guard to force a call whose result is discarded.
+  const items: PmItem[] = [
+    { id: "A", title: "A", status: "open", estimated_minutes: 480, dependencies: [] },
+    { id: "X", title: "X", status: "open", estimated_minutes: 480, dependencies: [{ id: "A", kind: "blocked_by" }] },
+  ];
+  const sched = computeSchedule([items[0]], ANCHOR, 5); // only A is scheduled
+  const slack = computeSlack(items, sched);
+  // A has no successors that constrain it (X is unscheduled) -> A floats to projectEnd.
+  assert.ok(slack.has("A"), "A has a slack entry");
+  assert.ok(!slack.has("X"), "X has no slack entry (not in schedule)");
+});
+
+test("computeSlack: cycle in dependencies triggers the lf visiting guard", () => {
+  // A↔B mutual dependency. computeSchedule is cycle-safe (both get scheduled).
+  // computeSlack's lf encounters the cycle: when lf(A) recurses into lf(B)
+  // which recurses into lf(A), the visiting guard fires and returns projectEnd.
+  const items: PmItem[] = [
+    { id: "A", title: "A", status: "open", estimated_minutes: 480, dependencies: [{ id: "B", kind: "blocked_by" }] },
+    { id: "B", title: "B", status: "open", estimated_minutes: 480, dependencies: [{ id: "A", kind: "blocked_by" }] },
+  ];
+  const sched = computeSchedule(items, ANCHOR, 5);
+  assert.equal(sched.size, 2, "both items scheduled despite cycle");
+  const slack = computeSlack(items, sched);
+  // Both items get slack entries; the cycle guard prevents infinite recursion.
+  assert.ok(slack.has("A") && slack.has("B"), "both items have slack entries");
+});
+
+// ---------------------------------------------------------------------------
+// progressGlyph: low percentage tiers
+// ---------------------------------------------------------------------------
+
+test("renderGantt --progress renders 25% and sub-25% fill glyphs", () => {
+  // blocked items default to 25%, and an explicit meta.progress of 0.1 gives 10%.
+  const items: PmItem[] = [
+    { id: "BLK", title: "Blocked", status: "blocked", sprint: "S1", meta: { progress: 0.1 }, dependencies: [] },
+    { id: "OPN", title: "Open", status: "open", sprint: "S1", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ schedule: true, progress: true, weeks: "12", from: "2026-06-01" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const ascii = renderGantt(rows, opts, opts.windowStart);
+  // `meta.progress = 0.1` overrides the blocked default of 25%, so BLK renders
+  // at 10% and OPN at 0%. Both are below the 25% tier, so progressGlyph returns
+  // its lowest glyph "··" for each.
+  //
+  // The percentage labels are emitted independently of progressGlyph, so
+  // asserting only on them would stay green through a glyph-selection
+  // regression. Assert the glyph too.
+  // Assertions are scoped to the ITEM ROWS, not the whole chart: the legend
+  // enumerates every glyph ("progress: ·· 0% ░░ 25% ▓░ 50% …"), so a
+  // whole-chart absence check for "░░" can never hold.
+  const rowFor = (title: string): string => {
+    const line = ascii.split("\n").find((l) => l.includes(title));
+    assert.ok(line, `expected a rendered row for ${title}`);
+    return line;
+  };
+
+  assert.match(rowFor("Blocked"), /10%/, "10% item shows its percentage");
+  assert.match(rowFor("Open"), /0%/, "open item shows 0%");
+  assert.match(rowFor("Blocked"), /··/, "10% is below the 25% tier, so the lowest glyph renders");
+  assert.match(rowFor("Open"), /··/, "0% is below the 25% tier, so the lowest glyph renders");
+  assert.ok(!rowFor("Blocked").includes("░░"), "a sub-25% row must not render the 25% glyph");
+});
+
+test("renderGantt --progress renders 25% tier for a blocked item without meta override", () => {
+  // A blocked item without meta/checklist defaults to 25%, which is the first
+  // tier progressGlyph renders as "░░". Asserted alongside the percentage
+  // label because the two are produced independently.
+  const items: PmItem[] = [
+    { id: "BLK", title: "Blocked task", status: "blocked", sprint: "S1", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ schedule: true, progress: true, weeks: "12", from: "2026-06-01" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const ascii = renderGantt(rows, opts, opts.windowStart);
+  // Scoped to the item row for the same reason as above: the legend lists every
+  // glyph, so only the row itself can distinguish the 25% tier from the one below.
+  const row = ascii.split("\n").find((l) => l.includes("Blocked task"));
+  assert.ok(row, "expected a rendered row for the blocked item");
+  assert.match(row, /25%/, "blocked item shows 25%");
+  assert.match(row, /░░/, "the 25% tier renders its own glyph");
+  assert.ok(!row.includes("··"), "a 25% row must not render the sub-25% glyph");
 });

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Other
+
+- Raise the coverage gate from 88/87/90 toward the fleet mandate of 100 ([pm-gantt-chart-6vtx](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-6vtx.toon))
+
 ## 2026.8.10 - 2026-08-10
 
 ### Fixed

@@ -1,0 +1,14 @@
+id: pm-gantt-chart-6vtx
+title: Raise the coverage gate from 88/87/90 toward the fleet mandate of 100
+description: "Coverage thresholds were pinned to the package's measured floor rather than the fleet mandate. This adds a handler-level test suite exercising the gantt and gantt export command paths end to end through real pm workspaces, and raises the gate to 98 lines 91 branches 97 functions.\n\nMeasured after: 98.35 lines 91.86 branches 97.17 functions, up from 88 87 90.\n\nThe single largest contributor was a defect in the new suite rather than any missing assertion: infeasibleRoot was declared but never assigned, so the setup loop called pm init with an empty root. That resolved to the process working directory, which is the package repository itself, and attempted to rewrite the repo's own tracker settings. pm refused it - Refusing to update existing tracker settings without --force - so nothing was damaged, and the repository .agents/pm/settings.json is byte-identical. Assigning the root correctly took coverage from 91.16 to 98.35 lines, because every scenario that depended on that workspace had been silently failing its setup.\n\nWorth keeping as a review heuristic: a test-setup helper that takes a path should be given a non-empty path by construction, and a suite whose coverage is far below what its assertions imply is usually failing setup rather than missing cases.\n\nOnly one production change: defaultExtension is added to the export list so the handler suite can reach it. A second production change proposed during this work - reordering computeSlack so lf(succId) is called before the succEntry guard, purely so lf's unscheduled-successor fallback would be marked covered - was REVERTED. It was behaviour-preserving but added a discarded call to satisfy the counter, and removing it costs 0.11 percentage points of line coverage while leaving the gate green. Lines 922-924 of index.ts, lf's !entry fallback, remain genuinely unreached from computeSlack and are left visibly uncovered rather than covered by a call whose result is thrown away.\n\nRemaining gap to 100: roughly 50 lines across eight ranges plus the branch dimension at 91.86. Tracked fleet-wide in the companion item pm-cli-website-ktip."
+type: Task
+status: closed
+priority: 2
+tags: []
+created_at: "2026-08-10T22:10:34.548Z"
+updated_at: "2026-08-10T22:10:43.386Z"
+closed_at: "2026-08-10T22:10:43.375Z"
+completed_at: "2026-08-10T22:10:43.375Z"
+author: "harness:claude-code"
+close_reason: "Handler suite added and the gate raised to 98/91/97 from 88/87/90; measured 98.35 lines 91.86 branches 97.17 functions with release:check green end to end. No threshold weakened, no coverage exclusion added, and the one coverage-motivated production change was reverted."
+body: ""
