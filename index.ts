@@ -2783,6 +2783,7 @@ export {
   buildRows,
   resolveGanttOptions,
   getGroupKey,
+  defaultExtension,
 };
 // itemProgress, isOverdue, classifyOffWindow are already `export function`s above.
 export type { PmItem, GanttOptions, GanttRow, GroupBy, ScheduleEntry, SlackEntry, GanttSummary, OffWindow, Milestone };

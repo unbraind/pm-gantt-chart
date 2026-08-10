@@ -392,12 +392,25 @@ export declare function offWindowMilestones(milestones: Milestone[], windowStart
  * exhaustively with no default arm. Order is the order shown in `--help`.
  */
 export declare const EXPORT_FORMATS: readonly ["mermaid", "html", "ascii", "csv", "json", "svg"];
+type ExportFormat = (typeof EXPORT_FORMATS)[number];
+/**
+ * File extension to use when writing an export of the given format.
+ *
+ * Each {@link ExportFormat} maps to the extension its toolchain expects —
+ * Mermaid uses `.mmd`, ASCII uses `.txt`, and the rest use their native
+ * extensions — so a bare `--format` without `--output` still lands in a file the
+ * right opener recognises.
+ *
+ * @param format - One of {@link EXPORT_FORMATS}.
+ * @returns The dotted file extension (without the leading path).
+ */
+declare function defaultExtension(format: ExportFormat): string;
 declare const _default: {
     name: string;
     version: string;
     activate(api: ExtensionApi): void;
 };
 export default _default;
-export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderJson, renderMermaid, renderGantt, renderHtml, renderSvg, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, };
+export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderJson, renderMermaid, renderGantt, renderHtml, renderSvg, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, defaultExtension, };
 export type { PmItem, GanttOptions, GanttRow, GroupBy, ScheduleEntry, SlackEntry, GanttSummary, OffWindow, Milestone };
 //# sourceMappingURL=index.d.ts.map

@@ -216,3 +216,31 @@ test("renderSvg draws the TODAY rule after body rows so backgrounds can't cover 
   assert.ok(lastBackground >= 0, "alternating row backgrounds present");
   assert.ok(ruleAt > lastBackground, "TODAY rule painted after (on top of) row backgrounds");
 });
+
+// ---------------------------------------------------------------------------
+// SVG off-window directional arrows (before / after)
+// ---------------------------------------------------------------------------
+
+test("renderSvg draws a ← arrow for before-window undated-bar rows", () => {
+  // Item with dates entirely before the window -> offWindow "before",
+  // startWeek null -> the SVG loop draws a ← at the first column.
+  const items: any[] = [
+    { id: "P", title: "Past", status: "open", created_at: "2020-01-01", deadline: "2020-01-08", sprint: "S1", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ from: "2026-06-01", weeks: "4" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const svg = renderSvg(rows, opts, opts.windowStart);
+  assert.match(svg, /←/, "before-window arrow present in SVG");
+});
+
+test("renderSvg draws a → arrow for after-window undated-bar rows", () => {
+  // Item with dates entirely after the window -> offWindow "after",
+  // startWeek null -> the SVG loop draws a → at the last column.
+  const items: any[] = [
+    { id: "F", title: "Future", status: "open", created_at: "2030-01-01", deadline: "2030-01-08", sprint: "S1", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ from: "2026-06-01", weeks: "4" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const svg = renderSvg(rows, opts, opts.windowStart);
+  assert.match(svg, /→/, "after-window arrow present in SVG");
+});

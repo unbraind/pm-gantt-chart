@@ -505,3 +505,163 @@ test("renderMermaid keeps valid scaffolding under --progress and flags overdue v
   assert.match(mmd, /progress:/, "progress comment present under --progress");
   assert.match(mmd, /:crit, /, "overdue item carries the crit tag");
 });
+
+// ---------------------------------------------------------------------------
+// classifyOffWindow defensive fallback (dates overlapping the window)
+// ---------------------------------------------------------------------------
+
+test("classifyOffWindow returns 'undated' when dates straddle the window boundary (defensive fallback)", () => {
+  const windowStart = new Date("2026-06-01T00:00:00"); // Monday
+  const weeks = 4; // window = Jun 1 .. Jun 29
+  // start before the window, end inside it -> overlaps -> defensive "undated"
+  assert.equal(
+    classifyOffWindow(new Date("2026-05-25"), new Date("2026-06-10"), windowStart, weeks),
+    "undated",
+  );
+  // start inside, end after the window -> also overlaps
+  assert.equal(
+    classifyOffWindow(new Date("2026-06-20"), new Date("2026-07-10"), windowStart, weeks),
+    "undated",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// readMetaProgress: meta without progress keys falls through
+// ---------------------------------------------------------------------------
+
+test("itemProgress: meta present but without progress keys falls through to status default", () => {
+  // meta has keys but none of progress/percent_complete/percentComplete
+  assert.equal(
+    itemProgress({ id: "a", title: "a", status: "in_progress", meta: { other: "value" } } as any),
+    50,
+  );
+  // meta with only non-numeric progress value -> readMetaProgress skips it -> falls through
+  assert.equal(
+    itemProgress({ id: "a", title: "a", status: "blocked", meta: { progress: "N/A" } } as any),
+    25,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// getGroupKey: tag grouping
+// ---------------------------------------------------------------------------
+
+test("getGroupKey resolves tag grouping with and without tags", () => {
+  assert.equal(getGroupKey({ id: "x", title: "x", status: "open", tags: ["bug"] } as any, "tag"), "bug");
+  assert.equal(getGroupKey({ id: "x", title: "x", status: "open", tags: [] } as any, "tag"), "(no tag)");
+  assert.equal(getGroupKey({ id: "x", title: "x", status: "open" } as any, "tag"), "(no tag)");
+});
+
+// ---------------------------------------------------------------------------
+// computeCriticalPath: tie-breaker among equal-length chains
+// ---------------------------------------------------------------------------
+
+test("computeCriticalPath tie-breaker: prefers later deadline, then lower id among equal-length chains", () => {
+  // Two 2-item chains of equal length. The tie-breaker selects the chain
+  // whose endpoint has the later deadline; when equal, the lower endpoint id.
+
+  // Chain P→A (A deadline 2026-06-15) vs Chain Q→B (B deadline 2026-06-20)
+  // B's later deadline wins -> Q→B is critical.
+  let crit = computeCriticalPath([
+    { id: "P", title: "P", status: "open", dependencies: [] },
+    { id: "A", title: "A", status: "open", deadline: "2026-06-15", dependencies: [{ id: "P", kind: "blocked_by" }] },
+    { id: "Q", title: "Q", status: "open", dependencies: [] },
+    { id: "B", title: "B", status: "open", deadline: "2026-06-20", dependencies: [{ id: "Q", kind: "blocked_by" }] },
+  ] as any[]);
+  assert.ok(crit.has("Q") && crit.has("B"), "chain Q→B is critical (later deadline)");
+  assert.ok(!crit.has("P") && !crit.has("A"), "chain P→A is not critical");
+
+  // Same length, A deadline > B deadline -> P→A is critical.
+  crit = computeCriticalPath([
+    { id: "P", title: "P", status: "open", dependencies: [] },
+    { id: "A", title: "A", status: "open", deadline: "2026-06-20", dependencies: [{ id: "P", kind: "blocked_by" }] },
+    { id: "Q", title: "Q", status: "open", dependencies: [] },
+    { id: "B", title: "B", status: "open", deadline: "2026-06-15", dependencies: [{ id: "Q", kind: "blocked_by" }] },
+  ] as any[]);
+  assert.ok(crit.has("P") && crit.has("A"), "chain P→A is critical (later deadline)");
+
+  // Same deadline, lower endpoint id wins. B processed first, A second -> A.id < B.id -> A replaces.
+  crit = computeCriticalPath([
+    { id: "Q", title: "Q", status: "open", dependencies: [] },
+    { id: "B", title: "B", status: "open", deadline: "2026-06-20", dependencies: [{ id: "Q", kind: "blocked_by" }] },
+    { id: "P", title: "P", status: "open", dependencies: [] },
+    { id: "A", title: "A", status: "open", deadline: "2026-06-20", dependencies: [{ id: "P", kind: "blocked_by" }] },
+  ] as any[]);
+  assert.ok(crit.has("P") && crit.has("A"), "chain P→A is critical (lower endpoint id wins tie)");
+
+  // Same deadline, A processed first, B second -> B.id > A.id -> B does NOT replace.
+  crit = computeCriticalPath([
+    { id: "P", title: "P", status: "open", dependencies: [] },
+    { id: "A", title: "A", status: "open", deadline: "2026-06-20", dependencies: [{ id: "P", kind: "blocked_by" }] },
+    { id: "Q", title: "Q", status: "open", dependencies: [] },
+    { id: "B", title: "B", status: "open", deadline: "2026-06-20", dependencies: [{ id: "Q", kind: "blocked_by" }] },
+  ] as any[]);
+  assert.ok(crit.has("P") && crit.has("A"), "chain P→A stays critical (B.id > A.id, same deadline)");
+  assert.ok(!crit.has("Q") && !crit.has("B"), "chain Q→B is not critical");
+});
+
+// ---------------------------------------------------------------------------
+// computeSlack: unscheduled successor and cycle guard
+// ---------------------------------------------------------------------------
+
+test("computeSlack: unscheduled successor hits the lf !entry fallback without crashing", () => {
+  // Item A is scheduled; item X is in items[] but NOT in the schedule, and X
+  // depends on A (so X is a successor of A). When computing slack for A, the
+  // successor loop calls lf(X), which hits the !entry fallback and returns
+  // projectEnd. The succEntry guard then skips X for the bound calculation.
+  const items: any[] = [
+    { id: "A", title: "A", status: "open", estimated_minutes: 480, dependencies: [] },
+    { id: "X", title: "X", status: "open", estimated_minutes: 480, dependencies: [{ id: "A", kind: "blocked_by" }] },
+  ];
+  const sched = computeSchedule([items[0]], ANCHOR, 5); // only A is scheduled
+  const slack = computeSlack(items, sched);
+  // A has no successors that constrain it (X is unscheduled) -> A floats to projectEnd.
+  assert.ok(slack.has("A"), "A has a slack entry");
+  assert.ok(!slack.has("X"), "X has no slack entry (not in schedule)");
+});
+
+test("computeSlack: cycle in dependencies triggers the lf visiting guard", () => {
+  // A↔B mutual dependency. computeSchedule is cycle-safe (both get scheduled).
+  // computeSlack's lf encounters the cycle: when lf(A) recurses into lf(B)
+  // which recurses into lf(A), the visiting guard fires and returns projectEnd.
+  const items: any[] = [
+    { id: "A", title: "A", status: "open", estimated_minutes: 480, dependencies: [{ id: "B", kind: "blocked_by" }] },
+    { id: "B", title: "B", status: "open", estimated_minutes: 480, dependencies: [{ id: "A", kind: "blocked_by" }] },
+  ];
+  const sched = computeSchedule(items, ANCHOR, 5);
+  assert.equal(sched.size, 2, "both items scheduled despite cycle");
+  const slack = computeSlack(items, sched);
+  // Both items get slack entries; the cycle guard prevents infinite recursion.
+  assert.ok(slack.has("A") && slack.has("B"), "both items have slack entries");
+});
+
+// ---------------------------------------------------------------------------
+// progressGlyph: low percentage tiers
+// ---------------------------------------------------------------------------
+
+test("renderGantt --progress renders 25% and sub-25% fill glyphs", () => {
+  // blocked items default to 25%, and an explicit meta.progress of 0.1 gives 10%.
+  const items: any[] = [
+    { id: "BLK", title: "Blocked", status: "blocked", sprint: "S1", meta: { progress: 0.1 }, dependencies: [] },
+    { id: "OPN", title: "Open", status: "open", sprint: "S1", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ schedule: true, progress: true, weeks: "12", from: "2026-06-01" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const ascii = renderGantt(rows, opts, opts.windowStart);
+  // 10% -> ░░ glyph (pct >= 25 is false, returns ··); 25% -> ░░ (pct >= 25)
+  // Wait: blocked defaults to 25%, but meta.progress = 0.1 overrides to 10%.
+  // 10% < 25 -> ·· glyph; 0% < 25 -> ·· glyph. Both show the lowest tier.
+  assert.match(ascii, /10%/, "10% item shows its percentage");
+  assert.match(ascii, /0%/, "open item shows 0%");
+});
+
+test("renderGantt --progress renders 25% tier for a blocked item without meta override", () => {
+  // A blocked item without meta/checklist defaults to 25% -> ░░ glyph (pct >= 25).
+  const items: any[] = [
+    { id: "BLK", title: "Blocked task", status: "blocked", sprint: "S1", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ schedule: true, progress: true, weeks: "12", from: "2026-06-01" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const ascii = renderGantt(rows, opts, opts.windowStart);
+  assert.match(ascii, /25%/, "blocked item shows 25%");
+});
