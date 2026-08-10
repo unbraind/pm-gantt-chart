@@ -121,10 +121,16 @@ test("gantt command renders items and returns a structured result", async () => 
 });
 
 // ---------------------------------------------------------------------------
-// Command handler: non-json mode (stdout/stderr writes)
+// Command handler: non-json mode
+//
+// The harness's `CommandHandlerResult` exposes `handled`, `result`, `warnings`
+// and `errorMessage` — it does NOT capture stdout or stderr. These tests
+// therefore assert the handler's returned summary in non-json mode, and are
+// named for that. Asserting the rendered chart text would need a different
+// mechanism than the harness provides.
 // ---------------------------------------------------------------------------
 
-test("gantt command writes the chart to stdout when json is false", async () => {
+test("gantt command returns its item summary when json is false", async () => {
   const res = await harness.runCommand({
     command: "gantt",
     pmRoot: normalRoot,

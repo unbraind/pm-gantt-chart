@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { PmItem } from "../index.ts";
 import {
   buildRows,
   resolveGanttOptions,
@@ -8,7 +9,7 @@ import {
 } from "../index.ts";
 
 // Same deterministic A -> B -> C chain (+ isolated D) used by scheduler.test.ts.
-function chainItems(): any[] {
+function chainItems(): PmItem[] {
   return [
     { id: "A", title: "Design API", status: "closed", estimated_minutes: 480, sprint: "S1", dependencies: [] },
     { id: "B", title: "Build endpoint", status: "in_progress", estimated_minutes: 960, sprint: "S1", dependencies: [{ id: "A", kind: "blocked_by" }] },

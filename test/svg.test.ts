@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { PmItem } from "../index.ts";
 import {
   renderSvg,
   renderHtml,
@@ -11,7 +12,7 @@ import {
 } from "../index.ts";
 
 // Deterministic chain + isolated item, anchored on a Monday.
-function chainItems(): any[] {
+function chainItems(): PmItem[] {
   return [
     { id: "A", title: "Design API", status: "closed", estimated_minutes: 480, sprint: "S1", dependencies: [] },
     { id: "B", title: "Build endpoint", status: "in_progress", estimated_minutes: 960, sprint: "S1", dependencies: [{ id: "A", kind: "blocked_by" }] },
@@ -123,7 +124,7 @@ test("renderSvg renders overdue bars in the overdue color and marker", () => {
   // we want the overdue path. Use a window starting after today but the item's
   // dates are in the past -> off-window "before". To exercise the overdue color
   // on a bar, give the item an in-window date range with a past deadline.
-  const items2: any[] = [
+  const items2: PmItem[] = [
     { id: "L", title: "Late", status: "open", created_at: "2026-06-01", deadline: "2026-06-05", sprint: "S1", dependencies: [] },
   ];
   // Use today's week so the past deadline (relative to a future "today") is overdue.
@@ -140,7 +141,7 @@ test("renderSvg renders overdue bars in the overdue color and marker", () => {
 });
 
 test("renderSvg --group-by assignee produces assignee-labeled group rows", () => {
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "A", title: "A", status: "open", estimated_minutes: 480, assignee: "alice", dependencies: [] },
     { id: "B", title: "B", status: "open", estimated_minutes: 480, assignee: "bob", dependencies: [] },
   ];
@@ -168,7 +169,7 @@ test("renderSvg output is well-formed enough to contain matching open/close tags
 // ---------------------------------------------------------------------------
 
 test("renderHtml --show-progress emits the fill overlay (alias parity with --progress)", () => {
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "A", title: "A", status: "in_progress", created_at: "2026-06-01", deadline: "2026-06-15", sprint: "S1", dependencies: [] },
   ];
   const opts = resolveGanttOptions({ "show-progress": true, from: FROM, weeks: "6" });
@@ -224,7 +225,7 @@ test("renderSvg draws the TODAY rule after body rows so backgrounds can't cover 
 test("renderSvg draws a ← arrow for before-window undated-bar rows", () => {
   // Item with dates entirely before the window -> offWindow "before",
   // startWeek null -> the SVG loop draws a ← at the first column.
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "P", title: "Past", status: "open", created_at: "2020-01-01", deadline: "2020-01-08", sprint: "S1", dependencies: [] },
   ];
   const opts = resolveGanttOptions({ from: "2026-06-01", weeks: "4" });
@@ -236,7 +237,7 @@ test("renderSvg draws a ← arrow for before-window undated-bar rows", () => {
 test("renderSvg draws a → arrow for after-window undated-bar rows", () => {
   // Item with dates entirely after the window -> offWindow "after",
   // startWeek null -> the SVG loop draws a → at the last column.
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "F", title: "Future", status: "open", created_at: "2030-01-01", deadline: "2030-01-08", sprint: "S1", dependencies: [] },
   ];
   const opts = resolveGanttOptions({ from: "2026-06-01", weeks: "4" });

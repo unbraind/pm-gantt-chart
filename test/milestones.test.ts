@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { PmItem } from "../index.ts";
 import {
   parseMilestones,
   milestoneWeek,
@@ -16,7 +17,7 @@ import {
 const FROM = "2026-06-01"; // Monday
 const ANCHOR = new Date("2026-06-01T00:00:00");
 
-function sampleItems(): any[] {
+function sampleItems(): PmItem[] {
   return [
     { id: "A", title: "Design", status: "in_progress", created_at: "2026-06-02", deadline: "2026-06-10", sprint: "S1", dependencies: [] },
   ];
@@ -160,7 +161,7 @@ test("renderCsv with no milestones is unchanged (backward compatible single-arg)
 // must each produce a valid task line.
 
 test("renderMermaid emits a task line for an item with only a deadline (no created_at)", () => {
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "DL", title: "Deadline only", status: "open", deadline: "2026-06-10", sprint: "S1", dependencies: [] },
   ];
   const opts = resolveGanttOptions({ from: FROM, weeks: "8" });
@@ -174,7 +175,7 @@ test("renderMermaid emits a task line for an item with only a deadline (no creat
 });
 
 test("renderMermaid emits a task line for an item with only created_at (no deadline)", () => {
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "CA", title: "Created only", status: "open", created_at: "2026-06-02", sprint: "S1", dependencies: [] },
   ];
   const opts = resolveGanttOptions({ from: FROM, weeks: "8" });
@@ -187,7 +188,7 @@ test("renderMermaid emits a task line for an item with only created_at (no deadl
 });
 
 test("renderMermaid emits a task line for an undated item (no created_at, no deadline)", () => {
-  const items: any[] = [
+  const items: PmItem[] = [
     { id: "UD", title: "Undated", status: "open", sprint: "S1", dependencies: [] },
   ];
   const opts = resolveGanttOptions({ from: FROM, weeks: "8" });
