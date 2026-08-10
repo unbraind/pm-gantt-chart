@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Propagate the docstring gate entry guard fix ([pm-gantt-chart-sklm](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-sklm.toon))
 - The mandatory docstring gate could skip its own scan and still exit zero ([pm-gantt-chart-canw](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-canw.toon))
 
 ### Other
