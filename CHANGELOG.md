@@ -1,10 +1,12 @@
 # Changelog
 
-## 2026.8.11 - 2026-08-11
+## Unreleased
 
 ### Fixed
 
 - Bring pm-gantt-chart index.ts to 100/100/100 coverage ([pm-gantt-chart-hgwy](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-hgwy.toon))
+
+## 2026.8.11 - 2026-08-11
 
 ### Other
 
