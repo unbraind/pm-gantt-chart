@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- pm gantt refuses to run on any tracker that uses symmetric related links, because cycle detection ignores the dependency kind ([pm-gantt-chart-k8wm](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-k8wm.toon))
 - Bring pm-gantt-chart index.ts to 100/100/100 coverage ([pm-gantt-chart-hgwy](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-hgwy.toon))
 
 ## 2026.8.11 - 2026-08-11

@@ -454,6 +454,13 @@ export function detectCycles(items) {
         stack.push(id);
         const item = byId.get(id);
         for (const dep of item?.dependencies ?? []) {
+            // Only gating edges can form a SCHEDULING cycle. Without this filter a
+            // single `related` pair — which pm records on both items, because the
+            // relationship is symmetric — is reported as a fatal dependency cycle,
+            // and the command refuses to run at all. On a real 664-item tracker that
+            // was four "cycles" and a hard failure, none of them orderings.
+            if (!isGatingDep(dep))
+                continue;
             if (!byId.has(dep.id))
                 continue; // dangling dep is not a cycle
             const c = color.get(dep.id);
@@ -1240,13 +1247,35 @@ function csvField(value) {
 /** IDs of the dependencies that gate scheduling (blocking kinds only —
  *  informational links like related/relates_to/duplicate are excluded).
  *  Shared by the CSV and JSON exporters so both report the same edge set. */
+/**
+ * Dependency kinds that annotate a relationship rather than order the work.
+ *
+ * A gantt schedules on "this cannot start until that finishes". These kinds all
+ * assert something else — association, provenance, hierarchy, or replacement —
+ * so treating them as scheduling edges invents ordering that the tracker never
+ * stated. `related` and `related_to` are the same concept under two spellings
+ * that real trackers both emit, and both are SYMMETRIC: pm records the edge on
+ * each item, so a single pair reads as a two-node cycle to any consumer that
+ * does not exclude them.
+ */
+const NON_GATING_DEP_KINDS = new Set([
+    "related",
+    "related_to",
+    "relates_to",
+    "duplicate",
+    "duplicate_of",
+    "discovered_from",
+    "supersedes",
+    "verifies",
+    "parent",
+    "child",
+]);
+/** Whether a dependency orders the work, rather than merely annotating it. */
+function isGatingDep(dep) {
+    return !NON_GATING_DEP_KINDS.has((dep.kind ?? "blocked_by").toLowerCase());
+}
 function gatingDepIds(item) {
-    return (item.dependencies ?? [])
-        .filter((d) => {
-        const kind = (d.kind ?? "blocked_by").toLowerCase();
-        return kind !== "related" && kind !== "relates_to" && kind !== "duplicate";
-    })
-        .map((d) => d.id);
+    return (item.dependencies ?? []).filter(isGatingDep).map((d) => d.id);
 }
 /**
  * Render rows as a CSV schedule:

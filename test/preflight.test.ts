@@ -32,6 +32,36 @@ test("detectCycles: direct 2-cycle is reported once", () => {
   assert.match(cycles[0], /B "API"/);
 });
 
+test("detectCycles: a symmetric annotation edge is not a scheduling cycle", () => {
+  // `related` is symmetric — pm records the edge on BOTH items — so every
+  // mutually-related pair looked like a two-node cycle to a detector that did
+  // not filter by kind. On the companion's real 664-item tracker that produced
+  // four "fatal dependency cycles" and `pm gantt` refused to run at all, none
+  // of them an ordering. `related_to` is the same concept under the spelling
+  // real trackers also emit, and it was missing from the non-gating set.
+  for (const kind of ["related", "related_to", "relates_to", "duplicate", "duplicate_of", "discovered_from", "supersedes", "verifies", "parent", "child"]) {
+    const items = [
+      item("A", { title: "Arch", dependencies: [{ id: "B", kind }] }),
+      item("B", { title: "Gate", dependencies: [{ id: "A", kind }] }),
+    ];
+    assert.deepStrictEqual(detectCycles(items), [], `${kind} annotates a relationship and must not order the work`);
+  }
+});
+
+test("detectCycles: a gating cycle is still reported when annotation edges are present alongside it", () => {
+  // The filter must not become a way to hide a real cycle: an item carrying
+  // both a `related` edge and a genuine `blocked_by` cycle must still fail.
+  const items = [
+    item("A", { title: "Login", dependencies: [{ id: "B", kind: "related" }, { id: "C", kind: "blocked_by" }] }),
+    item("B", { title: "Docs" }),
+    item("C", { title: "API", dependencies: [{ id: "A", kind: "blocked_by" }] }),
+  ];
+  const cycles = detectCycles(items);
+  assert.strictEqual(cycles.length, 1, "the blocked_by cycle must survive the annotation filter");
+  assert.match(cycles[0], /A "Login"/);
+  assert.match(cycles[0], /C "API"/);
+});
+
 test("detectCycles: self-loop is a cycle", () => {
   const cycles = detectCycles([item("A", { dependencies: [dep("A")] })]);
   assert.strictEqual(cycles.length, 1);
