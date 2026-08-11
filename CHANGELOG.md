@@ -2,6 +2,10 @@
 
 ## 2026.8.11 - 2026-08-11
 
+### Fixed
+
+- Bring pm-gantt-chart index.ts to 100/100/100 coverage ([pm-gantt-chart-hgwy](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-hgwy.toon))
+
 ### Other
 
 - Raise the coverage gate from 88/87/90 toward the fleet mandate of 100 ([pm-gantt-chart-6vtx](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-6vtx.toon))

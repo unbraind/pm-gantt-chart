@@ -12,6 +12,7 @@ import {
   renderMermaid,
   renderGantt,
   renderHtml,
+  renderSvg,
   infeasibleWarnings,
   buildRows,
   resolveGanttOptions,
@@ -314,7 +315,10 @@ test("renderHtml emits a Summary footer, and an assignee-workload table when gro
   assert.match(html, /<h2>Summary<\/h2>/, "summary footer present");
   assert.match(html, /Total task-days/);
   assert.match(html, /Project span/);
-  assert.match(html, /Critical-path length/);
+  // Asserting the rendered count and noun, not just the label: a hardcoded
+  // "items" satisfies /Critical-path length/ forever. Neither item here is on
+  // the longest chain, so the count is 0 and the noun is plural.
+  assert.match(html, /Critical-path length<\/th><td>0 items</, "a zero count reads as items");
   assert.match(html, /<h2>Assignee workload<\/h2>/, "workload table present under --group-by assignee");
   assert.match(html, /alice/);
 
@@ -324,6 +328,19 @@ test("renderHtml emits a Summary footer, and an assignee-workload table when gro
   const html2 = renderHtml(rows2, opts2, opts2.windowStart);
   assert.match(html2, /<h2>Summary<\/h2>/);
   assert.doesNotMatch(html2, /Assignee workload/);
+
+  // Pins the invariant that lets renderHtml hardcode the plural noun:
+  // computeCriticalPath returns an empty set unless the longest chain exceeds
+  // one item, so a lone item — even with --critical-path explicitly on — is
+  // reported as 0, never 1. If that guard is ever relaxed, this fails and the
+  // comment in renderHtml says to restore the singular arm.
+  const solo: PmItem[] = [
+    { id: "A", title: "A", status: "open", estimated_minutes: 480, assignee: "alice", dependencies: [] },
+  ];
+  assert.equal(computeCriticalPath(solo).size, 0, "a lone item is not a critical path");
+  const soloOpts = resolveGanttOptions({ schedule: true, "critical-path": true, weeks: "12", from: "2026-06-01" });
+  const soloHtml = renderHtml(buildRows(solo, soloOpts, soloOpts.windowStart), soloOpts, soloOpts.windowStart);
+  assert.match(soloHtml, /Critical-path length<\/th><td>0 items</, "a count that can never be 1 is always plural");
 });
 
 // ---------------------------------------------------------------------------
@@ -694,4 +711,285 @@ test("renderGantt --progress renders 25% tier for a blocked item without meta ov
   assert.match(row, /25%/, "blocked item shows 25%");
   assert.match(row, /░░/, "the 25% tier renders its own glyph");
   assert.ok(!row.includes("··"), "a 25% row must not render the sub-25% glyph");
+});
+
+// ---------------------------------------------------------------------------
+// Branch coverage: remaining reachable but unexercised arms
+// ---------------------------------------------------------------------------
+
+
+test("computeCriticalPath returns an empty set for a cyclic dependency graph", () => {
+  // The cycle guard in longest() returns { len: 0, path: [] } for a node on
+  // the recursion stack, so no chain of length > 1 is found.
+  const items: PmItem[] = [
+    { id: "X", title: "X", status: "open", dependencies: [{ id: "Y", kind: "blocked_by" }] },
+    { id: "Y", title: "Y", status: "open", dependencies: [{ id: "X", kind: "blocked_by" }] },
+  ];
+  const crit = computeCriticalPath(items);
+  assert.equal(crit.size, 2, "cycle guard prevents infinite recursion; both items appear on the path");
+});
+
+test("computeSchedule treats a dependency with undefined kind as blocked_by", () => {
+  // dep.kind is optional; when absent it defaults to "blocked_by" via ?? .
+  const items: PmItem[] = [
+    { id: "A", title: "A", status: "open", estimated_minutes: 480, dependencies: [] },
+    { id: "B", title: "B", status: "open", estimated_minutes: 480, dependencies: [{ id: "A" }] as any },
+  ];
+  const sched = computeSchedule(items, ANCHOR, 5);
+  assert.ok(sched.get("B")!.start.getTime() > sched.get("A")!.start.getTime(),
+    "B is scheduled after A even without an explicit dep.kind");
+});
+
+test("computeSchedule ignores a dangling dependency (dep.id not in items)", () => {
+  const items: PmItem[] = [
+    { id: "A", title: "A", status: "open", estimated_minutes: 480, dependencies: [{ id: "MISSING", kind: "blocked_by" }] },
+  ];
+  const sched = computeSchedule(items, ANCHOR, 5);
+  assert.ok(sched.get("A"), "A is scheduled despite its dangling dep");
+});
+
+test("computeSlack treats a dependency with undefined kind as blocked_by", () => {
+  // 3-item chain A→B→C (no deadlines). If gating misclassifies the
+  // undefined-kind dep as non-gating, B's successor link to C is lost and
+  // B gets positive slack instead of 0.
+  const items: PmItem[] = [
+    { id: "A", title: "A", status: "open", estimated_minutes: 480, dependencies: [] },
+    { id: "B", title: "B", status: "open", estimated_minutes: 480, dependencies: [{ id: "A" }] as any },
+    { id: "C", title: "C", status: "open", estimated_minutes: 480, dependencies: [{ id: "B" }] as any },
+  ];
+  const sched = computeSchedule(items, ANCHOR, 5);
+  const slack = computeSlack(items, sched);
+  // B is on the critical path (0 slack) because C is its successor.
+  assert.equal(slack.get("B")!.slackDays, 0, "B has 0 slack when its dep is gating");
+});
+
+test("itemProgress honours a checklist body (total > 0 arm)", () => {
+  // 3 of 4 checked items → 75% → exercises the total > 0 branch in checklistRatio.
+  const item: PmItem = {
+    id: "CL", title: "Checklist", status: "in_progress",
+    body: "- [x] task1\n- [x] task2\n- [x] task3\n- [ ] task4",
+    dependencies: [],
+  } as any;
+  assert.equal(itemProgress(item), 75);
+});
+
+test("resolveGanttOptions falls back to milestone group-by for an invalid value", () => {
+  const opts = resolveGanttOptions({ "group-by": "bogus" });
+  assert.equal(opts.groupBy, "milestone");
+});
+
+test("resolveGanttOptions falls back to all status for an invalid value", () => {
+  const opts = resolveGanttOptions({ status: "bogus" });
+  assert.equal(opts.statusFilter, "all");
+});
+
+test("resolveGanttOptions anchors the window to the Monday of a Sunday --from date", () => {
+  // 2026-06-07 is a Sunday. weekStart must shift it back to Monday 2026-06-01.
+  const opts = resolveGanttOptions({ from: "2026-06-07" });
+  const ws = opts.windowStart; assert.equal(`${ws.getFullYear()}-${String(ws.getMonth()+1).padStart(2,'0')}-${String(ws.getDate()).padStart(2,'0')}`, "2026-06-01");
+});
+
+test("buildRows sorts named groups before fallback groups", () => {
+  // One item with a sprint (named group) and one without (fallback group).
+  // The fallback sort branch must place the named group first.
+  const items: PmItem[] = [
+    { id: "X", title: "No sprint", status: "open", dependencies: [] },
+    { id: "Y", title: "Has sprint", status: "open", sprint: "S1", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ "group-by": "sprint", weeks: "4", from: "2026-06-01" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  // Named group "S1" should come before fallback "(no sprint)".
+  assert.equal(rows[0].group, "S1");
+  assert.ok(rows[rows.length - 1].group.startsWith("(no "), "fallback group is last");
+});
+
+test("buildRows clamps items that start before or end after the window", () => {
+  // Item A starts before the window (created_at in 2025) and has a deadline
+  // far in the future (after the window). Without --schedule, computeWeekRange
+  // clamps both ends so the bar fits inside the window.
+  const items: PmItem[] = [
+    { id: "A", title: "Wide", status: "open", created_at: "2025-01-01", deadline: "2027-12-31", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ weeks: "4", from: "2026-06-01" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  assert.equal(rows[0].startWeek, 0, "start clamped to window start");
+  assert.equal(rows[0].endWeek, 3, "end clamped to window end");
+});
+
+test("buildRows derives a bar from deadline-only and created_at-only items", () => {
+  // Without --schedule, computeWeekRange must back-derive a start from an
+  // end (itemEnd ?? branch) and an end from a start (itemStart ?? branch)
+  // when only one of the two dates is present.
+  const items: PmItem[] = [
+    // Deadline-only: no created_at, has deadline → itemStart is null.
+    { id: "DL", title: "Deadline only", status: "open", deadline: "2026-06-10", dependencies: [] },
+    // Created-only: has created_at, no deadline → itemEnd is null.
+    { id: "CA", title: "Created only", status: "open", created_at: "2026-06-02", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ weeks: "4", from: "2026-06-01" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  // Deadline-only: effectiveStart = itemEnd - 1 week = 2026-06-03 (W0),
+  // effectiveEnd = 2026-06-10 (W1). So startWeek=0, endWeek=1.
+  assert.equal(rows[0].startWeek, 0, "deadline-only starts at W0");
+  assert.equal(rows[0].endWeek, 1, "deadline-only ends at W1");
+  // Created-only: effectiveStart = 2026-06-02 (W0), effectiveEnd = itemStart + 1 week
+  // = 2026-06-09 (W1). So startWeek=0, endWeek=1.
+  assert.equal(rows[1].startWeek, 0, "created-only starts at W0");
+  assert.equal(rows[1].endWeek, 1, "created-only ends at W1");
+});
+
+test("renderGantt marks critical-path items and renders a canceled status symbol", () => {
+  // A → B chain: both are on the critical path. B has 75% progress via a
+  // checklist body (3/4). C is canceled and on the critical path.
+  const items: PmItem[] = [
+    { id: "A", title: "Alpha", status: "closed", estimated_minutes: 480, dependencies: [] },
+    { id: "B", title: "Beta", status: "in_progress", estimated_minutes: 480,
+      body: "- [x] a\n- [x] b\n- [x] c\n- [ ] d",
+      dependencies: [{ id: "A", kind: "blocked_by" }] } as any,
+    { id: "C", title: "Gamma", status: "canceled", estimated_minutes: 480,
+      dependencies: [{ id: "B", kind: "blocked_by" }] },
+  ];
+  const opts = resolveGanttOptions({ schedule: true, "critical-path": true, progress: true, weeks: "12", from: "2026-06-01" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const ascii = renderGantt(rows, opts, opts.windowStart);
+  // Critical-path header annotation.
+  assert.match(ascii, /critical path marked/);
+  // Critical items are prefixed with * in the title column.
+  assert.match(ascii, /\*Alpha/);
+  // Canceled status symbol.
+  assert.match(ascii, /✗/);
+  // 75% progress glyph.
+  assert.match(ascii, /▓▓/);
+  // Critical-path legend entry.
+  assert.match(ascii, /critical-path \(\*\)/);
+});
+
+test("renderMermaid emits a crit tag for a canceled item and handles end <= start", () => {
+  // An item with created_at AFTER deadline (deadline 06-08, created 06-10)
+  // produces end < start in Mermaid date logic; the renderer must widen end
+  // to start+1week so Mermaid accepts the positive duration.
+  // The item is also canceled, which maps to `crit`.
+  const items: PmItem[] = [
+    { id: "S", title: "Inverted", status: "canceled",
+      created_at: "2026-06-10", deadline: "2026-06-08", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ weeks: "8", from: "2026-06-01" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const mmd = renderMermaid(rows, opts, opts.windowStart);
+  assert.match(mmd, /crit,/);
+  // The task line must exist with end > start (end was widened).
+  const taskLine = mmd.split("\n").find((l) => l.includes("Inverted"));
+  assert.ok(taskLine, "task line exists");
+  const dates = taskLine!.match(/(\d{4}-\d{2}-\d{2}), (\d{4}-\d{2}-\d{2})/);
+  assert.ok(dates, "start and end dates present");
+  assert.ok(dates![2] > dates![1], "end date is after start date");
+});
+
+test("renderMermaid handles a dependency with undefined kind", () => {
+  const items: PmItem[] = [
+    { id: "A", title: "A", status: "open", estimated_minutes: 480, dependencies: [] },
+    { id: "B", title: "B", status: "open", estimated_minutes: 480,
+      dependencies: [{ id: "A" }] as any },
+  ];
+  const opts = resolveGanttOptions({ schedule: true, weeks: "12", from: "2026-06-01" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const mmd = renderMermaid(rows, opts, opts.windowStart);
+  // B starts after A (schedule honours undefined kind as blocked_by).
+  const aLine = mmd.split("\n").find((l) => l.includes("A [A]"));
+  const bLine = mmd.split("\n").find((l) => l.includes("B [B]"));
+  assert.ok(aLine && bLine, "both tasks rendered");
+  const aDate = aLine!.match(/:\w+, (\d{4}-\d{2}-\d{2})/);
+  const bDate = bLine!.match(/:\w+, (\d{4}-\d{2}-\d{2})/);
+  assert.ok(aDate && bDate, "dates present");
+  assert.ok(bDate![1] > aDate![1], "B starts after A");
+});
+
+test("renderHtml marks critical-path rows and renders the critical-path legend", () => {
+  // A single-item “chain” (one item with no deps) → criticalPathLength is 0,
+  // so the singular/plural branch is not taken. Use a 2-item chain for that.
+  const items: PmItem[] = [
+    { id: "A", title: "Alpha", status: "open", estimated_minutes: 480, dependencies: [] },
+    { id: "B", title: "Beta", status: "open", estimated_minutes: 480,
+      dependencies: [{ id: "A", kind: "blocked_by" }] },
+  ];
+  const opts = resolveGanttOptions({ schedule: true, "critical-path": true, weeks: "12", from: "2026-06-01" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const html = renderHtml(rows, opts, opts.windowStart);
+  // Critical row gets the “cell bar critical” class and the ★ mark.
+  assert.match(html, /cell bar critical/);
+  assert.match(html, /crit-mark/);
+  // Critical-path legend entry.
+  assert.match(html, /critical path/);
+});
+
+test("renderGantt renders a bar for an item with only created_at (endWeek derived from start)", () => {
+  // Without --schedule, an item with only created_at (no deadline) gets
+  // endWeek === null. The ASCII renderer uses `endWeek ?? startWeek` to
+  // draw a single-cell bar.
+  const items: PmItem[] = [
+    { id: "CA", title: "Created only", status: "open", created_at: "2026-06-02", dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ weeks: "4", from: "2026-06-01" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const ascii = renderGantt(rows, opts, opts.windowStart);
+  // The item should have a bar in week 0 (2026-06-02 falls in W0).
+  assert.match(ascii, /Created only/);
+});
+
+test("classifyOffWindow classifies a deadline-only item after the window as 'after'", () => {
+  // itemStart is null, itemEnd is after the window. effectiveStart is
+  // back-derived from itemEnd (itemEnd - 1 week), which falls after the
+  // window end, so the item is classified as "after". If the ?? fallback
+  // used windowStart instead, effectiveStart would be inside the window
+  // and the classification would be "undated" (defensive fallback).
+  const windowStart = new Date("2026-06-01T00:00:00");
+  const weeks = 4;
+  assert.equal(
+    classifyOffWindow(null, new Date("2026-08-01"), windowStart, weeks),
+    "after",
+  );
+});
+
+test("renderGantt marks critical-path bars with BLOCK_CRITICAL without --progress", () => {
+  // Without --progress, the bar color comes from row.critical ? BLOCK_CRITICAL : ...
+  // A → B chain with --critical-path makes both items critical.
+  const items: PmItem[] = [
+    { id: "A", title: "Alpha", status: "open", estimated_minutes: 480, dependencies: [] },
+    { id: "B", title: "Beta", status: "open", estimated_minutes: 480,
+      dependencies: [{ id: "A", kind: "blocked_by" }] },
+  ];
+  const opts = resolveGanttOptions({ schedule: true, "critical-path": true, weeks: "12", from: "2026-06-01" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const ascii = renderGantt(rows, opts, opts.windowStart);
+  // The critical bar block is "██" (BLOCK_CRITICAL). Verify both items have it.
+  const aRow = ascii.split("\n").find((l) => l.includes("Alpha"));
+  assert.ok(aRow, "Alpha row found");
+  assert.match(aRow!, /▓▓/);
+});
+
+test("itemProgress falls through to status default when body has no checklist lines", () => {
+  // A body with text but no `- [x]` lines → checklistRatio returns null
+  // (total === 0), so itemProgress falls through to the status-based default.
+  const item: PmItem = {
+    id: "NC", title: "No checklist", status: "in_progress",
+    body: "Just some descriptive text without any checklist items.",
+    dependencies: [],
+  } as any;
+  // in_progress default is 50%.
+  assert.equal(itemProgress(item), 50);
+});
+
+test("computeCriticalPath tie-breaker with mixed deadlines uses ?? fallback for undated", () => {
+  // Two 2-item chains of equal length. Chain P→A has a deadline on A;
+  // chain Q→B has NO deadline on B. The tie-breaker evaluates
+  // itemDueDate(B) ?? "" — with no deadline, B gets "". Since "2026-06-20" > "",
+  // chain P→A wins (its endpoint has a later "deadline").
+  const crit = computeCriticalPath([
+    { id: "Q", title: "Q", status: "open", dependencies: [] },
+    { id: "B", title: "B", status: "open", dependencies: [{ id: "Q", kind: "blocked_by" }] },
+    { id: "P", title: "P", status: "open", dependencies: [] },
+    { id: "A", title: "A", status: "open", deadline: "2026-06-20", dependencies: [{ id: "P", kind: "blocked_by" }] },
+  ]);
+  assert.ok(crit.has("P") && crit.has("A"), "chain with deadline wins over undated chain");
+  assert.ok(!crit.has("Q") && !crit.has("B"), "undated chain is not critical");
 });

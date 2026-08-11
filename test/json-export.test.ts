@@ -106,3 +106,20 @@ test("renderJson output round-trips through JSON.parse (valid JSON)", () => {
   const rows = buildRows(chainItems(), opts, opts.windowStart);
   assert.doesNotThrow(() => JSON.parse(renderJson(rows, opts, opts.windowStart, opts.milestones)));
 });
+
+test("renderJson includes a gating dep with undefined kind in the deps array", () => {
+  // A dependency without an explicit `kind` defaults to "blocked_by" (via ??),
+  // so it must appear in the gating deps list. A "related" dep must not.
+  const items = [
+    { id: "X", title: "X", status: "open", estimated_minutes: 480, dependencies: [
+      { id: "Y" },
+      { id: "Z", kind: "related" },
+    ] },
+    { id: "Y", title: "Y", status: "open", estimated_minutes: 480, dependencies: [] },
+    { id: "Z", title: "Z", status: "open", estimated_minutes: 480, dependencies: [] },
+  ] as any[];
+  const opts = resolveGanttOptions({ schedule: true, from: "2026-06-01", weeks: "12" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const x = (JSON.parse(renderJson(rows, opts, opts.windowStart, opts.milestones)).items as any[]).find((i) => i.id === "X");
+  assert.deepEqual(x.deps, ["Y"], "undefined-kind dep is gating; related is excluded");
+});

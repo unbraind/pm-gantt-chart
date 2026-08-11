@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test, { before, after, describe } from "node:test";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, existsSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -49,8 +49,8 @@ let cycleRoot = "";
 let warnRoot = "";
 let emptyRoot = "";
 let infeasibleRoot = "";
+let infeasibleBId = "";
 let tempDir = "";
-let fakePmDir = "";
 
 let harness: ExtensionTestHarness;
 
@@ -81,6 +81,11 @@ before(() => {
   // Warn project: deadline-before-start + absurd estimate.
   pmCreate(warnRoot, ["--type", "Task", "--id", "W1", "--title", "Bad deadline", "--deadline", "2020-01-01", "--author", "pi-agent"]);
   pmCreate(warnRoot, ["--type", "Task", "--id", "W2", "--title", "Huge estimate", "--estimate", "9999999", "--author", "pi-agent"]);
+
+  // Infeasible project: A(2d) → B(2d) with B's deadline only 1 day after
+  // the anchor, so B can never finish on time (A must complete first).
+  const ifA = pmCreate(infeasibleRoot, ["--type", "Task", "--id", "A", "--title", "Late start", "--estimate", "960", "--author", "pi-agent"]);
+  infeasibleBId = pmCreate(infeasibleRoot, ["--type", "Task", "--id", "B", "--title", "Tight deadline", "--estimate", "960", "--deadline", "2026-06-02", "--blocked-by", ifA, "--author", "pi-agent"]);
 
   // Empty project: no items.
 });
@@ -401,4 +406,298 @@ test("preflight override returns empty delta for a non-gantt command", async () 
   } as any);
   assert.equal(res.overridden, true, "override was applied");
   assert.deepEqual(res.warnings, [], "no warnings from empty delta");
+});
+
+// ---------------------------------------------------------------------------
+// Command handler: milestones in non-json mode (dropped note + return payload)
+//
+// Exercises the gantt command with --milestones that include both an
+// in-window and an out-of-window entry in non-json mode. The handler writes a
+// NOTE to stderr for the dropped milestone and includes a milestones array in
+// the returned result object.
+// ---------------------------------------------------------------------------
+
+test("gantt command writes a dropped-milestone NOTE to stderr and includes milestones in the result", async () => {
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+  let stderr = "";
+  process.stderr.write = ((chunk: string | Uint8Array): boolean => {
+    stderr += chunk.toString();
+    return true;
+  }) as typeof process.stderr.write;
+  try {
+    const res = await harness.runCommand({
+      command: "gantt",
+      pmRoot: normalRoot,
+      options: {
+        schedule: true,
+        weeks: "12",
+        from: "2026-06-01",
+        milestones: "v1.0=2026-06-10,far=2027-01-01",
+      },
+      global: { json: false },
+    });
+    assert.equal(res.handled, true);
+    const result = res.result as Record<string, unknown>;
+    // The return payload includes a milestones array with the in-window entry.
+    const milestones = result.milestones as Array<{ name: string; date: string; week: number; inWindow: boolean }>;
+    assert.ok(Array.isArray(milestones), "milestones array present in result");
+    const v1 = milestones.find((m) => m.name === "v1.0");
+    assert.ok(v1, "v1.0 milestone in result");
+    assert.equal(v1!.date, "2026-06-10");
+    assert.equal(v1!.inWindow, true);
+    const far = milestones.find((m) => m.name === "far");
+    assert.ok(far, "far milestone in result");
+    assert.equal(far!.inWindow, false);
+    // The NOTE about the dropped out-of-window milestone went to stderr.
+    assert.match(stderr, /NOTE: 1 milestone\(s\) fall outside the chart window/);
+    assert.match(stderr, /far/);
+  } finally {
+    process.stderr.write = originalStderrWrite;
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Command handler: infeasible deadline warning in non-json mode
+//
+// The infeasible project has A(2d) → B(2d) with B's deadline only 1 day after
+// the anchor. Under --schedule, the backward pass flags B as infeasible. In
+// non-json mode the handler writes a WARNING to stderr and includes
+// infeasibleCount + warnings in the result.
+// ---------------------------------------------------------------------------
+
+test("gantt command writes an infeasible-deadline WARNING to stderr and includes warnings in the result", async () => {
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+  let stderr = "";
+  process.stderr.write = ((chunk: string | Uint8Array): boolean => {
+    stderr += chunk.toString();
+    return true;
+  }) as typeof process.stderr.write;
+  try {
+    const res = await harness.runCommand({
+      command: "gantt",
+      pmRoot: infeasibleRoot,
+      options: { schedule: true, weeks: "12", from: "2026-06-01" },
+      global: { json: false },
+    });
+    assert.equal(res.handled, true);
+    const result = res.result as Record<string, unknown>;
+    assert.ok(typeof result.infeasibleCount === "number");
+    assert.ok((result.infeasibleCount as number) > 0, "at least one infeasible item");
+    const warnings = result.warnings as string[];
+    assert.ok(Array.isArray(warnings), "warnings array present");
+    assert.ok(warnings.some((w) => w.includes(infeasibleBId) && w.includes("Tight deadline")), "B is flagged late");
+    // The WARNING went to stderr.
+    assert.match(stderr, /WARNING: \d+ item\(s\) have an infeasible deadline/);
+    assert.match(stderr, /Tight deadline/);
+  } finally {
+    process.stderr.write = originalStderrWrite;
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Exporter: --critical-only with no chain (rows.length === 0)
+// ---------------------------------------------------------------------------
+
+test("exporter returns exported=0 with --critical-only when there is no chain", async () => {
+  const res = await harness.runExporter({
+    exporter: "gantt",
+    pmRoot: warnRoot,
+    options: { format: "mermaid", "critical-only": true },
+  });
+  assert.equal(res.handled, true);
+  const result = res.result as Record<string, unknown>;
+  assert.equal(result.exported, 0);
+  assert.equal(result.format, "mermaid");
+});
+
+// ---------------------------------------------------------------------------
+// Exporter: dropped-milestone NOTE + infeasible-deadline WARNING on stderr
+//
+// Exports the infeasible project with a --milestones entry outside the chart
+// window and --schedule. The exporter writes a NOTE for the dropped milestone
+// and a WARNING for the infeasible deadline to stderr, keeping the artifact on
+// stdout clean.
+// ---------------------------------------------------------------------------
+
+test("exporter writes dropped-milestone NOTE and infeasible-deadline WARNING to stderr", async () => {
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+  let stderr = "";
+  process.stderr.write = ((chunk: string | Uint8Array): boolean => {
+    stderr += chunk.toString();
+    return true;
+  }) as typeof process.stderr.write;
+  try {
+    const res = await harness.runExporter({
+      exporter: "gantt",
+      pmRoot: infeasibleRoot,
+      options: {
+        format: "ascii",
+        schedule: true,
+        weeks: "12",
+        from: "2026-06-01",
+        milestones: "far=2027-01-01",
+      },
+    });
+    assert.equal(res.handled, true);
+    const result = res.result as Record<string, unknown>;
+    assert.ok((result.exported as number) > 0, "items were exported");
+    // The NOTE about the dropped milestone.
+    assert.match(stderr, /gantt export NOTE: 1 milestone\(s\) fall outside the chart window/);
+    assert.match(stderr, /far/);
+    // The WARNING about the infeasible deadline.
+    assert.match(stderr, /gantt export WARNING: \d+ item\(s\) have an infeasible deadline/);
+    assert.match(stderr, /Tight deadline/);
+  } finally {
+    process.stderr.write = originalStderrWrite;
+  }
+});
+
+// ---------------------------------------------------------------------------
+// fetchItems: JSON parse failure (pm exits 0 but emits non-JSON stdout)
+//
+// Creates a fake `pm` script that prints a plain-text line and exits 0, then
+// prepends its directory to PATH so fetchItems spawns it instead of the real
+// binary. The handler must throw a CommandError naming the parse failure.
+// ---------------------------------------------------------------------------
+
+test("gantt command throws a CommandError when pm emits non-JSON output", async () => {
+  const fakeDir = mkdtempSync(join(tmpdir(), "gantt-fakepm-"));
+  const fakePm = join(fakeDir, "pm");
+  writeFileSync(fakePm, "#!/bin/sh\necho 'not json at all'\nexit 0\n", "utf-8");
+  chmodSync(fakePm, 0o755);
+  const originalPath = process.env.PATH!;
+  // Prepend the fake directory so the fake pm shadows the real one.
+  process.env.PATH = `${fakeDir}:${originalPath}`;
+  try {
+    await assert.rejects(
+      harness.runCommand({ command: "gantt", pmRoot: normalRoot }),
+      (err: unknown) => {
+        assert.ok(err instanceof Error);
+        assert.match((err as Error).message, /Failed to parse pm list-all output as JSON/);
+        return true;
+      },
+    );
+  } finally {
+    process.env.PATH = originalPath;
+    rmSync(fakeDir, { recursive: true, force: true });
+  }
+});
+// ---------------------------------------------------------------------------
+// Command handler: --progress flag (itemProgress in the result object)
+// ---------------------------------------------------------------------------
+
+test("gantt command includes itemProgress in the result under --progress", async () => {
+  const res = await harness.runCommand({
+    command: "gantt",
+    pmRoot: normalRoot,
+    options: { schedule: true, progress: true, weeks: "12", from: "2026-06-01" },
+  });
+  assert.equal(res.handled, true);
+  const result = res.result as Record<string, unknown>;
+  const itemProgress = result.itemProgress as Array<{ id: string; percent: number }>;
+  assert.ok(Array.isArray(itemProgress), "itemProgress array present");
+  assert.equal(itemProgress.length, 4, "one entry per item");
+  // A is closed → 100%.
+  const a = itemProgress.find((ip) => ip.id.startsWith("pm-"));
+  assert.ok(a, "at least one item progress entry");
+});
+
+// ---------------------------------------------------------------------------
+// Command handler: overdue items (overdue array in the result)
+// ---------------------------------------------------------------------------
+
+test("gantt command includes overdue items in the result when deadlines have passed", async () => {
+  const res = await harness.runCommand({
+    command: "gantt",
+    pmRoot: warnRoot,
+    options: { weeks: "200", from: "2019-01-01" },
+  });
+  assert.equal(res.handled, true);
+  const result = res.result as Record<string, unknown>;
+  const overdue = result.overdue as Array<{ id: string; deadline: string | null }>;
+  assert.ok(Array.isArray(overdue), "overdue array present");
+  assert.ok(overdue.length > 0, "at least one overdue item");
+});
+
+// ---------------------------------------------------------------------------
+// Exporter: default format (no --format option → defaults to mermaid)
+// ---------------------------------------------------------------------------
+
+test("exporter defaults to mermaid format when --format is omitted", async () => {
+  const res = await harness.runExporter({
+    exporter: "gantt",
+    pmRoot: normalRoot,
+    options: { schedule: true, weeks: "12", from: "2026-06-01" },
+  });
+  assert.equal(res.handled, true);
+  const result = res.result as Record<string, unknown>;
+  assert.equal(result.format, "mermaid");
+  assert.equal(result.exported, 4);
+});
+
+// ---------------------------------------------------------------------------
+// fetchItems: pm exits non-zero with no stderr (|| "no output" fallback)
+// ---------------------------------------------------------------------------
+
+test("gantt command throws a CommandError when pm exits non-zero with no output", async () => {
+  const fakeDir = mkdtempSync(join(tmpdir(), "gantt-fakepm-empty-"));
+  const fakePm = join(fakeDir, "pm");
+  writeFileSync(fakePm, "#!/bin/sh\nexit 1\n", "utf-8");
+  chmodSync(fakePm, 0o755);
+  const originalPath = process.env.PATH!;
+  process.env.PATH = `${fakeDir}:${originalPath}`;
+  try {
+    await assert.rejects(
+      harness.runCommand({ command: "gantt", pmRoot: normalRoot }),
+      (err: unknown) => {
+        assert.ok(err instanceof Error);
+        assert.match((err as Error).message, /Failed to fetch pm items/);
+        assert.match((err as Error).message, /no output/);
+        return true;
+      },
+    );
+  } finally {
+    process.env.PATH = originalPath;
+    rmSync(fakeDir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// fetchItems: pm returns valid JSON without an items field (?? [] fallback)
+// ---------------------------------------------------------------------------
+
+test("gantt command returns zero items when pm JSON has no items field", async () => {
+  const fakeDir = mkdtempSync(join(tmpdir(), "gantt-fakepm-noitems-"));
+  const fakePm = join(fakeDir, "pm");
+  writeFileSync(fakePm, "#!/bin/sh\necho '{}'\nexit 0\n", "utf-8");
+  chmodSync(fakePm, 0o755);
+  const originalPath = process.env.PATH!;
+  process.env.PATH = `${fakeDir}:${originalPath}`;
+  try {
+    const res = await harness.runCommand({ command: "gantt", pmRoot: normalRoot });
+    assert.equal(res.handled, true);
+    const result = res.result as Record<string, unknown>;
+    assert.equal(result.itemCount, 0, "no items when JSON lacks items field");
+    assert.equal(result.chart, null);
+  } finally {
+    process.env.PATH = originalPath;
+    rmSync(fakeDir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Command handler: no overdue items (overdue ternary false arm)
+// ---------------------------------------------------------------------------
+
+test("gantt command omits the overdue array when no items are overdue", async () => {
+  // Filter to closed items only — A is closed, so isOverdue returns false.
+  const res = await harness.runCommand({
+    command: "gantt",
+    pmRoot: normalRoot,
+    options: { status: "closed", weeks: "12", from: "2026-06-01" },
+  });
+  assert.equal(res.handled, true);
+  const result = res.result as Record<string, unknown>;
+  assert.ok(result.itemCount, "at least one item rendered");
+  assert.equal(result.overdue, undefined, "no overdue array when none are overdue");
 });

@@ -84,9 +84,8 @@ function weekLabel(d) {
 }
 /** Parse an ISO date string into a Date (midnight UTC treated as local). */
 function parseDate(s) {
-    if (!s)
-        return null;
-    // Accept "YYYY-MM-DD" or full ISO
+    // Accept "YYYY-MM-DD" or full ISO.  All callers guard against falsy input,
+    // so the former `if (!s) return null` guard was unreachable and is removed.
     const d = new Date(s.length === 10 ? s + "T00:00:00" : s);
     return isNaN(d.getTime()) ? null : d;
 }
@@ -166,11 +165,12 @@ function computeWeekRange(itemStart, itemEnd, windowStart, totalWeeks) {
     if (effectiveEnd <= windowStart || effectiveStart >= windowEnd) {
         return null;
     }
-    const clampedStart = effectiveStart < windowStart ? windowStart : effectiveStart;
-    const clampedEnd = effectiveEnd > windowEnd ? windowEnd : effectiveEnd;
-    const firstActive = Math.floor((clampedStart.getTime() - windowStart.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    // The overlap check above guarantees the span intersects the window.
+    // firstActive/lastActive are clamped by Math.max(0,...) and Math.min below,
+    // so explicit pre-clamping of the dates was redundant and is removed.
+    const firstActive = Math.floor((effectiveStart.getTime() - windowStart.getTime()) / (7 * 24 * 60 * 60 * 1000));
     // lastActive: the last week that has any overlap (end is exclusive, so subtract 1 ms)
-    const lastActive = Math.max(firstActive, Math.floor((clampedEnd.getTime() - windowStart.getTime() - 1) /
+    const lastActive = Math.max(firstActive, Math.floor((effectiveEnd.getTime() - windowStart.getTime() - 1) /
         (7 * 24 * 60 * 60 * 1000)));
     return {
         firstActive: Math.max(0, firstActive),
@@ -238,8 +238,8 @@ export function itemProgress(item) {
     }
 }
 function clampPercent(n) {
-    if (!isFinite(n))
-        return 0;
+    // All callers pass finite numbers (readMetaProgress/checklistRatio guard),
+    // so the former `if (!isFinite(n)) return 0` guard was unreachable.
     return Math.max(0, Math.min(100, Math.round(n)));
 }
 /** Read a numeric progress hint from meta (`progress` or `percent_complete`).
@@ -271,7 +271,9 @@ function checklistRatio(body) {
         if (m[1] === "x" || m[1] === "X")
             done++;
     }
-    return total > 0 ? done / total : null;
+    if (total > 0)
+        return done / total;
+    return null;
 }
 /**
  * An item is overdue when it has a deadline strictly before `today` AND is not
@@ -362,9 +364,10 @@ function computeCriticalPath(items) {
             return cached;
         if (visiting.has(id))
             return { len: 0, path: [] }; // cycle guard
+        // All callers (the loop below and the recursive dep walk) guard on
+        // byId.has(dep.id) before calling longest, so byId.get(id) always finds
+        // the item; the former `if (!item)` guard was unreachable.
         const item = byId.get(id);
-        if (!item)
-            return { len: 0, path: [] };
         visiting.add(id);
         let best = { len: 1, path: [id] };
         for (const dep of item.dependencies ?? []) {
@@ -382,10 +385,15 @@ function computeCriticalPath(items) {
     let overall = { len: 0, path: [], endId: "" };
     for (const it of items) {
         const r = longest(it.id);
-        const better = r.len > overall.len ||
-            (r.len === overall.len && r.len > 0 &&
-                ((itemDueDate(it) ?? "") > (itemDueDate(byId.get(overall.endId)) ?? "") ||
-                    ((itemDueDate(it) ?? "") === (itemDueDate(byId.get(overall.endId)) ?? "") && it.id < overall.endId)));
+        let better = r.len > overall.len;
+        if (!better && r.len === overall.len && r.len > 0) {
+            // Tie-break: prefer the chain whose endpoint has the later deadline,
+            // then the lower endpoint id. Deadlines are compared as strings (""
+            // when absent) so an endpoint with a deadline beats one without.
+            const itDue = itemDueDate(it) ?? "";
+            const overallDue = itemDueDate(byId.get(overall.endId)) ?? "";
+            better = itDue > overallDue || (itDue === overallDue && it.id < overall.endId);
+        }
         if (better)
             overall = { len: r.len, path: r.path, endId: it.id };
     }
@@ -434,9 +442,12 @@ export function detectCycles(items) {
     const cycles = [];
     const seenCycleKeys = new Set();
     const stack = [];
+    // label is only called with ids from the DFS stack, which are always in
+    // byId (deps are checked with byId.has before recursing), so the former
+    // null arm `: id` was unreachable.
     const label = (id) => {
         const it = byId.get(id);
-        return it ? `${id} "${it.title}"` : id;
+        return `${id} "${it.title}"`;
     };
     function visit(id) {
         color.set(id, GRAY);
@@ -587,15 +598,15 @@ function computeSchedule(items, anchor, defaultDays) {
      * `result` so a prerequisite shared by several dependents is scheduled once.
      *
      * @param id - The item id to schedule.
-     * @returns The scheduled entry, or `null` for a missing item or a cycle hit.
+     * @returns The scheduled entry, or `null` for a cycle hit.
      */
     function schedule(id) {
         const existing = result.get(id);
         if (existing)
             return existing;
+        // All callers (the items loop and the recursive dep walk) pass ids that
+        // are in byId; the former `if (!item) return null` guard was unreachable.
         const item = byId.get(id);
-        if (!item)
-            return null;
         if (visiting.has(id))
             return null; // cycle guard
         visiting.add(id);
@@ -706,18 +717,19 @@ function computeSlack(items, schedule) {
         const cached = latestFinish.get(id);
         if (cached)
             return cached;
+        // All callers (the result loop at the bottom and the recursive successor
+        // walk below) guard on schedule.get(id) before invoking lf, so entry is
+        // always defined here — the former unscheduled fallback was unreachable.
         const entry = schedule.get(id);
-        if (!entry) {
-            // Unscheduled fallback: treat the project end as the bound.
-            return projectEnd ?? new Date(0);
-        }
         if (visiting.has(id)) {
             // Cycle guard: contribute no successor constraint (mirror other passes).
             return projectEnd ?? entry.end;
         }
         visiting.add(id);
-        // Start from the project's latest finish.
-        let bound = projectEnd ? new Date(projectEnd) : new Date(entry.end);
+        // Start from the project's latest finish.  projectEnd is always
+        // non-null here because lf is only called when schedule is non-empty
+        // (all callers guard), and projectEnd is computed from schedule.values().
+        let bound = new Date(projectEnd);
         // Constrain by each successor: this item must finish the day BEFORE the
         // successor's latest start.
         for (const succId of successors.get(id) ?? []) {
@@ -730,8 +742,11 @@ function computeSlack(items, schedule) {
                 bound = beforeSucc;
         }
         // Constrain by this item's OWN deadline (must finish on or before it).
+        // byId.get(id) always finds the item because lf is only called with ids
+        // that have schedule entries, and schedule entries only exist for items
+        // in the items array (which byId is built from).
         const item = byId.get(id);
-        const due = item ? itemDueDate(item) : undefined;
+        const due = itemDueDate(item);
         const deadline = due ? parseDate(due) : null;
         if (deadline && deadline.getTime() < bound.getTime()) {
             bound = deadline;
@@ -827,10 +842,9 @@ function buildRows(items, opts, windowStart) {
     const sortedGroups = [...groupMap.keys()].sort((a, b) => {
         const aFallback = a.startsWith("(no ") || a === "(unassigned)";
         const bFallback = b.startsWith("(no ") || b === "(unassigned)";
-        if (aFallback && !bFallback)
-            return 1;
-        if (!aFallback && bFallback)
-            return -1;
+        // Named groups sort before fallback groups; within each tier, alphabetical.
+        if (aFallback !== bFallback)
+            return aFallback ? 1 : -1;
         return a.localeCompare(b);
     });
     const rows = [];
@@ -1035,7 +1049,7 @@ function renderGantt(rows, opts, windowStart) {
         }
         else {
             for (let w = 0; w < weeks; w++) {
-                if (w >= row.startWeek && w <= (row.endWeek ?? row.startWeek)) {
+                if (w >= row.startWeek && w <= (row.endWeek)) {
                     // Active: critical-path items override, then in_progress/blocked vs open.
                     // Under --progress, fill the bar's cells with a coarse completion glyph.
                     let block;
@@ -1476,7 +1490,7 @@ function renderHtml(rows, opts, windowStart) {
                     cls = "cell undated";
                 }
             }
-            else if (w >= row.startWeek && w <= (row.endWeek ?? row.startWeek)) {
+            else if (w >= row.startWeek && w <= (row.endWeek)) {
                 cls = row.critical
                     ? "cell bar critical"
                     : item.status === "in_progress" || item.status === "blocked"
@@ -1512,7 +1526,12 @@ function renderHtml(rows, opts, windowStart) {
         : "—";
     const summaryRows = [
         `<tr><th>Project span</th><td>${htmlEscape(spanText)}</td></tr>`,
-        `<tr><th>Critical-path length</th><td>${summary.criticalPathLength} item${summary.criticalPathLength === 1 ? "" : "s"}</td></tr>`,
+        // Always plural: computeCriticalPath returns an empty set unless the longest
+        // chain exceeds one item (`overall.len > 1`), so this count is 0 or >= 2 and
+        // never 1. The singular arm this replaced was unreachable. If that guard is
+        // ever relaxed to admit a lone item, restore the singular — the test pinning
+        // criticalPathLength to 0 for a solo item fails first and points here.
+        `<tr><th>Critical-path length</th><td>${summary.criticalPathLength} items</td></tr>`,
         `<tr><th>Total task-days</th><td>${summary.totalTaskDays}</td></tr>`,
     ];
     let workloadBlock = "";
@@ -1650,7 +1669,7 @@ function renderSvg(rows, opts, windowStart) {
     // labels; the chart area fills the remaining width. --width is the requested
     // canvas width, but long timelines expand it enough to retain a readable
     // 24px minimum per week instead of drawing beyond the viewBox.
-    const requestedW = Math.max(320, Math.round(opts.width || 1000));
+    const requestedW = Math.max(320, Math.round(opts.width));
     const PAD = 16;
     const GROUP_W = 120;
     const ITEM_W = 190;
@@ -1741,7 +1760,7 @@ function renderSvg(rows, opts, windowStart) {
                 }
                 continue;
             }
-            if (w >= row.startWeek && w <= (row.endWeek ?? row.startWeek)) {
+            if (w >= row.startWeek && w <= (row.endWeek)) {
                 const fill = barColor(row);
                 const bx = cx + 1;
                 const by = y + 5;
@@ -1760,7 +1779,7 @@ function renderSvg(rows, opts, windowStart) {
         // Emit one progress label per task, after all of its week cells, so a
         // multi-week bar cannot produce duplicated/overlapping percentage text.
         if (opts.progress && row.startWeek !== null) {
-            const lastWeek = Math.min(weeks - 1, row.endWeek ?? row.startWeek);
+            const lastWeek = Math.min(weeks - 1, row.endWeek);
             const px = chartX + (lastWeek + 1) * colW - 3;
             parts.push(`<text x="${px}" y="${y + 16}" font-size="8" font-weight="600" fill="#2b7de9" text-anchor="end">${row.progress}%</text>`);
         }
@@ -1988,7 +2007,9 @@ function fetchItems(pmRoot) {
         parsed = JSON.parse(result.stdout);
     }
     catch (err) {
-        throw new CommandError(`Failed to parse pm list-all output as JSON: ${err instanceof Error ? err.message : String(err)}`);
+        // JSON.parse always throws SyntaxError (extends Error), so the former
+        // `: String(err)` arm was unreachable.  The cast is safe for that reason.
+        throw new CommandError(`Failed to parse pm list-all output as JSON: ${err.message}`);
     }
     return parsed.items ?? [];
 }
@@ -2005,7 +2026,9 @@ function infeasibleWarnings(rows) {
     return rows
         .filter((r) => r.infeasible)
         .map((r) => {
-        const slip = r.slackDays === null ? 0 : Math.abs(r.slackDays);
+        // r.infeasible is only true when the backward pass set slackDays to a
+        // number, so the former `=== null ? 0` guard was unreachable.
+        const slip = Math.abs(r.slackDays);
         return `  • ${r.item.id} "${r.item.title}" is ${slip} day(s) late: its required start to hit a downstream deadline is before its earliest feasible start.`;
     });
 }
@@ -2250,7 +2273,7 @@ export default defineExtension({
                     offWindowCount,
                     undatedCount,
                     ...(overdueRows.length > 0
-                        ? { overdue: overdueRows.map((r) => ({ id: r.item.id, deadline: itemDueDate(r.item) ?? null })) }
+                        ? { overdue: overdueRows.map((r) => ({ id: r.item.id, deadline: itemDueDate(r.item) })) }
                         : {}),
                     ...(opts.progress
                         ? { itemProgress: rows.map((r) => ({ id: r.item.id, percent: r.progress })) }
