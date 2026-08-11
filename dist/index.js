@@ -2086,7 +2086,7 @@ function defaultExtension(format) {
 const defineExtension = (module) => module;
 export default defineExtension({
     name: "pm-gantt-chart",
-    version: "2026.8.10",
+    version: "2026.8.11",
     activate(api) {
         api.registerCommand({
             name: "gantt",
