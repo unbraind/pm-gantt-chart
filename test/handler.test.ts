@@ -45,6 +45,8 @@ function pmUpdate(root: string, id: string, args: string[]): void {
 
 /** Temp-project roots, populated by the setup hook. */
 let normalRoot = "";
+let closedTaskId = "";
+let inProgressTaskId = "";
 let cycleRoot = "";
 let warnRoot = "";
 let emptyRoot = "";
@@ -67,8 +69,8 @@ before(() => {
   }
 
   // Normal project: A → B → C chain + isolated D.
-  const aId = pmCreate(normalRoot, ["--type", "Task", "--id", "A", "--title", "Design API", "--status", "closed", "--close-reason", "done", "--deadline", "2026-06-10", "--estimate", "480", "--sprint", "S1", "--author", "pi-agent"]);
-  const bId = pmCreate(normalRoot, ["--type", "Task", "--id", "B", "--title", "Build endpoint", "--status", "in_progress", "--blocked-by", aId, "--deadline", "2026-06-20", "--estimate", "960", "--sprint", "S1", "--author", "pi-agent"]);
+  const aId = closedTaskId = pmCreate(normalRoot, ["--type", "Task", "--id", "A", "--title", "Design API", "--status", "closed", "--close-reason", "done", "--deadline", "2026-06-10", "--estimate", "480", "--sprint", "S1", "--author", "pi-agent"]);
+  const bId = inProgressTaskId = pmCreate(normalRoot, ["--type", "Task", "--id", "B", "--title", "Build endpoint", "--status", "in_progress", "--blocked-by", aId, "--deadline", "2026-06-20", "--estimate", "960", "--sprint", "S1", "--author", "pi-agent"]);
   pmCreate(normalRoot, ["--type", "Task", "--id", "C", "--title", "Integration tests", "--status", "open", "--blocked-by", bId, "--estimate", "720", "--sprint", "S2", "--author", "pi-agent"]);
   pmCreate(normalRoot, ["--type", "Task", "--id", "D", "--title", "Write docs", "--status", "open", "--estimate", "480", "--sprint", "S2", "--author", "pi-agent"]);
 
@@ -597,9 +599,17 @@ test("gantt command includes itemProgress in the result under --progress", async
   const itemProgress = result.itemProgress as Array<{ id: string; percent: number }>;
   assert.ok(Array.isArray(itemProgress), "itemProgress array present");
   assert.equal(itemProgress.length, 4, "one entry per item");
-  // A is closed → 100%.
-  const a = itemProgress.find((ip) => ip.id.startsWith("pm-"));
-  assert.ok(a, "at least one item progress entry");
+  // A is closed, so its progress is 100. Selecting by `startsWith("pm-")`
+  // matched any fixture item and asserting only that something was found let
+  // the test pass with the closed item's percentage wrong — which is the whole
+  // property. Select A by its own id and assert the value.
+  const a = itemProgress.find((ip) => ip.id === closedTaskId);
+  assert.ok(a, `task A must appear in itemProgress, got: ${itemProgress.map((ip) => ip.id).join(", ")}`);
+  assert.equal(a.percent, 100, "a closed item is 100 percent complete");
+  // And the in-progress item is not, so the field varies with status rather
+  // than being a constant the assertion above would also accept.
+  const b = itemProgress.find((ip) => ip.id === inProgressTaskId);
+  assert.ok(b && b.percent < 100, `an in_progress item must be below 100, got: ${String(b?.percent)}`);
 });
 
 // ---------------------------------------------------------------------------

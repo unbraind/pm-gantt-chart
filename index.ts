@@ -508,6 +508,10 @@ function computeCriticalPath(items: PmItem[]): Set<string> {
 
     let best: { len: number; path: string[] } = { len: 1, path: [id] };
     for (const dep of item.dependencies ?? []) {
+      // The critical path is an ordering claim, so it walks the same gating
+      // edges scheduling does. Traversing every kind made an annotation edge
+      // lengthen the longest chain and pull unrelated items onto it.
+      if (!isGatingDep(dep)) continue;
       if (!byId.has(dep.id)) continue; // dangling/missing dependency
       const sub = longest(dep.id);
       if (sub.len + 1 > best.len) {
@@ -809,11 +813,12 @@ function computeSchedule(
     // Earliest start = day after the latest dependency finishes.
     let start = new Date(anchor);
     for (const dep of item.dependencies ?? []) {
-      // Only "blocked_by"/"depends_on" edges gate scheduling. Unknown kinds are
-      // treated as prerequisites too (conservative), but informational kinds
-      // like "related" are ignored.
-      const kind = (dep.kind ?? "blocked_by").toLowerCase();
-      if (kind === "related" || kind === "relates_to" || kind === "duplicate") continue;
+      // One predicate for every dependency traversal in this file. Local
+      // denylists drifted: this one and computeSlack's excluded three kinds
+      // while detectCycles excluded ten, so `related_to`, `parent`, `child` and
+      // `supersedes` were ignored by cycle detection and JSON export yet still
+      // ordered the work — one command interpreting the same graph two ways.
+      if (!isGatingDep(dep)) continue;
       if (!byId.has(dep.id)) continue;
       const depEntry = schedule(dep.id);
       if (depEntry) start = maxDate(start, addDays(depEntry.end, 1));
@@ -891,17 +896,13 @@ function computeSlack(
   const byId = new Map<string, PmItem>();
   for (const it of items) byId.set(it.id, it);
 
-  /** Only gating ("blocked_by"/unknown) edges drive scheduling & slack. */
-  const gating = (dep: PmDependency): boolean => {
-    const kind = (dep.kind ?? "blocked_by").toLowerCase();
-    return kind !== "related" && kind !== "relates_to" && kind !== "duplicate";
-  };
+
 
   // Build successor adjacency: successors[depId] = [items depending on depId].
   const successors = new Map<string, string[]>();
   for (const it of items) {
     for (const dep of it.dependencies ?? []) {
-      if (!gating(dep) || !byId.has(dep.id)) continue;
+      if (!isGatingDep(dep) || !byId.has(dep.id)) continue;
       if (!successors.has(dep.id)) successors.set(dep.id, []);
       successors.get(dep.id)!.push(it.id);
     }

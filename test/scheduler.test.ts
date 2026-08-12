@@ -718,15 +718,19 @@ test("renderGantt --progress renders 25% tier for a blocked item without meta ov
 // ---------------------------------------------------------------------------
 
 
-test("computeCriticalPath returns an empty set for a cyclic dependency graph", () => {
-  // The cycle guard in longest() returns { len: 0, path: [] } for a node on
-  // the recursion stack, so no chain of length > 1 is found.
+test("computeCriticalPath terminates on a cyclic graph and returns the traversed chain, not an empty set", () => {
+  // The name and comment used to say "returns an empty set" and "no chain of
+  // length > 1 is found", while the assertion below requires exactly 2. The
+  // cycle guard in longest() stops recursive RE-ENTRY by returning
+  // { len: 0, path: [] } for a node already on the stack — it does not discard
+  // the chain walked to reach it, so X→Y is still the longest path found.
+  // Terminating is the property under test; emptiness never was.
   const items: PmItem[] = [
     { id: "X", title: "X", status: "open", dependencies: [{ id: "Y", kind: "blocked_by" }] },
     { id: "Y", title: "Y", status: "open", dependencies: [{ id: "X", kind: "blocked_by" }] },
   ];
   const crit = computeCriticalPath(items);
-  assert.equal(crit.size, 2, "cycle guard prevents infinite recursion; both items appear on the path");
+  assert.equal(crit.size, 2, "the guard prevents infinite recursion while both items remain on the traversed path");
 });
 
 test("computeSchedule treats a dependency with undefined kind as blocked_by", () => {
@@ -856,10 +860,14 @@ test("renderGantt marks critical-path items and renders a canceled status symbol
   assert.match(ascii, /critical path marked/);
   // Critical items are prefixed with * in the title column.
   assert.match(ascii, /\*Alpha/);
-  // Canceled status symbol.
-  assert.match(ascii, /✗/);
-  // 75% progress glyph.
-  assert.match(ascii, /▓▓/);
+  // Scoped to the rendered ROW. The legend lists every glyph, so matching the
+  // whole output proves only that a legend was printed — these assertions
+  // passed whatever the rows contained.
+  const betaRow = ascii.split("\n").find((line) => line.includes("Beta"));
+  assert.ok(betaRow, "expected a rendered row for Beta");
+  assert.match(betaRow, /▓▓/, "the 75% progress glyph must appear in Beta's own bar, not merely in the legend");
+  const canceledRow = ascii.split("\n").find((line) => line.includes("Gamma") || line.includes("✗"));
+  assert.ok(canceledRow && /✗/.test(canceledRow), "the canceled status symbol must appear on a rendered row");
   // Critical-path legend entry.
   assert.match(ascii, /critical-path \(\*\)/);
 });
@@ -923,17 +931,24 @@ test("renderHtml marks critical-path rows and renders the critical-path legend",
 });
 
 test("renderGantt renders a bar for an item with only created_at (endWeek derived from start)", () => {
-  // Without --schedule, an item with only created_at (no deadline) gets
-  // endWeek === null. The ASCII renderer uses `endWeek ?? startWeek` to
-  // draw a single-cell bar.
+  // Without --schedule, an item with only created_at and no deadline still
+  // gets a derived endWeek: computeWeekRange returns firstActive/lastActive
+  // together, and buildRows sets both from that one range. The renderer's old
+  // `endWeek ?? startWeek` fallback was removed as unreachable for exactly
+  // this reason, so the comment describing it no longer matched the code.
   const items: PmItem[] = [
     { id: "CA", title: "Created only", status: "open", created_at: "2026-06-02", dependencies: [] },
   ];
   const opts = resolveGanttOptions({ weeks: "4", from: "2026-06-01" });
   const rows = buildRows(items, opts, opts.windowStart);
   const ascii = renderGantt(rows, opts, opts.windowStart);
-  // The item should have a bar in week 0 (2026-06-02 falls in W0).
-  assert.match(ascii, /Created only/);
+  // 2026-06-02 falls in W0, so the row must carry an actual bar cell — not
+  // merely appear in the output, which a title column alone satisfies.
+  assert.equal(rows[0].startWeek, 0, "the derived range starts at W0");
+  assert.equal(rows[0].endWeek, 1, "and endWeek is DERIVED rather than null; the default duration carries it into W1");
+  const row = ascii.split("\n").find((line) => line.includes("Created only"));
+  assert.ok(row, "expected a rendered row");
+  assert.match(row, /[█▓▒░]/, "the row must render a bar cell, not just a title");
 });
 
 test("classifyOffWindow classifies a deadline-only item after the window as 'after'", () => {

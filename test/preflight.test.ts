@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { detectCycles, dataSanityReport } from "../index.ts";
+import { detectCycles, dataSanityReport, computeSchedule, computeCriticalPath } from "../index.ts";
 
 // Minimal item shape for the data-sanity helpers.
 function item(id: string, opts: Partial<any> = {}): any {
@@ -46,6 +46,35 @@ test("detectCycles: a symmetric annotation edge is not a scheduling cycle", () =
     ];
     assert.deepStrictEqual(detectCycles(items), [], `${kind} annotates a relationship and must not order the work`);
   }
+});
+
+test("every dependency traversal shares one gating predicate, so the graph is read the same way throughout", () => {
+  // The predicate was applied to detectCycles and gatingDepIds and NOT to
+  // computeCriticalPath, computeSchedule or computeSlack, which each kept their
+  // own narrower filter. So `related_to`, `parent`, `child` and `supersedes`
+  // were excluded from cycle detection and the JSON export while still ordering
+  // the work — one command interpreting the same graph two ways. This asserts
+  // the interpretations agree, for every non-gating kind.
+  const anchor = new Date("2026-06-01T00:00:00");
+  for (const kind of ["related", "related_to", "relates_to", "duplicate", "duplicate_of", "discovered_from", "supersedes", "verifies", "parent", "child"]) {
+    const items: any[] = [
+      item("A", { title: "A", estimated_minutes: 480, dependencies: [] }),
+      item("B", { title: "B", estimated_minutes: 480, dependencies: [{ id: "A", kind }] }),
+    ];
+    // Scheduling: an annotation edge must not push B after A.
+    const sched = computeSchedule(items, anchor, 1);
+    assert.equal(sched.get("B")!.start.getTime(), anchor.getTime(), `${kind} must not order the work in computeSchedule`);
+    // Critical path: an annotation edge must not build a two-item chain.
+    assert.equal(computeCriticalPath(items).size, 0, `${kind} must not form a critical path`);
+  }
+  // The gating control: blocked_by still does all three.
+  const gated: any[] = [
+    item("A", { title: "A", estimated_minutes: 480, dependencies: [] }),
+    item("B", { title: "B", estimated_minutes: 480, dependencies: [{ id: "A", kind: "blocked_by" }] }),
+  ];
+  const gatedSched = computeSchedule(gated, anchor, 1);
+  assert.ok(gatedSched.get("B")!.start.getTime() > anchor.getTime(), "blocked_by must still order the work");
+  assert.equal(computeCriticalPath(gated).size, 2, "blocked_by must still form the critical path");
 });
 
 test("detectCycles: a gating cycle is still reported when annotation edges are present alongside it", () => {
