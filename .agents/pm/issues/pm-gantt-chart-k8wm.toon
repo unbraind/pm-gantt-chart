@@ -6,13 +6,13 @@ status: closed
 priority: 1
 tags[2]: correctness,scheduling
 created_at: "2026-08-11T18:54:28.503Z"
-updated_at: "2026-08-12T01:44:14.503Z"
+updated_at: "2026-08-13T17:02:10.831Z"
 closed_at: "2026-08-11T18:54:30.377Z"
 completed_at: "2026-08-11T18:54:30.377Z"
 author: "harness:claude-code"
 resolution: detectCycles and gatingDepIds share one isGatingDep predicate over an explicit non-gating kind set that includes both the related and related_to spellings.
 expected_result: "A symmetric annotation edge is not a scheduling cycle, and a genuine blocked_by cycle is still reported when annotation edges sit alongside it."
-actual_result: pm gantt renders the 664-item companion tracker that previously failed with four fatal cycles; both new assertions fail against the reverted implementation; coverage holds at 100/100/100.
+actual_result: "pm gantt renders the 664-item companion tracker that previously failed with four fatal cycles; every non-gating assertion fails against the reverted implementation, including the computeSlack slack-consumption assertion added in review round 15; coverage holds at 100/100/100."
 notes[6]{created_at,author,text}:
   "2026-08-11T18:54:28.945Z",codex,"Found by running the built extension against a copy of the companion's real tracker rather than by reading the code. The unit tests all passed and the coverage gate read 100/100/100 while the command could not render a single chart on a real dataset. That is the gap between per-function coverage and end-to-end usability, and only real data exposed it."
   "2026-08-11T18:54:29.306Z",codex,"Fixed by naming the non-gating kinds explicitly and applying the same predicate in both places. The set is derived from what fleet trackers actually emit, counted across all repositories: related 5161, implements 2124, discovered_from 370, parent 340, blocks 226, verifies 167, blocked_by 146, supersedes 60, related_to 53, child 8. The kinds that annotate a relationship rather than order work are excluded; blocked_by, blocks and implements still gate."
@@ -23,5 +23,9 @@ notes[6]{created_at,author,text}:
 files[2]{path,scope,note}:
   index.ts,project,Shared isGatingDep predicate applied to cycle detection and scheduling.
   test/preflight.test.ts,project,Shared isGatingDep predicate applied to cycle detection and scheduling.
+tests[3]{command,scope}:
+  "name=detectCycles: a gating cycle is still reported when annotation edges are present alongside it,result=pass",project
+  "name=detectCycles: a symmetric annotation edge is not a scheduling cycle,result=pass",project
+  "name=every dependency traversal shares one gating predicate, so the graph is read the same way throughout,result=pass",project
 close_reason: detectCycles and gatingDepIds share one isGatingDep predicate over an explicit non-gating kind set that includes both the related and related_to spellings.
 body: ""

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { detectCycles, dataSanityReport, computeSchedule, computeCriticalPath } from "../index.ts";
+import { detectCycles, dataSanityReport, computeSchedule, computeCriticalPath, computeSlack } from "../index.ts";
 
 // Minimal item shape for the data-sanity helpers.
 function item(id: string, opts: Partial<any> = {}): any {
@@ -56,25 +56,37 @@ test("every dependency traversal shares one gating predicate, so the graph is re
   // the work — one command interpreting the same graph two ways. This asserts
   // the interpretations agree, for every non-gating kind.
   const anchor = new Date("2026-06-01T00:00:00");
+  // A is deliberately SHORTER than B. That asymmetry is what makes slack a real
+  // discriminator: when the edge does not gate, A and B both start at the anchor
+  // and the project ends when the longer B ends, so the shorter A can slip —
+  // positive slack. When the edge gates, A→B is the only chain, so A ends the
+  // project through B and cannot slip at all — zero slack. A computeSlack that
+  // ignored the predicate would report the gated answer for annotation edges.
   for (const kind of ["related", "related_to", "relates_to", "duplicate", "duplicate_of", "discovered_from", "supersedes", "verifies", "parent", "child"]) {
     const items: any[] = [
       item("A", { title: "A", estimated_minutes: 480, dependencies: [] }),
-      item("B", { title: "B", estimated_minutes: 480, dependencies: [{ id: "A", kind }] }),
+      item("B", { title: "B", estimated_minutes: 2400, dependencies: [{ id: "A", kind }] }),
     ];
     // Scheduling: an annotation edge must not push B after A.
     const sched = computeSchedule(items, anchor, 1);
     assert.equal(sched.get("B")!.start.getTime(), anchor.getTime(), `${kind} must not order the work in computeSchedule`);
     // Critical path: an annotation edge must not build a two-item chain.
     assert.equal(computeCriticalPath(items).size, 0, `${kind} must not form a critical path`);
+    // Slack: with no ordering, the shorter A floats inside B's longer span.
+    assert.ok(
+      computeSlack(items, sched).get("A")!.slackDays > 0,
+      `${kind} must not consume A's slack in computeSlack`,
+    );
   }
   // The gating control: blocked_by still does all three.
   const gated: any[] = [
     item("A", { title: "A", estimated_minutes: 480, dependencies: [] }),
-    item("B", { title: "B", estimated_minutes: 480, dependencies: [{ id: "A", kind: "blocked_by" }] }),
+    item("B", { title: "B", estimated_minutes: 2400, dependencies: [{ id: "A", kind: "blocked_by" }] }),
   ];
   const gatedSched = computeSchedule(gated, anchor, 1);
   assert.ok(gatedSched.get("B")!.start.getTime() > anchor.getTime(), "blocked_by must still order the work");
   assert.equal(computeCriticalPath(gated).size, 2, "blocked_by must still form the critical path");
+  assert.equal(computeSlack(gated, gatedSched).get("A")!.slackDays, 0, "blocked_by must still make A critical in computeSlack");
 });
 
 test("detectCycles: a gating cycle is still reported when annotation edges are present alongside it", () => {
