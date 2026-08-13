@@ -11,6 +11,7 @@ import {
   renderCsv,
   buildRows,
   resolveGanttOptions,
+  defaultExtension,
 } from "../index.ts";
 
 // A Monday anchor so the window starts cleanly on a week boundary.
@@ -196,4 +197,15 @@ test("renderMermaid emits a task line for an undated item (no created_at, no dea
   const mmd = renderMermaid(rows, opts, opts.windowStart);
   // Undated items get a 1-week marker at the window start (2026-06-01).
   assert.match(mmd, /Undated.*2026-06-01/);
+});
+
+// --- defaultExtension --------------------------------------------------------
+
+test("defaultExtension returns a bare extension with no leading dot, and mermaid maps to mmd", () => {
+  assert.equal(defaultExtension("mermaid"), "mmd");
+  assert.equal(defaultExtension("html"), "html");
+  assert.equal(defaultExtension("svg"), "svg");
+  assert.equal(defaultExtension("ascii"), "txt");
+  assert.equal(defaultExtension("csv"), "csv");
+  assert.equal(defaultExtension("json"), "json");
 });
