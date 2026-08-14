@@ -2803,14 +2803,22 @@ export default defineExtension({
     // registerPreflight overrides in try/catch and downgrades a thrown error to
     // a non-fatal warning, so a throw HERE would NOT abort the command. We still
     // register a scoped preflight so the extension truthfully advertises the
-    // "preflight" capability; it leaves the runtime decision untouched for every
-    // command except our own, where it is a no-op delta.
+    // "preflight" capability. The scope declares the command path pm-gantt-chart
+    // owns so the override cannot contend with another package's preflight
+    // override: an unscoped (global) override collides pairwise with every other
+    // installed package's override (pm health reports
+    // extension_preflight_override_collision). The override leaves the runtime
+    // decision untouched (empty delta).
     // -----------------------------------------------------------------------
-    api.registerPreflight((preflightCtx) => {
-      if (preflightCtx.command !== "gantt") return {};
-      // Intentionally no enforcement here (runtime swallows throws); the gate is
-      // enforced in the command handler. Return an empty delta = no change.
-      return {};
+    api.registerPreflight({
+      commands: ["gantt"],
+      run: () => {
+        // Intentionally no enforcement here (runtime swallows throws); the real
+        // data-sanity gate is enforced in the command handler (runDataSanityGate).
+        // This override only advertises the preflight capability for the gantt
+        // command and returns an empty delta (no runtime decision change).
+        return {};
+      },
     });
   },
 });

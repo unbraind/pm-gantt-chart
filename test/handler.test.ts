@@ -392,7 +392,11 @@ test("preflight override returns empty delta for the gantt command", async () =>
   assert.deepEqual(res.warnings, [], "no warnings from empty delta");
 });
 
-test("preflight override returns empty delta for a non-gantt command", async () => {
+test("preflight override declines for a command pm-gantt-chart does not own", async () => {
+  // The override is scoped to `gantt`, so for any other command the runtime
+  // must report overridden: false — this is what stops it contending with
+  // another package's preflight override (a global override would report
+  // overridden: true for every command and collide pairwise).
   const res = await harness.runPreflightOverride({
     command: "list",
     args: [],
@@ -406,8 +410,7 @@ test("preflight override returns empty delta for a non-gantt command", async () 
       enforce_mandatory_migration_gate: false,
     },
   } as any);
-  assert.equal(res.overridden, true, "override was applied");
-  assert.deepEqual(res.warnings, [], "no warnings from empty delta");
+  assert.equal(res.overridden, false, "scoped override must decline a non-owned command");
 });
 
 // ---------------------------------------------------------------------------
