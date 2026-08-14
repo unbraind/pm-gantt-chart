@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Scope preflight override to pm-gantt-chart's owned command ([pm-gantt-chart-hjs4](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-hjs4.toon))
+
 ## 2026.8.14 - 2026-08-14
 
 ### Fixed

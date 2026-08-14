@@ -32,3 +32,23 @@ test("extension activates cleanly and registers the gantt command, exporter, and
   harness.assertExporter({ exporter: "gantt" });
   harness.assertPreflightOverride();
 });
+
+test("preflight override is scoped to pm-gantt-chart's owned command path", async () => {
+  // The override MUST register as a scoped object (commands + run), not a bare
+  // function: a global (unscoped) override collides pairwise with every other
+  // installed package's preflight override (pm health reports
+  // extension_preflight_override_collision). The runtime matches a command
+  // against `commands` by exact normalized path, so the array lists the full
+  // command path pm-gantt-chart owns (`gantt`).
+  const override = harness.assertPreflightOverride();
+  assert.deepEqual(
+    override.commands,
+    ["gantt"],
+    "preflight override must be scoped to exactly pm-gantt-chart's owned command path",
+  );
+  assert.equal(
+    typeof override.run,
+    "function",
+    "scoped preflight override must expose a run function",
+  );
+});
