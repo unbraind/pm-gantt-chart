@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- The gantt export alias silently drops out of the preflight override's scope and nothing binds the scope to the registered commands ([pm-gantt-chart-wjv5](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-wjv5.toon))
+
 ## 2026.8.15 - 2026-08-15
 
 ### Fixed
