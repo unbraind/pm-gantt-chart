@@ -2139,7 +2139,7 @@ function defaultExtension(format) {
 const defineExtension = (module) => module;
 export default defineExtension({
     name: "pm-gantt-chart",
-    version: "2026.8.14",
+    version: "2026.8.15",
     activate(api) {
         api.registerCommand({
             name: "gantt",
