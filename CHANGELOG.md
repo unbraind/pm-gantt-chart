@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- The pm CLI compatibility floor was declared only in peerDependencies, which only npm enforces, and not in manifest.json pm_min_version, which is the field the CLI enforces ([pm-gantt-chart-ud0y](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-ud0y.toon))
 - The gantt export alias silently drops out of the preflight override's scope and nothing binds the scope to the registered commands ([pm-gantt-chart-wjv5](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-wjv5.toon))
 
 ## 2026.8.15 - 2026-08-15
