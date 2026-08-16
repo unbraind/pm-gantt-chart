@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- The pm CLI compatibility floor was declared only where npm enforces it, and absent from the field the CLI actually reads ([pm-gantt-chart-ud0y](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-ud0y.toon))
 - The gantt export alias silently drops out of the preflight override's scope and nothing binds the scope to the registered commands ([pm-gantt-chart-wjv5](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-wjv5.toon))
 
 ## 2026.8.15 - 2026-08-15
