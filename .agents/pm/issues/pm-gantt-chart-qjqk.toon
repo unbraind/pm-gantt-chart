@@ -1,0 +1,37 @@
+id: pm-gantt-chart-qjqk
+title: Installed gantt export rejects every documented shaping and format flag
+description: "A fresh pm 2026.8.17 project activates pm-gantt-chart, but pm gantt export --format json --schedule --critical-path fails before the handler with 'Too many arguments ... json'. The exporter was registered without ImportExportRegistrationOptions, so its derived command has no flags even though the handler and README depend on them. Register the full exporter command contract and bind it to an activation test plus fresh-install acceptance."
+type: Issue
+status: closed
+priority: 0
+tags[4]: activation,exporter,production-readiness,sdk
+created_at: "2026-08-17T05:09:02.662Z"
+updated_at: "2026-08-17T05:23:31.238Z"
+closed_at: "2026-08-17T05:14:59.590Z"
+completed_at: "2026-08-17T05:14:59.590Z"
+claim_principal: codex
+author: codex
+estimated_minutes: 90
+acceptance_criteria: Activation registrations expose gantt export with the complete shared shaping flags plus format and output; pm gantt export --help documents them; fresh-install JSON export succeeds with three scheduled linked items; unit and release gates pass
+risk: critical
+release: 2026.8.18
+severity: high
+environment: fresh pm 2026.8.17 project with locally installed package
+repro_steps: pm init --defaults; pm install <local-package>; pm gantt export --format json --schedule --critical-path
+resolution: "Passed shared shaping flags plus format/output and command metadata to registerExporter, bound the activation registrations to an exact test, and documented clean stdout use."
+expected_result: "Installed gantt export help and parser expose every handler-supported flag, and structured schedules export successfully."
+actual_result: The activation test failed without the exporter registration metadata and passes after it; a fresh PM 2026.8.17 project exported a three-item scheduled JSON critical path and passed strict health.
+dependencies[1]{id,kind,created_at,author,source_kind,author_source}:
+  pm-gantt-chart-uidc,discovered_from,"2026-08-17T05:09:02.662Z",codex,"cli:create:dep",asserted
+notes[1]{created_at,author,text}:
+  "2026-08-17T05:14:40.369Z",codex,"TDD and installed acceptance: activation initially had no flag registration for gantt export and the targeted test failed. registerExporter now receives first-class SDK metadata sharing every shaping flag and adding format/output; a clean installed project verified help discovery, a three-item blocked_by schedule, JSON export, critical-path rendering, and strict health. Stdout artifact piping requires the host-global --quiet workaround, documented here and filed upstream as pm-cli#1049."
+files[2]{path,scope,note}:
+  index.ts,project,Shared command flags and first-class exporter registration metadata
+  test/smoke.test.ts,project,Exact activation registration contract for the derived exporter command
+tests[1]{command,path,scope,timeout_seconds,note}:
+  npm run coverage,test/smoke.test.ts,project,1800,Exact activation flag registration contract is exercised in the package coverage gate
+docs[2]{path,scope,note}:
+  "https://github.com/unbraind/pm-cli/issues/1049",global,Upstream clean exporter stdout contract request
+  README.md,project,Installed exporter usage and clean stdout piping guidance
+close_reason: Derived exporter command now exposes and accepts its complete documented flag contract
+body: ""

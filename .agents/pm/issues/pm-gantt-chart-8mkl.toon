@@ -1,0 +1,25 @@
+id: pm-gantt-chart-8mkl
+title: Public history retains a personal mailbox and absolute host paths
+description: "A 2026-08-17 full-history privacy scan found no high-confidence credential tokens and GitHub secret scanning reports zero alerts, but the repository is not privacy-clean under the fleet policy: the current tracked mailmap and historical identity material retain one non-noreply personal mailbox, and historical PM evidence retains obsolete absolute host checkout paths. Rewriting published history is destructive and coordination-sensitive, so this must block an unconditional privacy-ready claim and be handled as a dedicated maintainer-approved history-redaction migration."
+type: Issue
+status: open
+priority: 0
+tags[3]: history-redaction,privacy,publication-blocker
+created_at: "2026-08-17T05:18:08.270Z"
+updated_at: "2026-08-17T05:36:12.669Z"
+author: codex
+estimated_minutes: 240
+acceptance_criteria: Maintainer approves canonical replacement identities and history rewrite scope; current mailmap contains only approved public/noreply identities; PM history literals are redacted with audited replacement records; managed remote refs and release tags are rescanned after the approved rewrite; known published artifacts are audited and replaced where the maintainer controls them; downstream consumers receive migration instructions; GitHub secret and dependency alerts remain clear
+risk: critical
+severity: high
+expected_result: "Current tracked files, every object reachable from managed remote refs and release tags, and known published artifacts contain no personal mailbox, secret, private host location, or private service data beyond explicitly approved public identities."
+actual_result: "Credential-shaped scan and GitHub secret scanning are clean, but identity and historical PM text still contain personal and host-local values."
+dependencies[1]{id,kind,created_at,author,source_kind,author_source}:
+  pm-gantt-chart-t9de,discovered_from,"2026-08-17T05:18:08.270Z",codex,"cli:create:dep",asserted
+notes[2]{created_at,author,text}:
+  "2026-08-17T05:20:47.940Z",codex,"Evidence collected without publishing matching values in the tracker: high-confidence token, provider key, and private-key patterns returned zero hits across full patch history; GitHub secret-scanning alerts are zero; the only Dependabot alert is fixed; GitHub has no code-scanning analysis. A separate path/contact scan found the tracked mailmap identity and obsolete host-local PM evidence, so privacy readiness remains blocked pending a coordinated destructive history migration."
+  "2026-08-17T05:36:12.652Z",codex,"Review correction: acceptance now names the repository-controlled verification boundary. Managed remote refs, release tags, and known published artifacts remain auditable; unmanaged downstream clones are coordination recipients, not an exhaustively enforceable gate."
+files[2]{path,scope,note}:
+  .agents/pm/history/pm-gantt-chart-kwkp.jsonl,project,Historical PM evidence containing obsolete host-local paths
+  .mailmap,project,Current identity mapping requiring maintainer-approved public replacement
+body: ""

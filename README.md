@@ -25,6 +25,9 @@ Legend: ██ in_progress/blocked  ░░ open/planned  ▓▓ critical-path (*
 
 ## Installation
 
+Requires pm CLI `2026.8.17` or newer. This floor is enforced both by npm's
+peer dependency and the extension manifest used by the host CLI.
+
 ```sh
 pm install unbraind/pm-gantt-chart
 ```
@@ -81,8 +84,9 @@ pm gantt --milestones "v1.0=2026-06-30,v1.1=2026-08-15"
 ### Export — `pm gantt export`
 
 ```sh
-# Mermaid `gantt` diagram (default format) to stdout
-pm gantt export
+# Mermaid `gantt` diagram (default format) to stdout. Use the global --quiet
+# flag when piping so the CLI's command receipt is not appended to the artifact.
+pm --quiet gantt export
 
 # Mermaid to a file
 pm gantt export --format mermaid --output roadmap.mmd
@@ -108,7 +112,7 @@ pm gantt export --format html --group-by assignee --critical-path --weeks 12 --o
 pm gantt export --format mermaid --schedule --group-by sprint --output plan.mmd
 ```
 
-The exporter writes to the file given by `--output`, or prints to stdout when omitted (handy for piping into a Mermaid live editor).
+The exporter writes to the file given by `--output`, or prints to stdout when omitted. For a clean pipe or redirect, invoke it as `pm --quiet gantt export …`; `--quiet` suppresses the CLI's trailing command receipt while retaining the exported artifact.
 
 ## Options
 
@@ -242,7 +246,11 @@ The HTML export ends with a **Summary** footer — project span (start → end a
 
 ## Item fields used
 
-Items are read via `pm list-all --json --include-body`.
+Items are read via a strict, full, unbounded `pm list-all --json` request with
+bodies included. Before rendering, pm-gantt-chart verifies the pagination,
+readability, omission, output-budget, count, and row-identity receipts. A
+partial or unverifiable workspace read exits non-zero instead of drawing a
+plausible-looking chart with missing work.
 
 | Field | Used for |
 |-------|----------|

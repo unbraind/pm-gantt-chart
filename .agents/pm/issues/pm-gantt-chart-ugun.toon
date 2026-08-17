@@ -1,0 +1,32 @@
+id: pm-gantt-chart-ugun
+title: Fresh installs fail strict health because manifest.json carries an unsupported pm key
+description: "A fresh pm 2026.8.17 project installs and activates pm-gantt-chart, but pm health --strict-exit returns ok:false with extension_manifest_unknown_key:project:pm-gantt-chart:key=pm. The public SDK compatibility checker reports the same manifest_unknown_key finding. Remove the ignored legacy compatibility block and gate the whole raw manifest through the SDK checker so future unknown keys fail in CI before release."
+type: Issue
+status: closed
+priority: 1
+tags[4]: activation,manifest,production-readiness,sdk
+created_at: "2026-08-17T05:04:47.827Z"
+updated_at: "2026-08-17T05:23:30.783Z"
+closed_at: "2026-08-17T05:14:58.983Z"
+completed_at: "2026-08-17T05:14:58.983Z"
+claim_principal: codex
+author: codex
+estimated_minutes: 30
+acceptance_criteria: "The public SDK compatibility checker returns compatible:true with zero findings for the raw manifest at the package's pinned PM version; a fresh local install passes pm health --strict-exit; command and exporter still activate; removing the legacy key is covered by a test that failed before the fix"
+risk: high
+release: 2026.8.18
+resolution: Removed the ignored legacy pm compatibility object and added an SDK compatibility test over the complete raw manifest at the exact pinned CLI version.
+expected_result: The package manifest contains only supported extension keys and a fresh activated install passes strict health.
+actual_result: The SDK checker returns compatible true with zero findings; fresh install activates and pm health --strict-exit passes with zero warnings.
+dependencies[2]{id,kind,created_at,author,source_kind,author_source}:
+  pm-gantt-chart-ud0y,related,"2026-08-17T05:04:47.827Z",codex,"cli:create:dep",detected
+  pm-gantt-chart-uidc,discovered_from,"2026-08-17T05:04:47.827Z",codex,"cli:create:dep",detected
+notes[1]{created_at,author,text}:
+  "2026-08-17T05:14:20.755Z",codex,"TDD and installed acceptance: the public 2026.8.17 SDK checker first returned manifest_unknown_key for the legacy pm block; after removal it returned compatible:true with zero findings. A second clean project installed and activated the package, exposed the exporter flags, rendered a linked three-item schedule, and passed pm health --strict-exit with zero warnings."
+files[2]{path,scope,note}:
+  manifest.json,project,Removed the unsupported legacy pm compatibility block
+  test/compatibility-floor.test.ts,project,Gates the complete raw manifest through the public SDK checker
+tests[1]{command,path,scope,timeout_seconds,note}:
+  npm run coverage,test/compatibility-floor.test.ts,project,1800,SDK manifest contract regression is included in the exact package coverage run
+close_reason: Raw manifest now satisfies the public SDK contract and fresh strict health
+body: ""

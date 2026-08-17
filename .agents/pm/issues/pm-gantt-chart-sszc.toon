@@ -2,14 +2,29 @@ id: pm-gantt-chart-sszc
 title: "The pinned pm-cli is a version behind the fleet, so the prepare script strips two merge-fence rules from .gitattributes on every install"
 description: "package-lock pins @unbrained/pm-cli 2026.8.6 while every other fleet repository resolves 2026.8.7. The prepare script runs pm merge install, and 2026.8.6 writes a merge-driver fence without the two rules covering .agents/pm/extensions. The committed .gitattributes on main carries those rules, so any install or release check leaves the working tree dirty with their removal, and committing that removal would drop the fence that keeps extension state from being line-merged between agents. Seven of eight sampled fleet repositories carry the fence; pm-context is the other outlier at zero."
 type: Issue
-status: open
+status: closed
 priority: 2
 tags[3]: dependencies,merge,skew
 created_at: "2026-08-11T16:00:19.830Z"
-updated_at: "2026-08-11T16:00:30.809Z"
+updated_at: "2026-08-17T05:23:31.595Z"
+closed_at: "2026-08-17T05:15:00.268Z"
+completed_at: "2026-08-17T05:15:00.268Z"
 author: "harness:claude-code"
+estimated_minutes: 30
+acceptance_criteria: The development SDK pin is the current approved PM CLI release; npm and host-runtime compatibility floors agree; npm install and pm merge install preserve the complete extension merge fence; pm health reports no history drift
+release: 2026.8.18
+resolution: "Updated the exact development PM CLI/SDK pin, npm peer minimum, and host manifest minimum to 2026.8.17 while retaining all 29 merge-driver patterns."
+expected_result: "Dependency resolution and both runtime compatibility declarations agree on the approved PM version, and installs do not dirty or weaken the merge fence."
+actual_result: npm resolves 2026.8.17; prepare-merge-driver reports changed false with both extension rules retained; strict health reports integrity and history drift okay.
 dependencies[1]{id,kind,created_at,author,source_kind,author_source}:
   pm-gantt-chart-hgwy,related,"2026-08-11T16:00:30.785Z",codex,"cli:update:dep",detected
-notes[1]{created_at,author,text}:
+notes[2]{created_at,author,text}:
   "2026-08-11T16:00:30.365Z",codex,"Deliberately not fixed inside the coverage PR. Bumping the pinned CLI changes the pm binary CI runs, and history_drift verdicts are known to differ between pm versions, so a dependency bump carried inside a coverage change can turn a green gate red for a reason unrelated to the change under review. It needs its own PR where a drift difference is the expected outcome rather than a surprise."
+  "2026-08-17T05:01:57.640Z",codex,"Verified with the current installed PM CLI 2026.8.17: npm resolves the exact 2026.8.17 SDK pin; the npm peer floor and manifest pm_min_version both require 2026.8.17; node scripts/prepare-merge-driver.mjs reports changed:false and retains all 29 merge patterns including both extension rules; pm health --strict-exit reports integrity and history_drift ok."
+files[4]{path,scope,note}:
+  .gitattributes,project,Verified unchanged by the 2026.8.17 merge installer
+  manifest.json,project,Host-enforced 2026.8.17 compatibility floor
+  package-lock.json,project,Resolved 2026.8.17 SDK graph
+  package.json,project,Exact 2026.8.17 development SDK pin and peer floor
+close_reason: Updated the SDK pin and compatibility floors without weakening the merge fence
 body: ""

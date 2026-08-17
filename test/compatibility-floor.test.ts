@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 
+import { checkExtensionManifestCompatibility } from "@unbrained/pm-cli/sdk/authoring";
+
 const repoRoot = resolve(import.meta.dirname, "..");
 
 interface PackageManifest {
@@ -115,6 +117,18 @@ test("the development dependency is an exact pin at or above the declared floor"
   assert.ok(
     atOrAbove(dev, declared as string),
     `the pinned development CLI ${dev} is below the declared floor ${String(declared)}`,
+  );
+});
+
+test("the complete raw manifest satisfies the public SDK compatibility contract", () => {
+  const dev = packageJson.devDependencies?.[CLI];
+  assert.ok(dev, `package.json devDependencies must declare ${CLI}`);
+  const result = checkExtensionManifestCompatibility(extensionManifest, { pmVersion: dev });
+  assert.equal(result.compatible, true, "the declared PM version bounds must accept the pinned CLI");
+  assert.deepEqual(
+    result.findings,
+    [],
+    `manifest.json must contain only SDK-supported keys and valid version bounds: ${JSON.stringify(result.findings)}`,
   );
 });
 

@@ -33,6 +33,26 @@ test("extension activates cleanly and registers the gantt command, exporter, and
   harness.assertPreflightOverride();
 });
 
+test("the derived gantt export command registers every documented flag", () => {
+  const commandFlags = harness.activation.registrations.flags.find(
+    (registration) => registration.target_command === "gantt",
+  );
+  const exporterFlags = harness.activation.registrations.flags.find(
+    (registration) => registration.target_command === "gantt export",
+  );
+  assert.ok(commandFlags, "gantt must register its shaping flags");
+  assert.ok(exporterFlags, "gantt export must register its own flag contract");
+  assert.deepEqual(
+    exporterFlags.flags.map((flag) => flag.long).sort(),
+    [
+      ...commandFlags.flags.map((flag) => flag.long),
+      "--format",
+      "--output",
+    ].sort(),
+    "the exporter must inherit every shared shaping flag and add its artifact flags",
+  );
+});
+
 test("preflight override is scoped to pm-gantt-chart's owned command paths", async () => {
   // The override MUST register as a scoped object (commands + run), not a bare
   // function: a global (unscoped) override collides pairwise with every other

@@ -1,14 +1,18 @@
-import type { ExtensionApi } from "@unbrained/pm-cli/sdk";
+import type { ExtensionApi } from "@unbrained/pm-cli/sdk/authoring";
 interface PmDependency {
     id: string;
     kind?: string;
     created_at?: string;
 }
+/** Core lifecycle states the renderer can order and encode consistently. */
+declare const PM_ITEM_STATUSES: readonly ["open", "in_progress", "blocked", "closed", "canceled", "draft"];
+/** Runtime-validated lifecycle state accepted from `pm list-all`. */
+type PmItemStatus = (typeof PM_ITEM_STATUSES)[number];
 interface PmItem {
     id: string;
     title: string;
     body?: string;
-    status: "open" | "in_progress" | "blocked" | "closed" | "canceled" | "draft";
+    status: PmItemStatus;
     priority?: string | number;
     type?: string;
     tags?: string[];
@@ -24,7 +28,7 @@ interface PmItem {
     created_at?: string;
 }
 type GroupBy = "milestone" | "sprint" | "release" | "tag" | "type" | "assignee" | "status";
-type StatusFilter = "open" | "in_progress" | "blocked" | "closed" | "canceled" | "draft" | "all";
+type StatusFilter = PmItemStatus | "all";
 /** A fixed deadline/release date drawn as a labeled vertical marker on the
  *  timeline. Parsed from `--milestones "name=YYYY-MM-DD,..."`. `date` is the
  *  local-midnight Date the milestone lands on. */
