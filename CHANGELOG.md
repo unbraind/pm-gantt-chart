@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- The pinned pm-cli is a version behind the fleet, so the prepare script strips two merge-fence rules from .gitattributes on every install ([pm-gantt-chart-sszc](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-sszc.toon))
+- Installed gantt export rejects every documented shaping and format flag ([pm-gantt-chart-qjqk](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-qjqk.toon))
+- Fresh installs fail strict health because manifest.json carries an unsupported pm key ([pm-gantt-chart-ugun](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-ugun.toon))
+- Refuse incomplete list-all envelopes before rendering a Gantt chart ([pm-gantt-chart-uidc](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-uidc.toon))
+
 ## 2026.8.16 - 2026-08-16
 
 ### Fixed

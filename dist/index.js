@@ -24,6 +24,8 @@ class CommandError extends Error {
         this.exitCode = exitCode;
     }
 }
+/** Core lifecycle states the renderer can order and encode consistently. */
+const PM_ITEM_STATUSES = ["open", "in_progress", "blocked", "closed", "canceled", "draft"];
 /** pm has no `milestone` field; map the "milestone" grouping onto its closest
  * canonical fields (sprint, then release). */
 function itemMilestone(item) {
@@ -2014,21 +2016,178 @@ function pmJsonMaxBuffer() {
     const raw = Number(process.env.PM_JSON_MAX_BUFFER);
     return Number.isSafeInteger(raw) && raw > 0 ? raw : 64 * 1024 * 1024;
 }
+/** True only for a JSON object, excluding arrays and `null`. */
+function isRecord(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+/** Render an untrusted JSON value compactly inside a read-contract error. */
+function describeJsonValue(value) {
+    const rendered = JSON.stringify(value);
+    return rendered === undefined ? String(value) : rendered;
+}
+/** Require one exact field value from the `pm list-all` truthfulness envelope. */
+function requireListAllField(actual, expected, field) {
+    if (actual !== expected) {
+        throw new CommandError(`Refusing unverifiable pm list-all output: ${field} must be ${describeJsonValue(expected)}; received ${describeJsonValue(actual)}.`);
+    }
+}
 /**
- * Shell out to `pm list-all --json` and return the parsed item list.
+ * Decode only a complete, unbounded `pm list-all` envelope.
+ *
+ * The rows are untrusted subprocess JSON. Every independent completeness
+ * signal is checked before a row is returned: pagination/truncation, corpus
+ * readability, projection omissions, universal-output compaction, envelope
+ * arithmetic, and stable row identities. Missing receipts fail closed because
+ * an unverifiable workspace read is not a complete workspace read.
+ *
+ * @param parsed - JSON decoded from the installed `pm` CLI.
+ * @returns Runtime-validated items whose envelope proves the whole workspace
+ *          was read without degraded fields.
+ * @throws {@link CommandError} When any receipt or row invariant is absent or
+ *         contradictory.
+ */
+function decodeCompleteListAll(parsed) {
+    if (!isRecord(parsed)) {
+        throw new CommandError("Refusing unverifiable pm list-all output: the response must be a top-level object with completeness receipts.");
+    }
+    if (!Array.isArray(parsed.items)) {
+        throw new CommandError("Refusing unverifiable pm list-all output: items must be an array.");
+    }
+    requireListAllField(parsed.truncated, false, "truncated");
+    requireListAllField(parsed.has_more, false, "has_more");
+    requireListAllField(parsed.next_cursor, null, "next_cursor");
+    const completeness = isRecord(parsed.completeness) ? parsed.completeness : {};
+    requireListAllField(completeness.status, "complete", "completeness.status");
+    requireListAllField(completeness.unreadable_item_count, 0, "completeness.unreadable_item_count");
+    requireListAllField(completeness.unreadable_directory_count, 0, "completeness.unreadable_directory_count");
+    const omission = isRecord(parsed.omission_receipt) ? parsed.omission_receipt : {};
+    requireListAllField(omission.has_omissions, false, "omission_receipt.has_omissions");
+    requireListAllField(omission.omitted_field_group_count, 0, "omission_receipt.omitted_field_group_count");
+    if (!Array.isArray(omission.omitted_field_groups) || omission.omitted_field_groups.length !== 0) {
+        throw new CommandError("Refusing unverifiable pm list-all output: omission_receipt.omitted_field_groups must be an empty array.");
+    }
+    const projection = isRecord(parsed.projection) ? parsed.projection : {};
+    requireListAllField(projection.mode, "full", "projection.mode");
+    const readOutput = isRecord(parsed.read_output) ? parsed.read_output : {};
+    requireListAllField(readOutput.contract_version, 1, "read_output.contract_version");
+    requireListAllField(readOutput.command, "list", "read_output.command");
+    requireListAllField(readOutput.within_budget, true, "read_output.within_budget");
+    requireListAllField(readOutput.strings_compacted, false, "read_output.strings_compacted");
+    requireListAllField(readOutput.rows_compacted, false, "read_output.rows_compacted");
+    requireListAllField(readOutput.result_omitted, false, "read_output.result_omitted");
+    if (!Array.isArray(readOutput.requested_dimensions)
+        || !readOutput.requested_dimensions.includes("amount")
+        || !readOutput.requested_dimensions.includes("cost")) {
+        throw new CommandError("Refusing unverifiable pm list-all output: read_output.requested_dimensions must include amount and cost.");
+    }
+    if (parsed.output_budget_truncation !== undefined || parsed.output_budget_exceeded !== undefined) {
+        throw new CommandError("Refusing unverifiable pm list-all output: an output-budget truncation or omission disclosure was present.");
+    }
+    if (!Number.isSafeInteger(parsed.count) || parsed.count < 0) {
+        throw new CommandError(`Refusing unverifiable pm list-all output: count must be a non-negative safe integer; received ${describeJsonValue(parsed.count)}.`);
+    }
+    if (!Number.isSafeInteger(parsed.total) || parsed.total < 0) {
+        throw new CommandError(`Refusing unverifiable pm list-all output: total must be a non-negative safe integer; received ${describeJsonValue(parsed.total)}.`);
+    }
+    if (parsed.items.length !== parsed.count) {
+        throw new CommandError(`Refusing unverifiable pm list-all output: items.length ${parsed.items.length} must equal count ${parsed.count}.`);
+    }
+    if (parsed.count !== parsed.total) {
+        throw new CommandError(`Refusing incomplete pm list-all output: count ${parsed.count} must equal total ${parsed.total}.`);
+    }
+    const ids = new Set();
+    for (const [index, item] of parsed.items.entries()) {
+        if (!isRecord(item) || typeof item.id !== "string" || item.id.trim().length === 0) {
+            throw new CommandError(`Refusing unverifiable pm list-all output: item ${index} must have a non-empty id.`);
+        }
+        if (ids.has(item.id)) {
+            throw new CommandError(`Refusing unverifiable pm list-all output: duplicate item id ${item.id}.`);
+        }
+        if (typeof item.title !== "string"
+            || typeof item.status !== "string"
+            || !PM_ITEM_STATUSES.includes(item.status)) {
+            throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} must have a string title and a supported status.`);
+        }
+        for (const field of [
+            "body",
+            "type",
+            "due_date",
+            "deadline",
+            "milestone",
+            "sprint",
+            "release",
+            "assignee",
+            "created_at",
+        ]) {
+            if (item[field] !== undefined && typeof item[field] !== "string") {
+                throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} field ${field} must be a string when present.`);
+            }
+        }
+        if (item.priority !== undefined
+            && typeof item.priority !== "string"
+            && typeof item.priority !== "number") {
+            throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} priority must be a string or number when present.`);
+        }
+        if (item.tags !== undefined && (!Array.isArray(item.tags) || item.tags.some((tag) => typeof tag !== "string"))) {
+            throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} tags must be an array of strings when present.`);
+        }
+        if (item.meta !== undefined && !isRecord(item.meta)) {
+            throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} meta must be an object when present.`);
+        }
+        if (item.estimated_minutes !== undefined
+            && (typeof item.estimated_minutes !== "number" || !Number.isFinite(item.estimated_minutes) || item.estimated_minutes < 0)) {
+            throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} estimated_minutes must be a non-negative finite number when present.`);
+        }
+        if (item.dependencies !== undefined) {
+            if (!Array.isArray(item.dependencies)) {
+                throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} dependencies must be an array when present.`);
+            }
+            for (const [dependencyIndex, dependency] of item.dependencies.entries()) {
+                if (!isRecord(dependency) || typeof dependency.id !== "string" || dependency.id.trim().length === 0) {
+                    throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} dependency ${dependencyIndex} must have a non-empty id.`);
+                }
+                if (dependency.kind !== undefined && typeof dependency.kind !== "string") {
+                    throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} dependency ${dependencyIndex} kind must be a string when present.`);
+                }
+                if (dependency.created_at !== undefined && typeof dependency.created_at !== "string") {
+                    throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} dependency ${dependencyIndex} created_at must be a string when present.`);
+                }
+            }
+        }
+        ids.add(item.id);
+    }
+    return parsed.items;
+}
+/**
+ * Shell out to `pm list-all --json` and return a proven-complete item list.
  *
  * Spawns the `pm` binary scoped to `pmRoot` with bodies included, using the
  * enlarged buffer from {@link pmJsonMaxBuffer} so a large tracker's JSON dump is
- * not truncated. A non-zero exit, a spawn error, or unparseable stdout each
- * throw a {@link CommandError} that names the failure, so a broken fetch never
- * proceeds to render an empty or misleading chart.
+ * not truncated. The invocation requests strict, full, unbounded output; the
+ * response then passes {@link decodeCompleteListAll}, independently proving
+ * the CLI honored those controls before chart rendering begins. A subprocess,
+ * parse, or completeness failure throws a {@link CommandError}, so a broken or
+ * partial fetch never becomes an empty or misleading chart.
  *
  * @param pmRoot - The `--path` value pointing at the pm project to read.
  * @returns The decoded items, or an empty array when the project holds none.
  */
 function fetchItems(pmRoot) {
     const maxBuffer = pmJsonMaxBuffer();
-    const result = spawnSync("pm", ["--path", pmRoot, "list-all", "--json", "--include-body"], { encoding: "utf-8", maxBuffer });
+    const result = spawnSync("pm", [
+        "--path",
+        pmRoot,
+        "list-all",
+        "--json",
+        "--include-body",
+        "--full",
+        "--strict-read",
+        "--no-truncate",
+        "--output-limit",
+        "unbounded",
+        "--output-budget",
+        "unbounded",
+    ], { encoding: "utf-8", maxBuffer });
     if (result.error || result.status !== 0) {
         throw new CommandError(`Failed to fetch pm items (exit ${result.status ?? "unknown"}): ${result.stderr?.trim() || result.error?.message || "no output"}`);
     }
@@ -2041,7 +2200,7 @@ function fetchItems(pmRoot) {
         // `: String(err)` arm was unreachable.  The cast is safe for that reason.
         throw new CommandError(`Failed to parse pm list-all output as JSON: ${err.message}`);
     }
-    return parsed.items ?? [];
+    return decodeCompleteListAll(parsed);
 }
 function filterByStatus(items, statusFilter) {
     return statusFilter === "all" ? items : items.filter((i) => i.status === statusFilter);
@@ -2137,6 +2296,104 @@ function defaultExtension(format) {
  * checked against {@link ExtensionModule} exactly as the imported helper would.
  */
 const defineExtension = (module) => module;
+/** Shared timeline-shaping flags accepted by both terminal rendering and every
+ * exporter format. A single definition prevents the derived `gantt export`
+ * contract from drifting away from the options its handler actually reads. */
+const GANTT_FLAGS = [
+    {
+        long: "--weeks",
+        value_name: "n",
+        description: "Number of weeks to show (default: 8; ignored when --to is set)",
+    },
+    {
+        long: "--group-by",
+        value_name: "field",
+        description: "Group items by: milestone (sprint/release) | sprint | release | type | assignee | status | tag (default: milestone)",
+    },
+    {
+        long: "--status",
+        value_name: "filter",
+        description: "Filter by status: open | in_progress | blocked | closed | canceled | draft | all (default: all)",
+    },
+    {
+        long: "--from",
+        value_name: "iso",
+        description: "Anchor the chart window at this ISO date (default: current week)",
+    },
+    {
+        long: "--to",
+        value_name: "iso",
+        description: "Clip the chart window to end at this ISO date (overrides --weeks)",
+    },
+    {
+        long: "--schedule",
+        description: "Dependency-aware scheduling: derive start/end from blocked-by chains + estimates",
+    },
+    {
+        long: "--default-duration",
+        value_name: "days",
+        description: "Fallback duration in days for items without an estimate under --schedule (default: 5)",
+    },
+    {
+        long: "--critical-path",
+        description: "Compute & mark the longest dependency chain (critical path)",
+    },
+    {
+        long: "--critical-only",
+        description: "Show only items on the critical path (implies critical-path computation)",
+    },
+    {
+        long: "--progress",
+        description: "Show each item's % complete on its bar (closed/canceled 100%, in_progress 50% or acceptance-criteria ratio, open 0%)",
+    },
+    {
+        long: "--show-progress",
+        description: "Alias for --progress: show each item's % complete on its bar",
+    },
+    {
+        long: "--width",
+        value_name: "px",
+        description: "Render width in pixels for vector/graphical formats (SVG export, HTML chart). Default: 1000; clamped to 320..8192",
+    },
+    {
+        long: "--milestones",
+        value_name: "list",
+        description: "Draw fixed release/deadline dates as labeled vertical markers. Comma-separated name=YYYY-MM-DD (e.g. \"v1.0=2026-06-30,v1.1=2026-08-15\")",
+    },
+];
+/** First-class SDK metadata for the derived `gantt export` command.
+ *
+ * Exporters are executable without this metadata, but their derived command
+ * otherwise accepts only the implicit optional file argument. Registering the
+ * complete contract makes documented flags parseable and discoverable through
+ * help, activation receipts, and agent command introspection. */
+const GANTT_EXPORT_OPTIONS = {
+    action: "gantt-export",
+    description: "Export the Gantt chart as Mermaid, HTML, SVG, ASCII, CSV, or structured JSON.",
+    intent: "Export a filtered, optionally scheduled project timeline as a portable artifact.",
+    examples: [
+        "pm --quiet gantt export --format json --schedule",
+        "pm gantt export --format mermaid --output roadmap.mmd",
+        "pm gantt export --format html --group-by assignee --critical-path --output team.html",
+    ],
+    failure_hints: [
+        `Use --format with one of: ${EXPORT_FORMATS.join(" | ")}.`,
+        "Use --output <path> to write an artifact; omit it to render on stdout.",
+    ],
+    flags: [
+        ...GANTT_FLAGS,
+        {
+            long: "--format",
+            value_name: "format",
+            description: `Artifact format: ${EXPORT_FORMATS.join(" | ")} (default: mermaid)`,
+        },
+        {
+            long: "--output",
+            value_name: "path",
+            description: "Write the artifact to this path instead of stdout.",
+        },
+    ],
+};
 export default defineExtension({
     name: "pm-gantt-chart",
     version: "2026.8.17",
@@ -2161,68 +2418,7 @@ export default defineExtension({
                 "pm gantt --show-progress",
                 "pm gantt --milestones \"v1.0=2026-06-30,v1.1=2026-08-15\"",
             ],
-            flags: [
-                {
-                    long: "--weeks",
-                    value_name: "n",
-                    description: "Number of weeks to show (default: 8; ignored when --to is set)",
-                },
-                {
-                    long: "--group-by",
-                    value_name: "field",
-                    description: "Group items by: milestone (sprint/release) | sprint | release | type | assignee | status | tag (default: milestone)",
-                },
-                {
-                    long: "--status",
-                    value_name: "filter",
-                    description: "Filter by status: open | in_progress | blocked | closed | canceled | draft | all (default: all)",
-                },
-                {
-                    long: "--from",
-                    value_name: "iso",
-                    description: "Anchor the chart window at this ISO date (default: current week)",
-                },
-                {
-                    long: "--to",
-                    value_name: "iso",
-                    description: "Clip the chart window to end at this ISO date (overrides --weeks)",
-                },
-                {
-                    long: "--schedule",
-                    description: "Dependency-aware scheduling: derive start/end from blocked-by chains + estimates",
-                },
-                {
-                    long: "--default-duration",
-                    value_name: "days",
-                    description: "Fallback duration in days for items without an estimate under --schedule (default: 5)",
-                },
-                {
-                    long: "--critical-path",
-                    description: "Compute & mark the longest dependency chain (critical path)",
-                },
-                {
-                    long: "--critical-only",
-                    description: "Show only items on the critical path (implies critical-path computation)",
-                },
-                {
-                    long: "--progress",
-                    description: "Show each item's % complete on its bar (closed/canceled 100%, in_progress 50% or acceptance-criteria ratio, open 0%)",
-                },
-                {
-                    long: "--show-progress",
-                    description: "Alias for --progress: show each item's % complete on its bar",
-                },
-                {
-                    long: "--width",
-                    value_name: "px",
-                    description: "Render width in pixels for vector/graphical formats (SVG export, HTML chart). Default: 1000; clamped to 320..8192",
-                },
-                {
-                    long: "--milestones",
-                    value_name: "list",
-                    description: "Draw fixed release/deadline dates as labeled vertical markers. Comma-separated name=YYYY-MM-DD (e.g. \"v1.0=2026-06-30,v1.1=2026-08-15\")",
-                },
-            ],
+            flags: GANTT_FLAGS,
             async run(ctx) {
                 const opts = resolveGanttOptions(ctx.options);
                 const allItems = fetchItems(ctx.pm_root);
@@ -2376,7 +2572,7 @@ export default defineExtension({
             console.log(output);
             console.error(`gantt export: rendered ${exportedCount} item(s) as ${format}.`);
             return { exported: exportedCount, format, output };
-        });
+        }, GANTT_EXPORT_OPTIONS);
         // -----------------------------------------------------------------------
         // Preflight (capability surface): a scoped, pass-through override.
         //

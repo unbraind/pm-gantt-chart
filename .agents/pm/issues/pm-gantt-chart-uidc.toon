@@ -1,0 +1,48 @@
+id: pm-gantt-chart-uidc
+title: Refuse incomplete list-all envelopes before rendering a Gantt chart
+description: "fetchItems currently trusts parsed.items and even treats a missing items field as an empty workspace. A truncated, paginated, unreadable, field-omitted, budget-compacted, count-mismatched, or malformed pm list-all response can therefore render a partial chart and report success. Request a full unbounded strict read and validate the entire 2026.8.17 list envelope before returning any rows."
+type: Issue
+status: closed
+priority: 1
+tags[4]: agent-ux,completeness,correctness,tdd
+created_at: "2026-08-17T04:53:30.980Z"
+updated_at: "2026-08-17T05:23:30.408Z"
+closed_at: "2026-08-17T05:14:58.375Z"
+completed_at: "2026-08-17T05:14:58.375Z"
+claim_principal: codex
+author: codex
+estimated_minutes: 120
+acceptance_criteria: "The list-all invocation explicitly requests strict, full, unbounded output; a current real pm 2026.8.17 envelope is accepted; every incomplete or unverifiable envelope fails with CommandError before rendering; count, total, item length, and item identity agree; command and exporter both inherit the guard; release:check and a fresh installed-extension acceptance pass"
+definition_of_ready: "Clean main checkout, no open package PR, companion item pm-cli-website-tv05 identifies this exact current-source gap"
+risk: high
+release: 2026.8.18
+resolution: "Replaced the default bounded list read with the PM 2026.8.17 strict full unbounded contract and reject malformed, truncated, paginated, compacted, omitted, unreadable, mismatched-count, or duplicate-ID envelopes before rendering."
+expected_result: "Every chart and export is derived from a verifiably complete full tracker snapshot, or exits non-zero without presenting a partial project plan as complete."
+actual_result: The handler matrix rejects each independent incompleteness signal; a fresh installed three-item project preserved both dependency edges and produced the complete scheduled critical path; exact index.ts coverage passes.
+notes[3]{created_at,author,text}:
+  "2026-08-17T05:01:30.845Z",codex,"TDD evidence: before implementation, the new handler tests failed because an empty JSON object was accepted as an empty workspace and the subprocess argv lacked --full, --strict-read, --no-truncate, and both unbounded output controls. After implementation, command and exporter accept the current 2026.8.17 envelope and reject 38 independently malformed or incomplete shapes."
+  "2026-08-17T05:14:42.016Z",codex,"Final installed acceptance extended the original completeness work: pm-gantt-chart read all three fresh-project items through the strict full unbounded list envelope, preserved both blocked_by edges, computed the three-item critical path, exported scheduled JSON, and refused the independent malformed envelope signals in the handler suite."
+  "2026-08-17T05:20:47.556Z",codex,"Post-close defensive review removed the remaining unsafe row cast boundary: every renderer-consumed optional scalar, tag array, meta object, estimate, dependency array, dependency id/kind/timestamp, and supported lifecycle status is now narrowed before the PmItem[] assertion. Fifteen malformed-row cases prove each independent rejection path; the exact index.ts gate remains 100/100/100."
+files[4]{path,scope,note}:
+  index.ts,project,Strict full unbounded read and fail-closed envelope decoder
+  manifest.json,project,Host-enforced PM CLI 2026.8.17 floor
+  package.json,project,PM CLI and SDK 2026.8.17 compatibility floor
+  test/handler.test.ts,project,Behavioral completeness and malformed-envelope coverage
+tests[3]:
+  - command: npm run coverage
+    scope: project
+    timeout_seconds: 120
+    note: 168 tests with exact 100/100/100 coverage across index.ts.
+  - command: "npm run release:check"
+    scope: project
+    timeout_seconds: 180
+    note: "Authoritative type, docstring, coverage, audit, pack, and changelog gate."
+  - command: npm run coverage
+    path: test/handler.test.ts
+    scope: project
+    timeout_seconds: 1800
+    note: Malformed-envelope matrix covers each omission signal independently under the exact index.ts gate
+docs[1]{path,scope,note}:
+  README.md,project,Documents complete-read refusal and the PM CLI floor
+close_reason: Strict complete list-all reads and fail-closed envelope validation implemented and verified
+body: ""

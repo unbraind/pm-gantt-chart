@@ -1,14 +1,18 @@
-import type { ExtensionApi } from "@unbrained/pm-cli/sdk";
+import type { ExtensionApi } from "@unbrained/pm-cli/sdk/authoring";
 interface PmDependency {
     id: string;
     kind?: string;
     created_at?: string;
 }
+/** Core lifecycle states the renderer can order and encode consistently. */
+declare const PM_ITEM_STATUSES: readonly ["open", "in_progress", "blocked", "closed", "canceled", "draft"];
+/** Runtime-validated lifecycle state accepted from `pm list-all`. */
+type PmItemStatus = (typeof PM_ITEM_STATUSES)[number];
 interface PmItem {
     id: string;
     title: string;
     body?: string;
-    status: "open" | "in_progress" | "blocked" | "closed" | "canceled" | "draft";
+    status: PmItemStatus;
     priority?: string | number;
     type?: string;
     tags?: string[];

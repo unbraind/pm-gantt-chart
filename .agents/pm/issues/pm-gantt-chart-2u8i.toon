@@ -1,0 +1,27 @@
+id: pm-gantt-chart-2u8i
+title: Coverage gate excludes executable tooling and the merge-driver hook is JavaScript
+description: "The 100 percent gate walks coverageGate.sources=[\".\"] but DEFAULT_SKIP_DIRS excludes scripts, so scripts/coverage-gate.ts, scripts/docstring-gate.ts, and scripts/prepare-merge-driver.mjs are outside the measured source set. The last file is executable JavaScript despite the fleet TypeScript-only requirement. Existing index.ts coverage remains exact, but the package cannot honestly claim all-source 100/100/100/100 until tooling is migrated, independently tested, included in the measured inventory, and statement-equivalent coverage is explicitly reported or justified by the runtime."
+type: Issue
+status: open
+priority: 1
+tags[4]: code-quality,coverage,fleet-mandate,typescript
+created_at: "2026-08-17T05:12:53.979Z"
+updated_at: "2026-08-17T05:14:43.304Z"
+author: codex
+estimated_minutes: 240
+acceptance_criteria: Replace executable .mjs with erasable TypeScript or an approved zero-logic launcher; measure every package-owned executable TypeScript source including gate scripts; enforce exact lines branches functions and an explicit statement-equivalence contract; negative controls prove a new untested root or scripts source fails; release check and fresh install pass
+risk: high
+severity: high
+expected_result: "Every executable package-owned source file is TypeScript, enumerated by the exact coverage inventory, independently tested, and gated at exact coverage without ignores or source exclusions."
+actual_result: The gate reports only index.ts and intentionally prunes scripts; one executable hook is .mjs.
+dependencies[2]{id,kind,created_at,author,source_kind,author_source}:
+  pm-gantt-chart-hgwy,related,"2026-08-17T05:12:53.979Z",codex,"cli:create:dep",asserted
+  pm-gantt-chart-jen6,discovered_from,"2026-08-17T05:12:53.979Z",codex,"cli:create:dep",asserted
+notes[1]{created_at,author,text}:
+  "2026-08-17T05:14:42.877Z",codex,"Measured gap on 2026-08-17: coverageGate.sources is the repository root, but the gate prunes scripts via DEFAULT_SKIP_DIRS. The reported required source set therefore contains only index.ts while three executable tooling files remain outside measurement; prepare-merge-driver.mjs also violates the TypeScript-only fleet rule. This item remains open and must not be represented as completed by the exact index.ts result."
+files[4]{path,scope,note}:
+  package.json,project,Exact thresholds and source-root configuration
+  scripts/coverage-gate.ts,project,Currently excludes the scripts directory from its own inventory
+  scripts/docstring-gate.ts,project,Executable tooling currently outside the coverage inventory
+  scripts/prepare-merge-driver.mjs,project,Executable JavaScript hook requiring TypeScript migration and coverage
+body: ""
