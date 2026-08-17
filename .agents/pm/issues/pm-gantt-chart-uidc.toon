@@ -6,7 +6,7 @@ status: closed
 priority: 1
 tags[4]: agent-ux,completeness,correctness,tdd
 created_at: "2026-08-17T04:53:30.980Z"
-updated_at: "2026-08-17T05:23:30.408Z"
+updated_at: "2026-08-17T05:40:53.766Z"
 closed_at: "2026-08-17T05:14:58.375Z"
 completed_at: "2026-08-17T05:14:58.375Z"
 claim_principal: codex
@@ -19,10 +19,12 @@ release: 2026.8.18
 resolution: "Replaced the default bounded list read with the PM 2026.8.17 strict full unbounded contract and reject malformed, truncated, paginated, compacted, omitted, unreadable, mismatched-count, or duplicate-ID envelopes before rendering."
 expected_result: "Every chart and export is derived from a verifiably complete full tracker snapshot, or exits non-zero without presenting a partial project plan as complete."
 actual_result: The handler matrix rejects each independent incompleteness signal; a fresh installed three-item project preserved both dependency edges and produced the complete scheduled critical path; exact index.ts coverage passes.
-notes[3]{created_at,author,text}:
+notes[5]{created_at,author,text}:
   "2026-08-17T05:01:30.845Z",codex,"TDD evidence: before implementation, the new handler tests failed because an empty JSON object was accepted as an empty workspace and the subprocess argv lacked --full, --strict-read, --no-truncate, and both unbounded output controls. After implementation, command and exporter accept the current 2026.8.17 envelope and reject 38 independently malformed or incomplete shapes."
   "2026-08-17T05:14:42.016Z",codex,"Final installed acceptance extended the original completeness work: pm-gantt-chart read all three fresh-project items through the strict full unbounded list envelope, preserved both blocked_by edges, computed the three-item critical path, exported scheduled JSON, and refused the independent malformed envelope signals in the handler suite."
   "2026-08-17T05:20:47.556Z",codex,"Post-close defensive review removed the remaining unsafe row cast boundary: every renderer-consumed optional scalar, tag array, meta object, estimate, dependency array, dependency id/kind/timestamp, and supported lifecycle status is now narrowed before the PmItem[] assertion. Fifteen malformed-row cases prove each independent rejection path; the exact index.ts gate remains 100/100/100."
+  "2026-08-17T05:36:51.498Z",codex,"Exact-head CodeRabbit review strengthened the fix further: lifecycle filtering now derives from PM_ITEM_STATUSES; decodeCompleteListAll constructs a typed PmItem from individually validated fields instead of asserting the untrusted row array; and an explicit complete zero-item envelope acceptance test proves the empty-workspace path remains valid."
+  "2026-08-17T05:40:53.742Z",codex,"Review-fix verification now runs 172 tests and restores exact 100.00/100.00/100.00 coverage on index.ts. The added compound-field acceptance fixture proves validated tags, meta progress, and dependencies survive reconstruction into exported rows; the package-wide all-source limitation remains separately open as pm-gantt-chart-2u8i."
 files[4]{path,scope,note}:
   index.ts,project,Strict full unbounded read and fail-closed envelope decoder
   manifest.json,project,Host-enforced PM CLI 2026.8.17 floor

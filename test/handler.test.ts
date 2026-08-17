@@ -767,6 +767,57 @@ test("gantt requests a strict full unbounded list and accepts the current comple
   assert.equal(args.filter((arg) => arg === "unbounded").length, 2);
 });
 
+test("gantt accepts a complete envelope with zero items", async () => {
+  await withFakePm(completeListAllEnvelope({ items: [], count: 0, total: 0 }), async () => {
+    const res = await harness.runCommand({ command: "gantt", pmRoot: normalRoot });
+    assert.equal(res.handled, true);
+    assert.equal((res.result as Record<string, unknown>).itemCount, 0);
+  });
+});
+
+test("gantt preserves validated compound fields in exported rows", async () => {
+  const items = [
+    { id: "blocker", title: "Blocker", status: "closed" },
+    { id: "annotation", title: "Annotation target", status: "open" },
+    {
+      id: "fixture-1",
+      title: "Fixture",
+      status: "open",
+      tags: ["agent"],
+      meta: { progress: 75 },
+      dependencies: [
+        { id: "blocker", kind: "blocked_by", created_at: "2026-08-17T00:00:00.000Z" },
+        { id: "annotation" },
+      ],
+    },
+  ];
+  await withFakePm(completeListAllEnvelope({ items, count: 3, total: 3 }), async () => {
+    const res = await harness.runExporter({
+      exporter: "gantt",
+      pmRoot: normalRoot,
+      options: { format: "json", "group-by": "tag", progress: true },
+    });
+    assert.equal(res.handled, true);
+    const result = res.result as Record<string, unknown>;
+    assert.equal(result.exported, 3);
+    assert.equal(typeof result.output, "string");
+    const artifact: unknown = JSON.parse(result.output as string);
+    assert.ok(artifact !== null && typeof artifact === "object" && !Array.isArray(artifact));
+    const exportedItems = (artifact as Record<string, unknown>).items;
+    assert.ok(Array.isArray(exportedItems));
+    const fixture = exportedItems.find(
+      (item): item is Record<string, unknown> => item !== null
+        && typeof item === "object"
+        && !Array.isArray(item)
+        && (item as Record<string, unknown>).id === "fixture-1",
+    );
+    assert.ok(fixture);
+    assert.equal(fixture.group, "agent");
+    assert.equal(fixture.progress, 75);
+    assert.deepEqual(fixture.deps, ["blocker", "annotation"]);
+  });
+});
+
 test("command and exporter refuse every independent incomplete or malformed envelope signal", async () => {
   const cases: Array<[string, unknown, RegExp]> = [
     ["bare array", [], /top-level object/],

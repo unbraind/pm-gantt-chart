@@ -1920,11 +1920,10 @@ function resolveGanttOptions(options) {
         ? String(rawGroupBy)
         : "milestone";
     const rawStatus = readOption(options, "status") ?? "all";
-    const statusFilter = [
-        "open", "in_progress", "blocked", "closed", "canceled", "draft", "all",
-    ].includes(String(rawStatus))
-        ? String(rawStatus)
-        : "all";
+    const rawStatusText = String(rawStatus);
+    const statusFilter = rawStatusText === "all"
+        ? "all"
+        : PM_ITEM_STATUSES.find((status) => status === rawStatusText) ?? "all";
     const criticalPath = readBoolOption(options, "critical-path", "criticalPath");
     const criticalOnly = readBoolOption(options, "critical-only", "criticalOnly");
     const schedule = readBoolOption(options, "schedule");
@@ -2096,6 +2095,7 @@ function decodeCompleteListAll(parsed) {
         throw new CommandError(`Refusing incomplete pm list-all output: count ${parsed.count} must equal total ${parsed.total}.`);
     }
     const ids = new Set();
+    const rows = [];
     for (const [index, item] of parsed.items.entries()) {
         if (!isRecord(item) || typeof item.id !== "string" || item.id.trim().length === 0) {
             throw new CommandError(`Refusing unverifiable pm list-all output: item ${index} must have a non-empty id.`);
@@ -2103,11 +2103,13 @@ function decodeCompleteListAll(parsed) {
         if (ids.has(item.id)) {
             throw new CommandError(`Refusing unverifiable pm list-all output: duplicate item id ${item.id}.`);
         }
-        if (typeof item.title !== "string"
-            || typeof item.status !== "string"
-            || !PM_ITEM_STATUSES.includes(item.status)) {
+        const status = typeof item.status === "string"
+            ? PM_ITEM_STATUSES.find((candidate) => candidate === item.status)
+            : undefined;
+        if (typeof item.title !== "string" || status === undefined) {
             throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} must have a string title and a supported status.`);
         }
+        const row = { id: item.id, title: item.title, status };
         for (const field of [
             "body",
             "type",
@@ -2122,26 +2124,45 @@ function decodeCompleteListAll(parsed) {
             if (item[field] !== undefined && typeof item[field] !== "string") {
                 throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} field ${field} must be a string when present.`);
             }
+            if (typeof item[field] === "string")
+                row[field] = item[field];
         }
         if (item.priority !== undefined
             && typeof item.priority !== "string"
             && typeof item.priority !== "number") {
             throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} priority must be a string or number when present.`);
         }
-        if (item.tags !== undefined && (!Array.isArray(item.tags) || item.tags.some((tag) => typeof tag !== "string"))) {
-            throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} tags must be an array of strings when present.`);
+        if (item.priority !== undefined)
+            row.priority = item.priority;
+        if (item.tags !== undefined) {
+            if (!Array.isArray(item.tags)) {
+                throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} tags must be an array of strings when present.`);
+            }
+            const tags = [];
+            for (const tag of item.tags) {
+                if (typeof tag !== "string") {
+                    throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} tags must be an array of strings when present.`);
+                }
+                tags.push(tag);
+            }
+            row.tags = tags;
         }
         if (item.meta !== undefined && !isRecord(item.meta)) {
             throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} meta must be an object when present.`);
         }
+        if (item.meta !== undefined)
+            row.meta = item.meta;
         if (item.estimated_minutes !== undefined
             && (typeof item.estimated_minutes !== "number" || !Number.isFinite(item.estimated_minutes) || item.estimated_minutes < 0)) {
             throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} estimated_minutes must be a non-negative finite number when present.`);
         }
+        if (item.estimated_minutes !== undefined)
+            row.estimated_minutes = item.estimated_minutes;
         if (item.dependencies !== undefined) {
             if (!Array.isArray(item.dependencies)) {
                 throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} dependencies must be an array when present.`);
             }
+            const dependencies = [];
             for (const [dependencyIndex, dependency] of item.dependencies.entries()) {
                 if (!isRecord(dependency) || typeof dependency.id !== "string" || dependency.id.trim().length === 0) {
                     throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} dependency ${dependencyIndex} must have a non-empty id.`);
@@ -2152,11 +2173,18 @@ function decodeCompleteListAll(parsed) {
                 if (dependency.created_at !== undefined && typeof dependency.created_at !== "string") {
                     throw new CommandError(`Refusing unverifiable pm list-all output: item ${item.id} dependency ${dependencyIndex} created_at must be a string when present.`);
                 }
+                dependencies.push({
+                    id: dependency.id,
+                    ...(typeof dependency.kind === "string" ? { kind: dependency.kind } : {}),
+                    ...(typeof dependency.created_at === "string" ? { created_at: dependency.created_at } : {}),
+                });
             }
+            row.dependencies = dependencies;
         }
         ids.add(item.id);
+        rows.push(row);
     }
-    return parsed.items;
+    return rows;
 }
 /**
  * Shell out to `pm list-all --json` and return a proven-complete item list.

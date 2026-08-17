@@ -105,7 +105,7 @@ const GROUP_BY_VALUES: GroupBy[] = [
   "assignee",
   "status",
 ];
-type StatusFilter = "open" | "in_progress" | "blocked" | "closed" | "canceled" | "draft" | "all";
+type StatusFilter = PmItemStatus | "all";
 
 /** A fixed deadline/release date drawn as a labeled vertical marker on the
  *  timeline. Parsed from `--milestones "name=YYYY-MM-DD,..."`. `date` is the
@@ -2269,11 +2269,10 @@ function resolveGanttOptions(options: Record<string, unknown>): ResolvedOptions 
     : "milestone";
 
   const rawStatus = readOption(options, "status") ?? "all";
-  const statusFilter: StatusFilter = [
-    "open", "in_progress", "blocked", "closed", "canceled", "draft", "all",
-  ].includes(String(rawStatus))
-    ? (String(rawStatus) as StatusFilter)
-    : "all";
+  const rawStatusText = String(rawStatus);
+  const statusFilter: StatusFilter = rawStatusText === "all"
+    ? "all"
+    : PM_ITEM_STATUSES.find((status) => status === rawStatusText) ?? "all";
 
   const criticalPath = readBoolOption(options, "critical-path", "criticalPath");
   const criticalOnly = readBoolOption(options, "critical-only", "criticalOnly");
@@ -2495,6 +2494,7 @@ function decodeCompleteListAll(parsed: unknown): PmItem[] {
   }
 
   const ids = new Set<string>();
+  const rows: PmItem[] = [];
   for (const [index, item] of parsed.items.entries()) {
     if (!isRecord(item) || typeof item.id !== "string" || item.id.trim().length === 0) {
       throw new CommandError(
@@ -2504,15 +2504,15 @@ function decodeCompleteListAll(parsed: unknown): PmItem[] {
     if (ids.has(item.id)) {
       throw new CommandError(`Refusing unverifiable pm list-all output: duplicate item id ${item.id}.`);
     }
-    if (
-      typeof item.title !== "string"
-      || typeof item.status !== "string"
-      || !PM_ITEM_STATUSES.includes(item.status as PmItemStatus)
-    ) {
+    const status = typeof item.status === "string"
+      ? PM_ITEM_STATUSES.find((candidate) => candidate === item.status)
+      : undefined;
+    if (typeof item.title !== "string" || status === undefined) {
       throw new CommandError(
         `Refusing unverifiable pm list-all output: item ${item.id} must have a string title and a supported status.`,
       );
     }
+    const row: PmItem = { id: item.id, title: item.title, status };
     for (const field of [
       "body",
       "type",
@@ -2529,6 +2529,7 @@ function decodeCompleteListAll(parsed: unknown): PmItem[] {
           `Refusing unverifiable pm list-all output: item ${item.id} field ${field} must be a string when present.`,
         );
       }
+      if (typeof item[field] === "string") row[field] = item[field];
     }
     if (
       item.priority !== undefined
@@ -2539,16 +2540,30 @@ function decodeCompleteListAll(parsed: unknown): PmItem[] {
         `Refusing unverifiable pm list-all output: item ${item.id} priority must be a string or number when present.`,
       );
     }
-    if (item.tags !== undefined && (!Array.isArray(item.tags) || item.tags.some((tag) => typeof tag !== "string"))) {
-      throw new CommandError(
-        `Refusing unverifiable pm list-all output: item ${item.id} tags must be an array of strings when present.`,
-      );
+    if (item.priority !== undefined) row.priority = item.priority;
+    if (item.tags !== undefined) {
+      if (!Array.isArray(item.tags)) {
+        throw new CommandError(
+          `Refusing unverifiable pm list-all output: item ${item.id} tags must be an array of strings when present.`,
+        );
+      }
+      const tags: string[] = [];
+      for (const tag of item.tags) {
+        if (typeof tag !== "string") {
+          throw new CommandError(
+            `Refusing unverifiable pm list-all output: item ${item.id} tags must be an array of strings when present.`,
+          );
+        }
+        tags.push(tag);
+      }
+      row.tags = tags;
     }
     if (item.meta !== undefined && !isRecord(item.meta)) {
       throw new CommandError(
         `Refusing unverifiable pm list-all output: item ${item.id} meta must be an object when present.`,
       );
     }
+    if (item.meta !== undefined) row.meta = item.meta;
     if (
       item.estimated_minutes !== undefined
       && (typeof item.estimated_minutes !== "number" || !Number.isFinite(item.estimated_minutes) || item.estimated_minutes < 0)
@@ -2557,12 +2572,14 @@ function decodeCompleteListAll(parsed: unknown): PmItem[] {
         `Refusing unverifiable pm list-all output: item ${item.id} estimated_minutes must be a non-negative finite number when present.`,
       );
     }
+    if (item.estimated_minutes !== undefined) row.estimated_minutes = item.estimated_minutes;
     if (item.dependencies !== undefined) {
       if (!Array.isArray(item.dependencies)) {
         throw new CommandError(
           `Refusing unverifiable pm list-all output: item ${item.id} dependencies must be an array when present.`,
         );
       }
+      const dependencies: PmDependency[] = [];
       for (const [dependencyIndex, dependency] of item.dependencies.entries()) {
         if (!isRecord(dependency) || typeof dependency.id !== "string" || dependency.id.trim().length === 0) {
           throw new CommandError(
@@ -2579,11 +2596,18 @@ function decodeCompleteListAll(parsed: unknown): PmItem[] {
             `Refusing unverifiable pm list-all output: item ${item.id} dependency ${dependencyIndex} created_at must be a string when present.`,
           );
         }
+        dependencies.push({
+          id: dependency.id,
+          ...(typeof dependency.kind === "string" ? { kind: dependency.kind } : {}),
+          ...(typeof dependency.created_at === "string" ? { created_at: dependency.created_at } : {}),
+        });
       }
+      row.dependencies = dependencies;
     }
     ids.add(item.id);
+    rows.push(row);
   }
-  return parsed.items as PmItem[];
+  return rows;
 }
 
 /**
