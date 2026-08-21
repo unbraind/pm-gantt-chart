@@ -6,7 +6,7 @@ interface PmDependency {
 }
 /** Core lifecycle states the renderer can order and encode consistently. */
 declare const PM_ITEM_STATUSES: readonly ["open", "in_progress", "blocked", "closed", "canceled", "draft"];
-/** Runtime-validated lifecycle state accepted from `pm list-all`. */
+/** Runtime-validated lifecycle state accepted from `pm list --all`. */
 type PmItemStatus = (typeof PM_ITEM_STATUSES)[number];
 interface PmItem {
     id: string;

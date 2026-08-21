@@ -4,7 +4,7 @@
   "description": "ASCII Gantt chart renderer + multi-format exporter for pm-cli",
   "author": "@unbraind",
   "entry": "./dist/index.js",
-  "pm_min_version": "2026.8.17",
+  "pm_min_version": "2026.8.20",
   "priority": 50,
   "capabilities": [
     "commands",

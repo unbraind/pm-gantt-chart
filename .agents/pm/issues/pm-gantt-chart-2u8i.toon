@@ -6,22 +6,24 @@ status: open
 priority: 1
 tags[4]: code-quality,coverage,fleet-mandate,typescript
 created_at: "2026-08-17T05:12:53.979Z"
-updated_at: "2026-08-17T05:14:43.304Z"
+updated_at: "2026-08-21T08:46:24.537Z"
 author: codex
 estimated_minutes: 240
 acceptance_criteria: Replace executable .mjs with erasable TypeScript or an approved zero-logic launcher; measure every package-owned executable TypeScript source including gate scripts; enforce exact lines branches functions and an explicit statement-equivalence contract; negative controls prove a new untested root or scripts source fails; release check and fresh install pass
 risk: high
 severity: high
 expected_result: "Every executable package-owned source file is TypeScript, enumerated by the exact coverage inventory, independently tested, and gated at exact coverage without ignores or source exclusions."
-actual_result: The gate reports only index.ts and intentionally prunes scripts; one executable hook is .mjs.
+actual_result: "Configured index.ts coverage is exact, but four executable tooling files are outside measurement, one is JavaScript, 62 test lines use explicit any, and the release gate lacks ESLint and jscpd."
 dependencies[2]{id,kind,created_at,author,source_kind,author_source}:
   pm-gantt-chart-hgwy,related,"2026-08-17T05:12:53.979Z",codex,"cli:create:dep",asserted
   pm-gantt-chart-jen6,discovered_from,"2026-08-17T05:12:53.979Z",codex,"cli:create:dep",asserted
-notes[1]{created_at,author,text}:
+notes[2]{created_at,author,text}:
   "2026-08-17T05:14:42.877Z",codex,"Measured gap on 2026-08-17: coverageGate.sources is the repository root, but the gate prunes scripts via DEFAULT_SKIP_DIRS. The reported required source set therefore contains only index.ts while three executable tooling files remain outside measurement; prepare-merge-driver.mjs also violates the TypeScript-only fleet rule. This item remains open and must not be represented as completed by the exact index.ts result."
-files[4]{path,scope,note}:
+  "2026-08-21T08:31:10.804Z",codex,"Re-measured on 2026-08-21 while adding packed acceptance: the gate reports exactly one source file (index.ts) at 100/100/100,while scripts/coverage-gate.ts,scripts/docstring-gate.ts,and new scripts/accept-packed.ts remain pruned; scripts/prepare-merge-driver.mjs remains executable JavaScript. A bounded rg audit found 62 test lines containing explicit any casts or annotations,and package scripts contain no ESLint or jscpd gate. This remains an independent high-priority blocker; the canonical-reader tranche must not claim all-source coverage or repo-wide no-any compliance."
+files[5]{path,scope,note}:
   package.json,project,Exact thresholds and source-root configuration
   scripts/coverage-gate.ts,project,Currently excludes the scripts directory from its own inventory
   scripts/docstring-gate.ts,project,Executable tooling currently outside the coverage inventory
   scripts/prepare-merge-driver.mjs,project,Executable JavaScript hook requiring TypeScript migration and coverage
+  scripts/accept-packed.ts,project,Executable packed-host acceptance currently outside the coverage inventory
 body: ""

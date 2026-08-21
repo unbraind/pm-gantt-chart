@@ -6,6 +6,7 @@ import type {
   ImportExportContext,
   ImportExportRegistrationOptions,
 } from "@unbrained/pm-cli/sdk/authoring";
+import { certifyCompleteListResult, EXIT_CODE, inspectCompleteListResult } from "@unbrained/pm-cli/sdk";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -16,17 +17,9 @@ import { spawnSync } from "node:child_process";
 // ---------------------------------------------------------------------------
 
 // pm's extension command runtime only treats a thrown error as a cleanly
-// handled non-zero exit when the error carries a numeric `exitCode` property
-// (see @unbrained/pm-cli runCommandHandler). A plain `Error` makes the runtime
-// fall through to its "unhandled" path, which RE-INVOKES the command handler a
-// second time and exits with a generic code. We mirror the SDK's EXIT_CODE
-// contract here rather than importing it: standalone-installed extensions load
-// only their own `dist/`, so `@unbrained/pm-cli` is not resolvable at runtime.
-const EXIT_CODE = {
-  GENERIC_FAILURE: 1,
-  USAGE: 2,
-  NOT_FOUND: 3,
-} as const;
+// handled non-zero exit when the error carries a numeric `exitCode` property.
+// The numeric values come directly from the same public SDK peer that certifies
+// complete-list results, so package and host cannot drift independently.
 
 class CommandError extends Error {
   exitCode: number;
@@ -49,7 +42,7 @@ interface PmDependency {
 
 /** Core lifecycle states the renderer can order and encode consistently. */
 const PM_ITEM_STATUSES = ["open", "in_progress", "blocked", "closed", "canceled", "draft"] as const;
-/** Runtime-validated lifecycle state accepted from `pm list-all`. */
+/** Runtime-validated lifecycle state accepted from `pm list --all`. */
 type PmItemStatus = (typeof PM_ITEM_STATUSES)[number];
 
 interface PmItem {
@@ -2389,23 +2382,82 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-/** Render an untrusted JSON value compactly inside a read-contract error. */
-function describeJsonValue(value: unknown): string {
-  const rendered = JSON.stringify(value);
-  return rendered === undefined ? String(value) : rendered;
+/** Render an untrusted receipt value while preserving missing evidence. */
+function describeReceiptValue(value: unknown): string {
+  if (value === undefined) return "<missing>";
+  return String(JSON.stringify(value));
 }
 
-/** Require one exact field value from the `pm list-all` truthfulness envelope. */
-function requireListAllField(actual: unknown, expected: unknown, field: string): void {
-  if (actual !== expected) {
-    throw new CommandError(
-      `Refusing unverifiable pm list-all output: ${field} must be ${describeJsonValue(expected)}; received ${describeJsonValue(actual)}.`,
-    );
+/** Receipt contracts whose completeness semantics this reader has verified. */
+const SUPPORTED_READ_OUTPUT_CONTRACT_VERSIONS: ReadonlySet<number> = new Set([1]);
+
+/** Collect the pm 2026.8.21 receipt gaps not yet rejected by the public SDK. */
+function supplementalCompleteListFindings(record: Record<string, unknown>): string[] {
+  const findings: string[] = [];
+  const completeness = isRecord(record.completeness) ? record.completeness : undefined;
+  for (const field of ["unreadable_item_count", "unreadable_directory_count"] as const) {
+    const value = completeness?.[field];
+    if (value !== 0) {
+      findings.push(`completeness.${field}=${describeReceiptValue(value)}`);
+    }
   }
+
+  const omission = isRecord(record.omission_receipt) ? record.omission_receipt : undefined;
+  if (omission === undefined) {
+    findings.push("omission_receipt=<missing>");
+  } else {
+    if (omission.has_omissions !== false) {
+      findings.push(`omission_receipt.has_omissions=${describeReceiptValue(omission.has_omissions)}`);
+    }
+    if (!Number.isSafeInteger(omission.omitted_field_group_count) || omission.omitted_field_group_count !== 0) {
+      findings.push(`omission_receipt.omitted_field_group_count=${describeReceiptValue(omission.omitted_field_group_count)}`);
+    }
+    if (!Array.isArray(omission.omitted_field_groups) || omission.omitted_field_groups.length !== 0) {
+      findings.push(`omission_receipt.omitted_field_groups=${describeReceiptValue(omission.omitted_field_groups)}`);
+    }
+  }
+
+  const readOutput = isRecord(record.read_output) ? record.read_output : undefined;
+  if (readOutput === undefined) {
+    findings.push("read_output=<missing>");
+  } else {
+    for (const [field, expected] of [
+      ["command", "list"],
+      ["within_budget", true],
+      ["strings_compacted", false],
+      ["rows_compacted", false],
+      ["result_omitted", false],
+    ] as const) {
+      if (readOutput[field] !== expected) {
+        findings.push(`read_output.${field}=${describeReceiptValue(readOutput[field])}`);
+      }
+    }
+    const contractVersion = readOutput.contract_version;
+    if (
+      typeof contractVersion !== "number"
+      || !SUPPORTED_READ_OUTPUT_CONTRACT_VERSIONS.has(contractVersion)
+    ) {
+      findings.push(`read_output.contract_version=${describeReceiptValue(contractVersion)}`);
+    }
+    const dimensions = readOutput.requested_dimensions;
+    if (!Array.isArray(dimensions)) {
+      findings.push("read_output.requested_dimensions=<missing>");
+    } else {
+      for (const dimension of ["include", "amount", "cost"] as const) {
+        if (!dimensions.includes(dimension)) {
+          findings.push(`read_output.requested_dimensions missing ${dimension}`);
+        }
+      }
+    }
+  }
+
+  if (record.output_budget_truncation !== undefined) findings.push("output_budget_truncation=<present>");
+  if (record.output_budget_exceeded !== undefined) findings.push("output_budget_exceeded=<present>");
+  return findings;
 }
 
 /**
- * Decode only a complete, unbounded `pm list-all` envelope.
+ * Decode only a complete, unbounded `pm list --all` envelope.
  *
  * The rows are untrusted subprocess JSON. Every independent completeness
  * signal is checked before a row is returned: pagination/truncation, corpus
@@ -2420,96 +2472,30 @@ function requireListAllField(actual: unknown, expected: unknown, field: string):
  *         contradictory.
  */
 function decodeCompleteListAll(parsed: unknown): PmItem[] {
-  if (!isRecord(parsed)) {
+  const record = isRecord(parsed) ? parsed : undefined;
+  const sdkFindings = inspectCompleteListResult(parsed).findings
+    .map((finding) => `${finding.code}: ${finding.message}`);
+  const findings = record === undefined
+    ? sdkFindings
+    : [...sdkFindings, ...supplementalCompleteListFindings(record)];
+  if (findings.length > 0 || record === undefined) {
+    const count = record && typeof record.count === "number" ? record.count : "unknown";
+    const total = record && typeof record.total === "number" ? record.total : "unknown";
     throw new CommandError(
-      "Refusing unverifiable pm list-all output: the response must be a top-level object with completeness receipts.",
+      `pm list --all complete-corpus answer was refused: ${findings.join("; ")}; count=${count} of total=${total}. `
+      + "A partial tracker read would make a Gantt chart or export misleading; retry the canonical strict unbounded read.",
     );
   }
-  if (!Array.isArray(parsed.items)) {
-    throw new CommandError("Refusing unverifiable pm list-all output: items must be an array.");
-  }
+  const items = certifyCompleteListResult(record).items;
 
-  requireListAllField(parsed.truncated, false, "truncated");
-  requireListAllField(parsed.has_more, false, "has_more");
-  requireListAllField(parsed.next_cursor, null, "next_cursor");
-
-  const completeness = isRecord(parsed.completeness) ? parsed.completeness : {};
-  requireListAllField(completeness.status, "complete", "completeness.status");
-  requireListAllField(completeness.unreadable_item_count, 0, "completeness.unreadable_item_count");
-  requireListAllField(completeness.unreadable_directory_count, 0, "completeness.unreadable_directory_count");
-
-  const omission = isRecord(parsed.omission_receipt) ? parsed.omission_receipt : {};
-  requireListAllField(omission.has_omissions, false, "omission_receipt.has_omissions");
-  requireListAllField(omission.omitted_field_group_count, 0, "omission_receipt.omitted_field_group_count");
-  if (!Array.isArray(omission.omitted_field_groups) || omission.omitted_field_groups.length !== 0) {
-    throw new CommandError(
-      "Refusing unverifiable pm list-all output: omission_receipt.omitted_field_groups must be an empty array.",
-    );
-  }
-
-  const projection = isRecord(parsed.projection) ? parsed.projection : {};
-  requireListAllField(projection.mode, "full", "projection.mode");
-
-  const readOutput = isRecord(parsed.read_output) ? parsed.read_output : {};
-  requireListAllField(readOutput.contract_version, 1, "read_output.contract_version");
-  requireListAllField(readOutput.command, "list", "read_output.command");
-  requireListAllField(readOutput.within_budget, true, "read_output.within_budget");
-  requireListAllField(readOutput.strings_compacted, false, "read_output.strings_compacted");
-  requireListAllField(readOutput.rows_compacted, false, "read_output.rows_compacted");
-  requireListAllField(readOutput.result_omitted, false, "read_output.result_omitted");
-  if (
-    !Array.isArray(readOutput.requested_dimensions)
-    || !readOutput.requested_dimensions.includes("amount")
-    || !readOutput.requested_dimensions.includes("cost")
-  ) {
-    throw new CommandError(
-      "Refusing unverifiable pm list-all output: read_output.requested_dimensions must include amount and cost.",
-    );
-  }
-  if (parsed.output_budget_truncation !== undefined || parsed.output_budget_exceeded !== undefined) {
-    throw new CommandError(
-      "Refusing unverifiable pm list-all output: an output-budget truncation or omission disclosure was present.",
-    );
-  }
-
-  if (!Number.isSafeInteger(parsed.count) || (parsed.count as number) < 0) {
-    throw new CommandError(
-      `Refusing unverifiable pm list-all output: count must be a non-negative safe integer; received ${describeJsonValue(parsed.count)}.`,
-    );
-  }
-  if (!Number.isSafeInteger(parsed.total) || (parsed.total as number) < 0) {
-    throw new CommandError(
-      `Refusing unverifiable pm list-all output: total must be a non-negative safe integer; received ${describeJsonValue(parsed.total)}.`,
-    );
-  }
-  if (parsed.items.length !== parsed.count) {
-    throw new CommandError(
-      `Refusing unverifiable pm list-all output: items.length ${parsed.items.length} must equal count ${parsed.count}.`,
-    );
-  }
-  if (parsed.count !== parsed.total) {
-    throw new CommandError(
-      `Refusing incomplete pm list-all output: count ${parsed.count} must equal total ${parsed.total}.`,
-    );
-  }
-
-  const ids = new Set<string>();
   const rows: PmItem[] = [];
-  for (const [index, item] of parsed.items.entries()) {
-    if (!isRecord(item) || typeof item.id !== "string" || item.id.trim().length === 0) {
-      throw new CommandError(
-        `Refusing unverifiable pm list-all output: item ${index} must have a non-empty id.`,
-      );
-    }
-    if (ids.has(item.id)) {
-      throw new CommandError(`Refusing unverifiable pm list-all output: duplicate item id ${item.id}.`);
-    }
+  for (const item of items) {
     const status = typeof item.status === "string"
       ? PM_ITEM_STATUSES.find((candidate) => candidate === item.status)
       : undefined;
     if (typeof item.title !== "string" || status === undefined) {
       throw new CommandError(
-        `Refusing unverifiable pm list-all output: item ${item.id} must have a string title and a supported status.`,
+        `Refusing unverifiable pm list --all output: item ${item.id} must have a string title and a supported status.`,
       );
     }
     const row: PmItem = { id: item.id, title: item.title, status };
@@ -2526,7 +2512,7 @@ function decodeCompleteListAll(parsed: unknown): PmItem[] {
     ] as const) {
       if (item[field] !== undefined && typeof item[field] !== "string") {
         throw new CommandError(
-          `Refusing unverifiable pm list-all output: item ${item.id} field ${field} must be a string when present.`,
+          `Refusing unverifiable pm list --all output: item ${item.id} field ${field} must be a string when present.`,
         );
       }
       if (typeof item[field] === "string") row[field] = item[field];
@@ -2537,21 +2523,21 @@ function decodeCompleteListAll(parsed: unknown): PmItem[] {
       && typeof item.priority !== "number"
     ) {
       throw new CommandError(
-        `Refusing unverifiable pm list-all output: item ${item.id} priority must be a string or number when present.`,
+        `Refusing unverifiable pm list --all output: item ${item.id} priority must be a string or number when present.`,
       );
     }
     if (item.priority !== undefined) row.priority = item.priority;
     if (item.tags !== undefined) {
       if (!Array.isArray(item.tags)) {
         throw new CommandError(
-          `Refusing unverifiable pm list-all output: item ${item.id} tags must be an array of strings when present.`,
+          `Refusing unverifiable pm list --all output: item ${item.id} tags must be an array of strings when present.`,
         );
       }
       const tags: string[] = [];
       for (const tag of item.tags) {
         if (typeof tag !== "string") {
           throw new CommandError(
-            `Refusing unverifiable pm list-all output: item ${item.id} tags must be an array of strings when present.`,
+            `Refusing unverifiable pm list --all output: item ${item.id} tags must be an array of strings when present.`,
           );
         }
         tags.push(tag);
@@ -2560,7 +2546,7 @@ function decodeCompleteListAll(parsed: unknown): PmItem[] {
     }
     if (item.meta !== undefined && !isRecord(item.meta)) {
       throw new CommandError(
-        `Refusing unverifiable pm list-all output: item ${item.id} meta must be an object when present.`,
+        `Refusing unverifiable pm list --all output: item ${item.id} meta must be an object when present.`,
       );
     }
     if (item.meta !== undefined) row.meta = item.meta;
@@ -2569,31 +2555,31 @@ function decodeCompleteListAll(parsed: unknown): PmItem[] {
       && (typeof item.estimated_minutes !== "number" || !Number.isFinite(item.estimated_minutes) || item.estimated_minutes < 0)
     ) {
       throw new CommandError(
-        `Refusing unverifiable pm list-all output: item ${item.id} estimated_minutes must be a non-negative finite number when present.`,
+        `Refusing unverifiable pm list --all output: item ${item.id} estimated_minutes must be a non-negative finite number when present.`,
       );
     }
     if (item.estimated_minutes !== undefined) row.estimated_minutes = item.estimated_minutes;
     if (item.dependencies !== undefined) {
       if (!Array.isArray(item.dependencies)) {
         throw new CommandError(
-          `Refusing unverifiable pm list-all output: item ${item.id} dependencies must be an array when present.`,
+          `Refusing unverifiable pm list --all output: item ${item.id} dependencies must be an array when present.`,
         );
       }
       const dependencies: PmDependency[] = [];
       for (const [dependencyIndex, dependency] of item.dependencies.entries()) {
         if (!isRecord(dependency) || typeof dependency.id !== "string" || dependency.id.trim().length === 0) {
           throw new CommandError(
-            `Refusing unverifiable pm list-all output: item ${item.id} dependency ${dependencyIndex} must have a non-empty id.`,
+            `Refusing unverifiable pm list --all output: item ${item.id} dependency ${dependencyIndex} must have a non-empty id.`,
           );
         }
         if (dependency.kind !== undefined && typeof dependency.kind !== "string") {
           throw new CommandError(
-            `Refusing unverifiable pm list-all output: item ${item.id} dependency ${dependencyIndex} kind must be a string when present.`,
+            `Refusing unverifiable pm list --all output: item ${item.id} dependency ${dependencyIndex} kind must be a string when present.`,
           );
         }
         if (dependency.created_at !== undefined && typeof dependency.created_at !== "string") {
           throw new CommandError(
-            `Refusing unverifiable pm list-all output: item ${item.id} dependency ${dependencyIndex} created_at must be a string when present.`,
+            `Refusing unverifiable pm list --all output: item ${item.id} dependency ${dependencyIndex} created_at must be a string when present.`,
           );
         }
         dependencies.push({
@@ -2604,14 +2590,13 @@ function decodeCompleteListAll(parsed: unknown): PmItem[] {
       }
       row.dependencies = dependencies;
     }
-    ids.add(item.id);
     rows.push(row);
   }
   return rows;
 }
 
 /**
- * Shell out to `pm list-all --json` and return a proven-complete item list.
+ * Shell out to `pm list --all --json` and return a proven-complete item list.
  *
  * Spawns the `pm` binary scoped to `pmRoot` with bodies included, using the
  * enlarged buffer from {@link pmJsonMaxBuffer} so a large tracker's JSON dump is
@@ -2629,18 +2614,20 @@ function fetchItems(pmRoot: string): PmItem[] {
   const result = spawnSync(
     "pm",
     [
-      "--path",
+      "--pm-path",
       pmRoot,
-      "list-all",
+      "list",
+      "--all",
       "--json",
       "--include-body",
-      "--full",
       "--strict-read",
       "--no-truncate",
-      "--output-limit",
-      "unbounded",
       "--output-budget",
       "unbounded",
+      "--output-limit",
+      "unbounded",
+      "--output-include",
+      "full",
     ],
     { encoding: "utf-8", maxBuffer },
   );
@@ -2656,7 +2643,7 @@ function fetchItems(pmRoot: string): PmItem[] {
     // JSON.parse always throws SyntaxError (extends Error), so the former
     // `: String(err)` arm was unreachable.  The cast is safe for that reason.
     throw new CommandError(
-      `Failed to parse pm list-all output as JSON: ${(err as Error).message}`,
+      `Failed to parse pm list --all output as JSON: ${(err as Error).message}`,
     );
   }
   return decodeCompleteListAll(parsed);
