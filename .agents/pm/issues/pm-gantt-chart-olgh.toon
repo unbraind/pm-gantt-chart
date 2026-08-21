@@ -2,12 +2,13 @@ id: pm-gantt-chart-olgh
 title: Adopt the canonical SDK-certified complete-list reader
 description: "Replace the deprecated list-all subprocess with canonical list --all, exact-pin development to pm CLI/SDK 2026.8.21 while proving the 2026.8.20 behavior floor, and make the public SDK own shared complete-corpus certification before Gantt command or export consumes rows."
 type: Issue
-status: in_progress
+status: closed
 priority: 1
 tags[5]: agents,cli-ux,completeness,pm-sdk,tdd
 created_at: "2026-08-21T08:13:53.373Z"
-updated_at: "2026-08-21T08:49:08.696Z"
-assignee: codex
+updated_at: "2026-08-21T08:52:40.075Z"
+closed_at: "2026-08-21T08:52:40.059Z"
+completed_at: "2026-08-21T08:52:40.059Z"
 claim_principal: codex
 author: codex
 estimated_minutes: 360
@@ -16,8 +17,9 @@ reporter: codex
 severity: high
 environment: Installed pm CLI and SDK 2026.8.21 on clean pm-gantt-chart main 2026.8.18
 repro_steps: Run pm gantt from a packed extension or inspect fetchItems in index.ts; production still sends deprecated list-all and hand-maintains the complete-list envelope policy against a 2026.8.17 development SDK.
+resolution: PR 72 implements canonical strict full unbounded list --all reads through the public SDK plus narrow pm-cli 1078 supplements. CodeRabbit verified all ten review fixes in-thread at 58372c8; Node 22.18.0 and 26 CI and the full local release gate pass. pm-gantt-chart-8mkl and pm-gantt-chart-2u8i independently prohibit merge and publication.
 expected_result: "Every Gantt command and exporter reads the complete tracker through canonical strict full unbounded argv, current public SDK certification, and narrow fail-closed supplements for verified SDK gaps, without alias diagnostics."
-actual_result: "CodeRabbit review-fix release:check passes 175 tests; configured index.ts coverage remains exact 100% lines, 100% branches, and 100% functions; 55 documented declarations; zero production vulnerabilities; 9-file tarball; deterministic changelog; and all three real packed host scenarios. Review fixes use the exact Node 22.18.0 floor in CI/release, project-local pm for changelog generation, exact development/minimum host validation, five-minute subprocess ceilings, npm-reported tarball filenames, structural exported-item checks, explicit supported receipt contracts, and complete fake-pm invocation recording. The release-order item is correctly assigned to v2026.08.10 and scripts/accept-packed.ts is linked to the still-open all-source blocker. Tracker validation still reports zero history drift, zero pending merge decisions, and zero new duplicates. Privacy/history pm-gantt-chart-8mkl and all-source quality pm-gantt-chart-2u8i remain open, so merge and publication remain prohibited."
+actual_result: "175 tests pass; configured index.ts coverage is exact 100% lines, branches, and functions; 55 declarations are documented; production audit is zero; the tarball contains 9 expected files; npm/npx and Bun/bunx pass on pm 2026.8.21 and npm/npx passes at the 2026.8.20 floor over real tracker data. All ten CodeRabbit findings were up-voted, fixed, answered, verified by CodeRabbit, and resolved. Sourcery and Cubic are quota-limited; the requested full CodeRabbit second pass is rate-limited; Greptile and Gemini are silent. Those limitations are not approvals. The PR remains open behind pm-gantt-chart-8mkl and pm-gantt-chart-2u8i."
 component: whole-tracker reader
 customer_impact: Deprecated alias diagnostics pollute agent stderr; duplicated package-owned receipt logic can drift from the host SDK and permit a partial schedule to be presented as complete.
 dependencies[1]{id,kind,created_at,author,source_kind,author_source}:
@@ -43,4 +45,5 @@ tests[2]{command,path,scope,timeout_seconds}:
 docs[2]{path,scope,note}:
   "https://github.com/unbraind/pm-cli/issues/1078",global,Verified SDK certification gaps supplemented locally
   README.md,project,Canonical complete-reader and packed matrix documentation
+close_reason: Canonical certified reader and supported-host acceptance are complete; independent repository blockers remain open
 body: ""
