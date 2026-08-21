@@ -2388,13 +2388,16 @@ function describeReceiptValue(value: unknown): string {
   return String(JSON.stringify(value));
 }
 
+/** Receipt contracts whose completeness semantics this reader has verified. */
+const SUPPORTED_READ_OUTPUT_CONTRACT_VERSIONS: ReadonlySet<number> = new Set([1]);
+
 /** Collect the pm 2026.8.21 receipt gaps not yet rejected by the public SDK. */
 function supplementalCompleteListFindings(record: Record<string, unknown>): string[] {
   const findings: string[] = [];
   const completeness = isRecord(record.completeness) ? record.completeness : undefined;
   for (const field of ["unreadable_item_count", "unreadable_directory_count"] as const) {
     const value = completeness?.[field];
-    if (!Number.isSafeInteger(value) || value !== 0) {
+    if (value !== 0) {
       findings.push(`completeness.${field}=${describeReceiptValue(value)}`);
     }
   }
@@ -2419,7 +2422,6 @@ function supplementalCompleteListFindings(record: Record<string, unknown>): stri
     findings.push("read_output=<missing>");
   } else {
     for (const [field, expected] of [
-      ["contract_version", 1],
       ["command", "list"],
       ["within_budget", true],
       ["strings_compacted", false],
@@ -2429,6 +2431,13 @@ function supplementalCompleteListFindings(record: Record<string, unknown>): stri
       if (readOutput[field] !== expected) {
         findings.push(`read_output.${field}=${describeReceiptValue(readOutput[field])}`);
       }
+    }
+    const contractVersion = readOutput.contract_version;
+    if (
+      typeof contractVersion !== "number"
+      || !SUPPORTED_READ_OUTPUT_CONTRACT_VERSIONS.has(contractVersion)
+    ) {
+      findings.push(`read_output.contract_version=${describeReceiptValue(contractVersion)}`);
     }
     const dimensions = readOutput.requested_dimensions;
     if (!Array.isArray(dimensions)) {

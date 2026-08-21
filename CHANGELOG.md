@@ -4,7 +4,6 @@
 
 ### Fixed
 
-- Fix release publish ordering ahead of protected main push ([pm-gantt-chart-wm40](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-wm40.toon))
 - The pinned pm-cli is a version behind the fleet, so the prepare script strips two merge-fence rules from .gitattributes on every install ([pm-gantt-chart-sszc](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-sszc.toon))
 - Installed gantt export rejects every documented shaping and format flag ([pm-gantt-chart-qjqk](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-qjqk.toon))
 - Fresh installs fail strict health because manifest.json carries an unsupported pm key ([pm-gantt-chart-ugun](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-ugun.toon))
@@ -40,6 +39,7 @@
 
 ### Fixed
 
+- Fix release publish ordering ahead of protected main push ([pm-gantt-chart-wm40](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-wm40.toon))
 - Propagate the docstring gate entry guard fix ([pm-gantt-chart-sklm](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-sklm.toon))
 - The mandatory docstring gate could skip its own scan and still exit zero ([pm-gantt-chart-canw](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-canw.toon))
 

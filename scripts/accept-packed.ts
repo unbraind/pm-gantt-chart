@@ -5,8 +5,6 @@ import { join, resolve } from "node:path";
 
 /** Package fields that define the installed-extension acceptance matrix. */
 interface PackageContract {
-  readonly name: string;
-  readonly version: string;
   readonly devDependencies: Readonly<Record<string, string>>;
   readonly peerDependencies: Readonly<Record<string, string>>;
 }
@@ -34,9 +32,12 @@ const packageJson = JSON.parse(
 ) as PackageContract;
 const cliPackage = "@unbrained/pm-cli";
 const developmentVersion = packageJson.devDependencies[cliPackage];
-const minimumVersion = packageJson.peerDependencies[cliPackage]?.replace(/^>=/, "");
-if (!developmentVersion || !minimumVersion) {
-  throw new Error(`package.json must declare exact development and minimum peer versions for ${cliPackage}`);
+const minimumMatch = packageJson.peerDependencies[cliPackage]?.match(/^>=\s*(\d+\.\d+\.\d+)$/u);
+const minimumVersion = minimumMatch?.[1];
+if (!developmentVersion || !/^\d+\.\d+\.\d+$/u.test(developmentVersion) || !minimumVersion) {
+  throw new Error(
+    `package.json must declare an exact development version and a >= exact minimum peer version for ${cliPackage}`,
+  );
 }
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -51,6 +52,8 @@ const cleanEnvironment: NodeJS.ProcessEnv = {
 for (const key of Object.keys(cleanEnvironment)) {
   if (key.toLowerCase() === "npm_config_allow_scripts") delete cleanEnvironment[key];
 }
+/** Maximum time allowed for one install, pack, or pm subprocess. */
+const commandTimeoutMs = 5 * 60 * 1000;
 
 /** Run one shell-free command and fail with bounded diagnostics.
  *
@@ -65,7 +68,11 @@ function run(command: string, args: string[], cwd: string): SpawnSyncReturns<str
     encoding: "utf8",
     env: cleanEnvironment,
     maxBuffer: 64 * 1024 * 1024,
+    timeout: commandTimeoutMs,
   });
+  if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT") {
+    throw new Error(`${command} ${args.join(" ")} exceeded ${String(commandTimeoutMs)}ms and was terminated`);
+  }
   if (result.status !== 0) {
     throw new Error(
       `${command} ${args.join(" ")} failed with status ${String(result.status)}: ${(result.stderr || result.error?.message || result.stdout).trim()}`,
@@ -91,20 +98,39 @@ function runPm(scenario: AcceptanceScenario, cwd: string, args: string[]): Spawn
  *
  * @param stdout - Captured command stdout.
  * @param label - Scenario and command label used in failures.
+ * @returns Parsed object after rejecting arrays, primitives, and null.
  */
-function requireJsonObject(stdout: string, label: string): void {
+function requireJsonObject(stdout: string, label: string): Record<string, unknown> {
   const parsed: unknown = JSON.parse(stdout);
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error(`${label} stdout was not a JSON object`);
   }
+  return parsed as Record<string, unknown>;
 }
 
 const temporaryRoot = mkdtempSync(join(tmpdir(), "pm-gantt-packed-acceptance-"));
 try {
   const packRoot = join(temporaryRoot, "pack");
   mkdirSync(packRoot);
-  run(npmCommand, ["pack", "--silent", "--pack-destination", packRoot], repoRoot);
-  const tarball = join(packRoot, `${packageJson.name}-${packageJson.version}.tgz`);
+  // release:check builds and runs a lifecycle-enabled pack dry-run immediately
+  // before this gate. Ignore scripts here so prepare output cannot corrupt npm's
+  // machine-readable filename receipt.
+  const packed = run(
+    npmCommand,
+    ["pack", "--json", "--ignore-scripts", "--pack-destination", packRoot],
+    repoRoot,
+  );
+  const packedEntries: unknown = JSON.parse(packed.stdout);
+  const packedEntry = Array.isArray(packedEntries) && packedEntries.length === 1
+    ? packedEntries[0]
+    : undefined;
+  const packedName = packedEntry !== null && typeof packedEntry === "object"
+    ? (packedEntry as Record<string, unknown>).filename
+    : undefined;
+  if (typeof packedName !== "string" || packedName.length === 0) {
+    throw new Error(`npm pack must report exactly one tarball filename, got ${packed.stdout.trim()}`);
+  }
+  const tarball = join(packRoot, packedName);
   const scenarios: AcceptanceScenario[] = [
     { name: "npm-current", manager: "npm", hostVersion: developmentVersion },
     { name: "bun-current", manager: "bun", hostVersion: developmentVersion },
@@ -149,8 +175,16 @@ try {
       "--weeks",
       "2",
     ]);
-    requireJsonObject(exported.stdout, `${scenario.name} pm gantt export`);
-    if (!exported.stdout.includes(fixtureTitle)) {
+    const exportedResult = requireJsonObject(exported.stdout, `${scenario.name} pm gantt export`);
+    const exportedItems = exportedResult.items;
+    if (
+      !Array.isArray(exportedItems)
+      || !exportedItems.some((item) => (
+        item !== null
+        && typeof item === "object"
+        && (item as Record<string, unknown>).title === fixtureTitle
+      ))
+    ) {
       throw new Error(`${scenario.name} pm gantt export omitted the real tracker fixture`);
     }
     const stderr = `${command.stderr}\n${exported.stderr}`;

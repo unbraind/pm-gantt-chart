@@ -6,11 +6,11 @@ status: closed
 priority: 2
 tags: []
 created_at: "2026-08-10T15:27:49.643Z"
-updated_at: "2026-08-21T08:32:48.272Z"
+updated_at: "2026-08-21T08:46:24.155Z"
 closed_at: "2026-08-21T08:31:11.779Z"
 completed_at: "2026-08-21T08:31:11.779Z"
 author: pi-agent
-release: 2026.8.18
+release: 2026.8.10
 resolution: "PR 53 merged commit a9a956e on 2026-08-10; main contains the protected release-PR flow, pre-publish merge verification, idempotent npm publication, and post-publish tag-only push."
 expected_result: "Daily release metadata reaches protected main through a reviewed PR before npm publish, and only the verified release tag is pushed afterward."
 actual_result: GitHub PR 53 is merged at a9a956e and the current main workflow contains that exact fix.

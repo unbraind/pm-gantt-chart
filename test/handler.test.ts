@@ -49,7 +49,7 @@ async function withFakePm(response: unknown, run: () => Promise<void>, argsFile?
   const fakePm = join(fakeDir, "pm");
   writeFileSync(
     fakePm,
-    "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"${PM_GANTT_ARGS_FILE:-/dev/null}\"\nprintf '%s\\n' \"$PM_GANTT_FAKE_RESPONSE\"\n",
+    "#!/bin/sh\nif [ -n \"${PM_GANTT_ARGS_FILE:-}\" ]; then\n  for arg in \"$@\"; do printf '%s\\n' \"$arg\"; done >> \"$PM_GANTT_ARGS_FILE\"\n  printf '%s\\n' '--- invocation ---' >> \"$PM_GANTT_ARGS_FILE\"\nfi\nprintf '%s\\n' \"$PM_GANTT_FAKE_RESPONSE\"\n",
     "utf-8",
   );
   chmodSync(fakePm, 0o755);
@@ -761,8 +761,12 @@ test("gantt requests the exact canonical strict full unbounded list and accepts 
     assert.equal(res.handled, true);
     assert.equal((res.result as Record<string, unknown>).itemCount, 1);
   }, argsFile);
-  const args = readFileSync(argsFile, "utf8").trim().split("\n");
-  assert.deepEqual(args, [
+  const invocations = readFileSync(argsFile, "utf8")
+    .split("--- invocation ---\n")
+    .filter((block) => block.trim().length > 0)
+    .map((block) => block.split("\n").filter((line) => line.length > 0));
+  assert.equal(invocations.length, 1, "the handler must read the tracker exactly once");
+  assert.deepEqual(invocations[0], [
     "--pm-path",
     normalRoot,
     "list",
@@ -851,6 +855,7 @@ test("command and exporter refuse every independent incomplete or malformed enve
     ["compact projection", completeListAllEnvelope({ projection: { mode: "brief", fields: ["id"] } }), /projection_incomplete/],
     ["missing projection", (() => { const value = completeListAllEnvelope(); delete value.projection; return value; })(), /projection_incomplete/],
     ["missing read receipt", (() => { const value = completeListAllEnvelope(); delete value.read_output; return value; })(), /read_output=<missing>/],
+    ["unknown read contract", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, contract_version: 2 } }), /read_output\.contract_version=2/],
     ["rows compacted", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, rows_compacted: true } }), /budget_compaction/],
     ["strings compacted", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, strings_compacted: true } }), /budget_compaction/],
     ["result omitted", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, result_omitted: true } }), /budget_omission/],

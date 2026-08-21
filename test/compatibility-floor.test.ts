@@ -30,6 +30,7 @@ const packageJson = JSON.parse(
 const extensionManifest = JSON.parse(
   readFileSync(resolve(repoRoot, "manifest.json"), "utf8"),
 ) as ExtensionManifest;
+const ciWorkflow = readFileSync(resolve(repoRoot, ".github/workflows/ci.yml"), "utf8");
 const releaseWorkflow = readFileSync(resolve(repoRoot, ".github/workflows/release.yml"), "utf8");
 
 const CLI = "@unbrained/pm-cli";
@@ -80,6 +81,11 @@ test("the peer dependency declares the CLI floor as a minimum, not an exact pin"
     /^>=\d+\.\d+\.\d+$/,
     `peerDependencies["${CLI}"] must be a >= floor so any newer host CLI satisfies it, got ${peer}`,
   );
+});
+
+test("CI and release automation execute on or above the declared Node floor", () => {
+  assert.match(ciWorkflow, /node-version:\s*\[22\.18\.0, 26\]/u);
+  assert.match(releaseWorkflow, /node-version:\s*22\.18\.0/u);
 });
 
 test("the extension manifest declares the same floor the CLI actually enforces", () => {
@@ -144,6 +150,7 @@ test("every whole-tracker changelog read disables both universal output bounds",
     assert.ok(script, `package.json must declare ${name}`);
     assert.match(script, /--pm-arg=--output-budget\s+--pm-arg=unbounded/u, `${name} must disable the token budget`);
     assert.match(script, /--pm-arg=--output-limit\s+--pm-arg=unbounded/u, `${name} must disable the row limit`);
+    assert.match(script, /--pm-bin\s+\.\/node_modules\/\.bin\/pm/u, `${name} must use the pinned project pm host`);
   }
 
   const invocations = releaseWorkflow
