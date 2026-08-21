@@ -1,0 +1,44 @@
+id: pm-gantt-chart-olgh
+title: Adopt the canonical SDK-certified complete-list reader
+description: "Replace the deprecated list-all subprocess with canonical list --all, exact-pin development to pm CLI/SDK 2026.8.21 while proving the 2026.8.20 behavior floor, and make the public SDK own shared complete-corpus certification before Gantt command or export consumes rows."
+type: Issue
+status: in_progress
+priority: 1
+tags[5]: agents,cli-ux,completeness,pm-sdk,tdd
+created_at: "2026-08-21T08:13:53.373Z"
+updated_at: "2026-08-21T08:33:18.620Z"
+assignee: codex
+claim_principal: codex
+author: codex
+estimated_minutes: 360
+acceptance_criteria: "Production uses pm list --all with JSON, all statuses, full projection, strict-read, no-truncate, and both unbounded controls; public SDK inspection and certification own shared policy while narrow supplemental checks reject the verified pm-cli issue 1078 gaps; malformed, bounded, omitted, unreadable, contradictory, duplicate-ID, and bare-array outputs fail closed; raw manifest compatibility is proven at minimum 2026.8.20 and exact development 2026.8.21; mandatory packed npm/npx current, Bun/bunx current, and npm/npx minimum acceptance exercises real Gantt command and export with no alias diagnostic; README, tests, changelog, release workflow, package PM evidence, CI, review, privacy, and independent coverage blockers are recorded honestly; no merge or publication occurs while pm-gantt-chart-8mkl or pm-gantt-chart-2u8i is open"
+reporter: codex
+severity: high
+environment: Installed pm CLI and SDK 2026.8.21 on clean pm-gantt-chart main 2026.8.18
+repro_steps: Run pm gantt from a packed extension or inspect fetchItems in index.ts; production still sends deprecated list-all and hand-maintains the complete-list envelope policy against a 2026.8.17 development SDK.
+expected_result: "Every Gantt command and exporter reads the complete tracker through canonical strict full unbounded argv, current public SDK certification, and narrow fail-closed supplements for verified SDK gaps, without alias diagnostics."
+actual_result: "Full release:check passes: 174 tests; configured index.ts coverage 100% lines, 100% branches, 100% functions; 55 documented declarations across 4 checked files; zero production vulnerabilities; 9-file tarball; deterministic changelog; packed npm/npx current 2026.8.21, Bun/bunx current 2026.8.21, and npm/npx minimum 2026.8.20 each run a real Gantt command and JSON export over a created tracker fixture with no deprecated alias diagnostic. pm validate reports 72 items with zero history drift, merge reconcile dry-run reports zero pending decisions, and duplicates since 2026-08-21 reports zero. pm health strict is operationally green with three preserved legacy provenance advisories. Privacy/history pm-gantt-chart-8mkl and all-source quality pm-gantt-chart-2u8i remain open, so this branch is not merge or publication ready."
+component: whole-tracker reader
+customer_impact: Deprecated alias diagnostics pollute agent stderr; duplicated package-owned receipt logic can drift from the host SDK and permit a partial schedule to be presented as complete.
+dependencies[1]{id,kind,created_at,author,source_kind,author_source}:
+  pm-gantt-chart-uidc,related,"2026-08-21T08:13:53.373Z",codex,"cli:create:dep",asserted
+notes[2]{created_at,author,text}:
+  "2026-08-21T08:16:01.440Z",codex,"TDD red evidence: after updating handler expectations,the full handler suite failed three assertions. Production still emitted the deprecated --path/list-all/--full argv instead of --pm-path/list/--all/--output-include full,the parse error still named list-all,and an envelope missing the include read-output dimension was accepted. The other 39 handler tests passed."
+  "2026-08-21T08:33:18.586Z",codex,"Green local evidence on 2026-08-21: release:check passed 174 tests,configured index.ts 100/100/100,55 documented declarations,zero production vulnerabilities,9 packed files,three fresh installed-host scenarios,and deterministic changelog. npm-current and bun-current used pm 2026.8.21; npm-minimum used 2026.8.20. Each scenario created real tracker data and successfully ran pm gantt plus JSON export without list-all diagnostics. Tracker validation found zero drift,zero pending merge decisions,and zero duplicate candidates; strict health retained three legacy provenance advisories."
+files[9]{path,scope,note}:
+  index.ts,project,Canonical SDK-certified complete-list reader and Gantt-specific row validation
+  scripts/accept-packed.ts,project,Real npm Bun current and npm minimum-host packed acceptance
+  test/handler.test.ts,project,Exact argv and fail-closed envelope behavior
+  test/compatibility-floor.test.ts,project,Host floor changelog bounds and packed-gate policy
+  .github/workflows/release.yml,project,Unbounded changelog reads
+  README.md,project,Compatibility and validation contract
+  package.json,project,Exact SDK pins behavior floor unbounded changelog reads and mandatory packed gate
+  manifest.json,project,2026.8.20 minimum host contract
+  package-lock.json,project,Resolved current pm CLI pm-changelog and pm-ops versions
+tests[2]{command,path,scope,timeout_seconds}:
+  npm run coverage,index.ts,project,120
+  "npm run accept:packed",scripts/accept-packed.ts,project,300
+docs[2]{path,scope,note}:
+  "https://github.com/unbraind/pm-cli/issues/1078",global,Verified SDK certification gaps supplemented locally
+  README.md,project,Canonical complete-reader and packed matrix documentation
+body: ""

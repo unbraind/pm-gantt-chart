@@ -25,8 +25,8 @@ Legend: ██ in_progress/blocked  ░░ open/planned  ▓▓ critical-path (*
 
 ## Installation
 
-Requires pm CLI `2026.8.17` or newer. This floor is enforced both by npm's
-peer dependency and the extension manifest used by the host CLI.
+Requires pm CLI `2026.8.20` or newer. Development and CI exact-pin 2026.8.21;
+the consumer floor is independently exercised by packed npm acceptance.
 
 ```sh
 pm install unbraind/pm-gantt-chart
@@ -246,11 +246,13 @@ The HTML export ends with a **Summary** footer — project span (start → end a
 
 ## Item fields used
 
-Items are read via a strict, full, unbounded `pm list-all --json` request with
-bodies included. Before rendering, pm-gantt-chart verifies the pagination,
-readability, omission, output-budget, count, and row-identity receipts. A
-partial or unverifiable workspace read exits non-zero instead of drawing a
-plausible-looking chart with missing work.
+Items are read via canonical `pm list --all --json` with bodies, strict source
+reads, full projection, no truncation, and both universal output bounds set to
+`unbounded`. The public pm SDK certifies source, filter, pagination,
+projection, count, and identity receipts; pm-gantt-chart adds narrow
+fail-closed checks for unreadable counters and omission/read-output evidence
+not yet covered by SDK 2026.8.21. A partial or unverifiable workspace read
+exits non-zero instead of drawing a plausible-looking chart with missing work.
 
 | Field | Used for |
 |-------|----------|
@@ -287,7 +289,14 @@ MIT
 
 ## Release Automation
 
-This package is release-ready for GitHub, npm, and Bun-compatible installs. CI runs type checking, build, production dependency audit, package packing, Bun install verification, and pm-changelog validation. The daily release workflow publishes only when commits exist after the latest release tag and uses pm-changelog to generate CHANGELOG.md and GitHub release notes.
+The repository release gate runs type checking, build, coverage, docstrings,
+production dependency audit, package packing, and unbounded pm-changelog
+validation. It also installs the real tarball into fresh npm/npx and Bun/bunx
+projects on the current 2026.8.21 host and into npm/npx on the declared
+2026.8.20 minimum, then executes both `pm gantt` and `pm --quiet gantt export
+--format json` against real tracker data. The daily workflow publishes at most
+once when commits exist after the latest release tag. These technical gates do
+not override repository-owned privacy or all-source coverage blockers.
 
 ## Multi-agent merge safety
 

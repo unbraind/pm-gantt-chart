@@ -12,7 +12,7 @@ import extension from "../index.ts";
 // ---------------------------------------------------------------------------
 // Temp pm projects
 //
-// The command/exporter handlers shell out to `pm list-all --json` via
+// The command/exporter handlers shell out to `pm list --all --json` via
 // fetchItems, so exercising them requires real tracker data. Three temp
 // projects are created: a normal chain, a cyclic graph, and an empty tracker.
 // ---------------------------------------------------------------------------
@@ -73,7 +73,7 @@ async function withFakePm(response: unknown, run: () => Promise<void>, argsFile?
   }
 }
 
-/** Current complete `pm list-all --json` envelope, with caller overrides. */
+/** Current complete `pm list --all --json` envelope, with caller overrides. */
 function completeListAllEnvelope(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     items: [{ id: "fixture-1", title: "Fixture", status: "open" }],
@@ -82,13 +82,24 @@ function completeListAllEnvelope(overrides: Record<string, unknown> = {}): Recor
     has_more: false,
     truncated: false,
     next_cursor: null,
+    filters: {
+      status: "all",
+      include_body: true,
+      no_truncate: true,
+      strict_read: true,
+      runtime_filters: {},
+    },
+    limit: null,
+    requested_limit: null,
+    effective_limit: null,
+    source: null,
     completeness: { status: "complete", unreadable_item_count: 0, unreadable_directory_count: 0 },
     projection: { mode: "full", fields: null },
     omission_receipt: { has_omissions: false, omitted_field_group_count: 0, omitted_field_groups: [] },
     read_output: {
       contract_version: 1,
       command: "list",
-      requested_dimensions: ["amount", "cost"],
+      requested_dimensions: ["include", "amount", "cost"],
       within_budget: true,
       strings_compacted: false,
       rows_compacted: false,
@@ -633,7 +644,7 @@ test("gantt command throws a CommandError when pm emits non-JSON output", async 
       harness.runCommand({ command: "gantt", pmRoot: normalRoot }),
       (err: unknown) => {
         assert.ok(err instanceof Error);
-        assert.match((err as Error).message, /Failed to parse pm list-all output as JSON/);
+        assert.match((err as Error).message, /Failed to parse pm list --all output as JSON/);
         return true;
       },
     );
@@ -738,12 +749,12 @@ test("gantt command refuses JSON without a verifiable item envelope", async () =
   await withFakePm({}, async () => {
     await assert.rejects(
       harness.runCommand({ command: "gantt", pmRoot: normalRoot }),
-      /Refusing unverifiable pm list-all output/,
+      /invalid_envelope/,
     );
   });
 });
 
-test("gantt requests a strict full unbounded list and accepts the current complete envelope", async () => {
+test("gantt requests the exact canonical strict full unbounded list and accepts the current complete envelope", async () => {
   const argsFile = join(tempDir, "fake-pm-args.txt");
   await withFakePm(completeListAllEnvelope(), async () => {
     const res = await harness.runCommand({ command: "gantt", pmRoot: normalRoot });
@@ -751,20 +762,22 @@ test("gantt requests a strict full unbounded list and accepts the current comple
     assert.equal((res.result as Record<string, unknown>).itemCount, 1);
   }, argsFile);
   const args = readFileSync(argsFile, "utf8").trim().split("\n");
-  for (const expected of [
-    "list-all",
+  assert.deepEqual(args, [
+    "--pm-path",
+    normalRoot,
+    "list",
+    "--all",
     "--json",
     "--include-body",
-    "--full",
     "--strict-read",
     "--no-truncate",
+    "--output-budget",
+    "unbounded",
     "--output-limit",
     "unbounded",
-    "--output-budget",
-  ]) {
-    assert.ok(args.includes(expected), `expected ${expected} in pm argv: ${args.join(" ")}`);
-  }
-  assert.equal(args.filter((arg) => arg === "unbounded").length, 2);
+    "--output-include",
+    "full",
+  ]);
 });
 
 test("gantt accepts a complete envelope with zero items", async () => {
@@ -820,43 +833,44 @@ test("gantt preserves validated compound fields in exported rows", async () => {
 
 test("command and exporter refuse every independent incomplete or malformed envelope signal", async () => {
   const cases: Array<[string, unknown, RegExp]> = [
-    ["bare array", [], /top-level object/],
-    ["null", null, /top-level object/],
-    ["non-array items", completeListAllEnvelope({ items: {} }), /items must be an array/],
-    ["truncated", completeListAllEnvelope({ truncated: true }), /truncated must be false/],
-    ["paginated", completeListAllEnvelope({ has_more: true }), /has_more must be false/],
-    ["cursor", completeListAllEnvelope({ next_cursor: "more" }), /next_cursor must be null/],
-    ["partial corpus", completeListAllEnvelope({ completeness: { status: "partial", unreadable_item_count: 1, unreadable_directory_count: 0 } }), /completeness.status must be "complete"/],
-    ["unreadable item", completeListAllEnvelope({ completeness: { status: "complete", unreadable_item_count: 1, unreadable_directory_count: 0 } }), /unreadable_item_count must be 0/],
-    ["unreadable directory", completeListAllEnvelope({ completeness: { status: "complete", unreadable_item_count: 0, unreadable_directory_count: 1 } }), /unreadable_directory_count must be 0/],
-    ["missing corpus receipt", (() => { const value = completeListAllEnvelope(); delete value.completeness; return value; })(), /completeness.status must be "complete"/],
-    ["missing omission receipt", (() => { const value = completeListAllEnvelope(); delete value.omission_receipt; return value; })(), /omission_receipt.has_omissions must be false/],
-    ["omitted fields", completeListAllEnvelope({ omission_receipt: { has_omissions: true, omitted_field_group_count: 1, omitted_field_groups: ["body"] } }), /has_omissions must be false/],
-    ["contradictory omission count", completeListAllEnvelope({ omission_receipt: { has_omissions: false, omitted_field_group_count: 1, omitted_field_groups: ["body"] } }), /omitted_field_group_count must be 0/],
-    ["missing omitted groups", completeListAllEnvelope({ omission_receipt: { has_omissions: false, omitted_field_group_count: 0 } }), /omitted_field_groups must be an empty array/],
-    ["contradictory omitted groups", completeListAllEnvelope({ omission_receipt: { has_omissions: false, omitted_field_group_count: 0, omitted_field_groups: ["body"] } }), /omitted_field_groups must be an empty array/],
-    ["compact projection", completeListAllEnvelope({ projection: { mode: "brief", fields: ["id"] } }), /projection.mode must be "full"/],
-    ["missing projection", (() => { const value = completeListAllEnvelope(); delete value.projection; return value; })(), /projection.mode must be "full"/],
-    ["missing read receipt", (() => { const value = completeListAllEnvelope(); delete value.read_output; return value; })(), /read_output.contract_version must be 1/],
-    ["rows compacted", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, rows_compacted: true } }), /rows_compacted must be false/],
-    ["strings compacted", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, strings_compacted: true } }), /strings_compacted must be false/],
-    ["result omitted", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, result_omitted: true } }), /result_omitted must be false/],
-    ["budget not fit", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, within_budget: false } }), /within_budget must be true/],
-    ["dimensions not an array", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, requested_dimensions: "amount,cost" } }), /requested_dimensions must include amount and cost/],
-    ["missing amount proof", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, requested_dimensions: ["cost"] } }), /requested_dimensions must include amount and cost/],
-    ["missing cost proof", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, requested_dimensions: ["amount"] } }), /requested_dimensions must include amount and cost/],
-    ["budget truncation disclosure", completeListAllEnvelope({ output_budget_truncation: { reason: "output_budget_reached" } }), /truncation or omission disclosure was present/],
-    ["budget omission disclosure", completeListAllEnvelope({ output_budget_exceeded: { omitted_result: true } }), /truncation or omission disclosure was present/],
-    ["non-numeric count", completeListAllEnvelope({ count: "1" }), /count must be a non-negative safe integer/],
-    ["negative count", completeListAllEnvelope({ count: -1 }), /count must be a non-negative safe integer/],
-    ["non-numeric total", completeListAllEnvelope({ total: "1" }), /total must be a non-negative safe integer/],
-    ["negative total", completeListAllEnvelope({ total: -1 }), /total must be a non-negative safe integer/],
-    ["count disagrees with rows", completeListAllEnvelope({ count: 2, total: 2 }), /items.length 1 must equal count 2/],
-    ["count disagrees with total", completeListAllEnvelope({ total: 2 }), /count 1 must equal total 2/],
-    ["non-object row", completeListAllEnvelope({ items: [null] }), /item 0 must have a non-empty id/],
-    ["missing row id", completeListAllEnvelope({ items: [{ title: "Fixture", status: "open" }] }), /item 0 must have a non-empty id/],
-    ["empty row id", completeListAllEnvelope({ items: [{ id: " ", title: "Fixture", status: "open" }] }), /item 0 must have a non-empty id/],
-    ["duplicate row id", completeListAllEnvelope({ items: [{ id: "same", title: "A", status: "open" }, { id: "same", title: "B", status: "open" }], count: 2, total: 2 }), /duplicate item id same/],
+    ["bare array", [], /invalid_envelope/],
+    ["null", null, /invalid_envelope/],
+    ["non-array items", completeListAllEnvelope({ items: {} }), /invalid_envelope/],
+    ["truncated", completeListAllEnvelope({ truncated: true }), /page_incomplete/],
+    ["paginated", completeListAllEnvelope({ has_more: true }), /page_incomplete/],
+    ["cursor", completeListAllEnvelope({ next_cursor: "more" }), /page_incomplete/],
+    ["partial corpus", completeListAllEnvelope({ completeness: { status: "partial", unreadable_item_count: 1, unreadable_directory_count: 0 } }), /source_incomplete/],
+    ["unreadable item", completeListAllEnvelope({ completeness: { status: "complete", unreadable_item_count: 1, unreadable_directory_count: 0 } }), /completeness\.unreadable_item_count=1/],
+    ["unreadable directory", completeListAllEnvelope({ completeness: { status: "complete", unreadable_item_count: 0, unreadable_directory_count: 1 } }), /completeness\.unreadable_directory_count=1/],
+    ["missing corpus receipt", (() => { const value = completeListAllEnvelope(); delete value.completeness; return value; })(), /source_unchecked/],
+    ["missing omission receipt", (() => { const value = completeListAllEnvelope(); delete value.omission_receipt; return value; })(), /omission_receipt=<missing>/],
+    ["omitted fields", completeListAllEnvelope({ omission_receipt: { has_omissions: true, omitted_field_group_count: 1, omitted_field_groups: ["body"] } }), /field_omission/],
+    ["contradictory omission count", completeListAllEnvelope({ omission_receipt: { has_omissions: false, omitted_field_group_count: 1, omitted_field_groups: ["body"] } }), /omission_receipt\.omitted_field_group_count=1/],
+    ["missing omitted groups", completeListAllEnvelope({ omission_receipt: { has_omissions: false, omitted_field_group_count: 0 } }), /omission_receipt\.omitted_field_groups=<missing>/],
+    ["contradictory omitted groups", completeListAllEnvelope({ omission_receipt: { has_omissions: false, omitted_field_group_count: 0, omitted_field_groups: ["body"] } }), /omission_receipt\.omitted_field_groups=\["body"\]/],
+    ["compact projection", completeListAllEnvelope({ projection: { mode: "brief", fields: ["id"] } }), /projection_incomplete/],
+    ["missing projection", (() => { const value = completeListAllEnvelope(); delete value.projection; return value; })(), /projection_incomplete/],
+    ["missing read receipt", (() => { const value = completeListAllEnvelope(); delete value.read_output; return value; })(), /read_output=<missing>/],
+    ["rows compacted", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, rows_compacted: true } }), /budget_compaction/],
+    ["strings compacted", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, strings_compacted: true } }), /budget_compaction/],
+    ["result omitted", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, result_omitted: true } }), /budget_omission/],
+    ["budget not fit", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, within_budget: false } }), /read_output\.within_budget=false/],
+    ["dimensions not an array", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, requested_dimensions: "amount,cost" } }), /read_output\.requested_dimensions=<missing>/],
+    ["missing amount proof", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, requested_dimensions: ["include", "cost"] } }), /requested_dimensions missing amount/],
+    ["missing cost proof", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, requested_dimensions: ["include", "amount"] } }), /requested_dimensions missing cost/],
+    ["missing include proof", completeListAllEnvelope({ read_output: { ...completeListAllEnvelope().read_output as Record<string, unknown>, requested_dimensions: ["amount", "cost"] } }), /requested_dimensions missing include/],
+    ["budget truncation disclosure", completeListAllEnvelope({ output_budget_truncation: { reason: "output_budget_reached" } }), /output_budget_truncation=<present>/],
+    ["budget omission disclosure", completeListAllEnvelope({ output_budget_exceeded: { omitted_result: true } }), /output_budget_exceeded=<present>/],
+    ["non-numeric count", completeListAllEnvelope({ count: "1" }), /count_mismatch/],
+    ["negative count", completeListAllEnvelope({ count: -1 }), /count_mismatch/],
+    ["non-numeric total", completeListAllEnvelope({ total: "1" }), /count_mismatch/],
+    ["negative total", completeListAllEnvelope({ total: -1 }), /count_mismatch/],
+    ["count disagrees with rows", completeListAllEnvelope({ count: 2, total: 2 }), /count_mismatch/],
+    ["count disagrees with total", completeListAllEnvelope({ total: 2 }), /count_mismatch/],
+    ["non-object row", completeListAllEnvelope({ items: [null] }), /invalid_item_id/],
+    ["missing row id", completeListAllEnvelope({ items: [{ title: "Fixture", status: "open" }] }), /invalid_item_id/],
+    ["empty row id", completeListAllEnvelope({ items: [{ id: " ", title: "Fixture", status: "open" }] }), /invalid_item_id/],
+    ["duplicate row id", completeListAllEnvelope({ items: [{ id: "same", title: "A", status: "open" }, { id: "same", title: "B", status: "open" }], count: 2, total: 2 }), /duplicate_item_id/],
     ["non-string title", completeListAllEnvelope({ items: [{ id: "fixture-1", title: 1, status: "open" }] }), /must have a string title and a supported status/],
     ["non-string status", completeListAllEnvelope({ items: [{ id: "fixture-1", title: "Fixture", status: 1 }] }), /must have a string title and a supported status/],
     ["unsupported status", completeListAllEnvelope({ items: [{ id: "fixture-1", title: "Fixture", status: "invented" }] }), /must have a string title and a supported status/],
@@ -890,7 +904,7 @@ test("command and exporter refuse every independent incomplete or malformed enve
   await withFakePm(completeListAllEnvelope({ truncated: true }), async () => {
     await assert.rejects(
       harness.runExporter({ exporter: "gantt", pmRoot: normalRoot }),
-      /truncated must be false/,
+      /page_incomplete/,
     );
   });
 });

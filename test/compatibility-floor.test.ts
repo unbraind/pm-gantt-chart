@@ -10,6 +10,7 @@ const repoRoot = resolve(import.meta.dirname, "..");
 interface PackageManifest {
   readonly devDependencies?: Record<string, string>;
   readonly peerDependencies?: Record<string, string>;
+  readonly scripts?: Record<string, string>;
 }
 
 interface ExtensionManifest {
@@ -29,9 +30,11 @@ const packageJson = JSON.parse(
 const extensionManifest = JSON.parse(
   readFileSync(resolve(repoRoot, "manifest.json"), "utf8"),
 ) as ExtensionManifest;
+const releaseWorkflow = readFileSync(resolve(repoRoot, ".github/workflows/release.yml"), "utf8");
 
 const CLI = "@unbrained/pm-cli";
 const EXACT_VERSION = /^\d+\.\d+\.\d+$/;
+const MINIMUM_HOST = "2026.8.20";
 
 /**
  * Two independent systems enforce the pm CLI compatibility floor, and each reads
@@ -93,6 +96,7 @@ test("the extension manifest declares the same floor the CLI actually enforces",
     peer.slice(">=".length),
     "manifest.json pm_min_version must equal the peerDependencies floor, or npm and the pm CLI enforce different minimums",
   );
+  assert.equal(declared, MINIMUM_HOST, "the canonical list --all behavior floor is 2026.8.20");
 });
 
 test("the development dependency is an exact pin at or above the declared floor", () => {
@@ -120,15 +124,45 @@ test("the development dependency is an exact pin at or above the declared floor"
   );
 });
 
-test("the complete raw manifest satisfies the public SDK compatibility contract", () => {
+test("the complete raw manifest satisfies minimum and development SDK hosts", () => {
   const dev = packageJson.devDependencies?.[CLI];
   assert.ok(dev, `package.json devDependencies must declare ${CLI}`);
-  const result = checkExtensionManifestCompatibility(extensionManifest, { pmVersion: dev });
-  assert.equal(result.compatible, true, "the declared PM version bounds must accept the pinned CLI");
-  assert.deepEqual(
-    result.findings,
-    [],
-    `manifest.json must contain only SDK-supported keys and valid version bounds: ${JSON.stringify(result.findings)}`,
+  for (const pmVersion of [MINIMUM_HOST, dev]) {
+    const result = checkExtensionManifestCompatibility(extensionManifest, { pmVersion });
+    assert.equal(result.compatible, true, `the declared PM version bounds must accept ${pmVersion}`);
+    assert.deepEqual(
+      result.findings,
+      [],
+      `manifest.json must contain only SDK-supported keys and valid version bounds on ${pmVersion}: ${JSON.stringify(result.findings)}`,
+    );
+  }
+});
+
+test("every whole-tracker changelog read disables both universal output bounds", () => {
+  for (const name of ["changelog", "changelog:full", "changelog:check", "release:notes"]) {
+    const script = packageJson.scripts?.[name];
+    assert.ok(script, `package.json must declare ${name}`);
+    assert.match(script, /--pm-arg=--output-budget\s+--pm-arg=unbounded/u, `${name} must disable the token budget`);
+    assert.match(script, /--pm-arg=--output-limit\s+--pm-arg=unbounded/u, `${name} must disable the row limit`);
+  }
+
+  const invocations = releaseWorkflow
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("npx pm-changelog "));
+  assert.equal(invocations.length, 3, "the workflow must expose all direct pm-changelog reads to this gate");
+  for (const invocation of invocations) {
+    assert.match(invocation, /--pm-arg=--output-budget\s+--pm-arg=unbounded/u);
+    assert.match(invocation, /--pm-arg=--output-limit\s+--pm-arg=unbounded/u);
+  }
+});
+
+test("the release gate requires the packed current and minimum host matrix", () => {
+  assert.equal(packageJson.scripts?.["accept:packed"], "node scripts/accept-packed.ts");
+  assert.match(
+    packageJson.scripts?.["release:check"] ?? "",
+    /npm run accept:packed/u,
+    "release:check must execute the real packed extension matrix",
   );
 });
 
