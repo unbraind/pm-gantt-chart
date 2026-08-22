@@ -6,6 +6,10 @@
 
 - Adopt the canonical SDK-certified complete-list reader ([pm-gantt-chart-olgh](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-olgh.toon))
 
+### Other
+
+- Alert on daily release failure and require merge drivers in CI ([pm-gantt-chart-wo9g](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-wo9g.toon))
+
 ## 2026.8.18 - 2026-08-18
 
 ### Fixed
