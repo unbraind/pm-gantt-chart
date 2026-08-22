@@ -1,0 +1,23 @@
+id: pm-gantt-chart-wo9g
+title: Alert on daily release failure and require merge drivers in CI
+description: "Two CI fixes: (1) release.yml gets an if:failure() job that opens or updates one deduplicated tracking issue (label release-failure, stable title) with job name, run URL, commit SHA and date; issues:write only, never blocks a release. (2) ci.yml installs pm merge drivers before the health gate and passes --require-merge-drivers so a fresh clone without clone-local driver config fails the gate instead of silently passing. Motivated by five unnoticed failed daily releases across the fleet caused by an expired npm token."
+type: Chore
+status: closed
+priority: 1
+tags: []
+created_at: "2026-08-22T19:03:41.446Z"
+updated_at: "2026-08-22T19:05:28.486Z"
+closed_at: "2026-08-22T19:05:28.472Z"
+completed_at: "2026-08-22T19:05:28.472Z"
+claim_principal: ox-alpha
+author: ox-alpha
+notes[1]{created_at,author,text}:
+  "2026-08-22T19:03:51.479Z",ox-alpha,"Gate proof: removed all five merge.pm-* config sections, ./node_modules/.bin/pm health --strict-exit --require-merge-drivers exited 1; after ./node_modules/.bin/pm merge install it exited 0. npm test: 0 failures. release:check fails at accept:packed identically on pristine origin/main (npm notice noise in npm pack stdout), pre-existing and unrelated to this diff."
+files[2]{path,scope}:
+  .github/workflows/ci.yml,project
+  .github/workflows/release.yml,project
+tests[2]{command,path,scope,note}:
+  python3 .agents/pm/verify-release-yaml.py,.github/workflows/release.yml,project,"release.yml parses; alert job has if: failure(), needs release, issues:write"
+  ./node_modules/.bin/pm health --strict-exit --require-merge-drivers,.,project,"CI gate passes with drivers installed; removing all five merge.pm-* sections makes this exact command exit 1 (proven manually, transcript in PR body)"
+close_reason: "Alert job wired (if:failure, needs release, issues:write) and YAML-verified; gate proven RC=1 without drivers, RC=0 after pm merge install; npm test 0 failures; release:check failure proven pre-existing on pristine origin/main"
+body: ""
