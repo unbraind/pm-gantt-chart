@@ -6,10 +6,11 @@ status: in_progress
 priority: 2
 tags: []
 created_at: "2026-08-22T17:39:35.840Z"
-updated_at: "2026-08-22T17:59:57.928Z"
+updated_at: "2026-08-22T18:49:00.072Z"
 author: "harness:ox-alpha"
-notes[1]{created_at,author,text}:
+notes[2]{created_at,author,text}:
   "2026-08-22T17:39:47.620Z","harness:ox-alpha","Verified 2026-08-22: gh api repos/unbraind/pm-gantt-chart/code-scanning/alerts -> 404 'no analysis found'. Workflow pins github/codeql-action v4 (fleet major-tag convention), permissions limited to security-events:write/actions:read/contents:read."
+  "2026-08-22T18:49:00.072Z",codex,"Timestamp clarification: every 'Verified 2026-08-22' statement in this record and its history stream refers to UTC, matching the Z-suffixed timestamps recorded alongside them. Stating it explicitly because a bare date next to Z-suffixed times is ambiguous to a reader in another zone, and this fleet has already been bitten once by a changelog gate whose verdict depended on the reader's timezone."
 files[1]{path,scope,note}:
   .github/workflows/codeql.yml,project,CodeQL scanning workflow - javascript-typescript build-mode none weekly staggered cron
 tests[2]:
