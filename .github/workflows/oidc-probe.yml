@@ -1,0 +1,39 @@
+name: OIDC Trusted Publisher Probe
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/oidc-probe.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask npm whether a trusted publisher is bound to this package
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Mint a GitHub OIDC id-token for the npm registry audience, then offer
+          # it to npm's exchange endpoint. A trusted publisher that is configured
+          # and matches this repo+workflow returns 200; anything else tells us
+          # exactly why publication falls back to (dead) token auth.
+          idtoken="$(curl -sS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org" | jq -r '.value')"
+          test -n "${idtoken}" && test "${idtoken}" != "null"
+          echo "id-token minted: $(printf '%s' "${idtoken}" | wc -c) bytes"
+          # Never print the response body's token; only the status and any error.
+          status="$(curl -sS -o /tmp/exchange.json -w '%{http_code}' \
+            -X POST "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/pm-gantt-chart" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${idtoken}" || true)"
+          echo "exchange HTTP status: ${status}"
+          if [ "${status}" = "200" ]; then
+            echo "RESULT: trusted publishing IS configured for pm-gantt-chart."
+          else
+            echo "RESULT: no usable trusted publisher. Error body:"
+            jq -r '.error // .message // .' /tmp/exchange.json 2>/dev/null | head -5 || head -c 400 /tmp/exchange.json
+          fi
