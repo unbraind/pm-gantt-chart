@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "transactionId": "release-alert-review-fix-20260824",
+  "author": "harness:codex",
+  "status": "committed",
+  "attempt": 1,
+  "createdAt": "2026-08-24T15:50:24.532Z",
+  "updatedAt": "2026-08-24T15:50:24.925Z",
+  "stepIds": [
+    "1-update-pm-gantt-chart-wo9g-c06de7cd9b24",
+    "2-close-pm-gantt-chart-wo9g-b46e3877c6f3",
+    "3-release-pm-gantt-chart-wo9g-7960b2e6ec8c"
+  ],
+  "startedStepIds": [
+    "1-update-pm-gantt-chart-wo9g-c06de7cd9b24",
+    "2-close-pm-gantt-chart-wo9g-b46e3877c6f3",
+    "3-release-pm-gantt-chart-wo9g-7960b2e6ec8c"
+  ],
+  "completedStepIds": [
+    "1-update-pm-gantt-chart-wo9g-c06de7cd9b24",
+    "2-close-pm-gantt-chart-wo9g-b46e3877c6f3",
+    "3-release-pm-gantt-chart-wo9g-7960b2e6ec8c"
+  ],
+  "results": {
+    "1-update-pm-gantt-chart-wo9g-c06de7cd9b24": {
+      "id": "pm-gantt-chart-wo9g",
+      "op": "update"
+    },
+    "2-close-pm-gantt-chart-wo9g-b46e3877c6f3": {
+      "id": "pm-gantt-chart-wo9g",
+      "op": "close"
+    },
+    "3-release-pm-gantt-chart-wo9g-7960b2e6ec8c": {
+      "id": "pm-gantt-chart-wo9g",
+      "op": "release"
+    }
+  },
+  "compensationData": {
+    "1-update-pm-gantt-chart-wo9g-c06de7cd9b24": {
+      "target_updated_at": "2026-08-24T15:43:45.866Z"
+    },
+    "2-close-pm-gantt-chart-wo9g-b46e3877c6f3": {
+      "target_updated_at": "2026-08-24T15:50:24.708Z"
+    },
+    "3-release-pm-gantt-chart-wo9g-7960b2e6ec8c": {
+      "target_updated_at": "2026-08-24T15:50:24.820Z"
+    }
+  }
+}
