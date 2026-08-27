@@ -120,10 +120,18 @@ try {
     ["pack", "--json", "--ignore-scripts", "--pack-destination", packRoot],
     repoRoot,
   );
-  const packedEntries: unknown = JSON.parse(packed.stdout);
-  const packedEntry = Array.isArray(packedEntries) && packedEntries.length === 1
-    ? packedEntries[0]
-    : undefined;
+  // npm changed this receipt's shape: through npm 10 it is an array of entries,
+  // from npm 11 it is an object keyed by package name. The CI matrix spans both
+  // (Node 22.18 ships npm 10, Node 26 ships npm 12), so accepting only one shape
+  // makes this gate pass on one runner and fail on the other for a reason that
+  // has nothing to do with the package.
+  const packedReceipt: unknown = JSON.parse(packed.stdout);
+  const packedEntries = Array.isArray(packedReceipt)
+    ? packedReceipt
+    : packedReceipt !== null && typeof packedReceipt === "object"
+      ? Object.values(packedReceipt as Record<string, unknown>)
+      : [];
+  const packedEntry = packedEntries.length === 1 ? packedEntries[0] : undefined;
   const packedName = packedEntry !== null && typeof packedEntry === "object"
     ? (packedEntry as Record<string, unknown>).filename
     : undefined;
