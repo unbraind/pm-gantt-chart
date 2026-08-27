@@ -125,7 +125,15 @@ try {
   // (Node 22.18 ships npm 10, Node 26 ships npm 12), so accepting only one shape
   // makes this gate pass on one runner and fail on the other for a reason that
   // has nothing to do with the package.
-  const packedReceipt: unknown = JSON.parse(packed.stdout);
+  // The receipt is not necessarily the whole of stdout. On npm 10 the pack
+  // lifecycle can print ahead of it even under --ignore-scripts -- in this
+  // repository `prepare` emits a pm merge-driver receipt -- and the parse then
+  // fails on the first character of unrelated output. Start at the first line
+  // that opens a JSON value.
+  const receiptStart = packed.stdout.search(/^[[{]/m);
+  const packedReceipt: unknown = JSON.parse(
+    receiptStart === -1 ? packed.stdout : packed.stdout.slice(receiptStart),
+  );
   const packedEntries = Array.isArray(packedReceipt)
     ? packedReceipt
     : packedReceipt !== null && typeof packedReceipt === "object"
