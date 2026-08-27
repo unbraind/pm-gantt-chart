@@ -6,6 +6,10 @@
 
 - Adopt the canonical SDK-certified complete-list reader ([pm-gantt-chart-olgh](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-olgh.toon))
 
+### Security
+
+- The identity gate deadlocks the one remediation its own failure message prescribes ([pm-gantt-chart-l6m0](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-l6m0.toon))
+
 ### Other
 
 - Alert on daily release failure and require merge drivers in CI ([pm-gantt-chart-wo9g](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-wo9g.toon))
