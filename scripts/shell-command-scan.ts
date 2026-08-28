@@ -480,16 +480,30 @@ export function commandName(input: ShellCommand): string | undefined {
  * dismisses is the cheaper error.
  *
  * A command with no wrapper yields exactly one reading, so ordinary commands
- * are unaffected.
+ * are unaffected. GNU `env -S` is an exception: its operand is shell text held
+ * in one word, so that operand is tokenised recursively rather than treated as
+ * the program name itself.
  *
  * @param command - One simple command's tokens.
- * @returns Each candidate reading, the command's own first.
+ * @returns Each candidate reading, including nested split-string commands.
  */
 export function commandCandidates(input: ShellCommand): ShellCommand[] {
   const command = withoutRedirections(input);
   const start = skipCommandPrefix(command);
   const candidates: ShellCommand[] = [];
   if (start < command.length) candidates.push(command.slice(start));
+  const envIndex = command.findIndex((token, index) =>
+    index < start && !token.startsQuoted && basename(token.value) === "env");
+  if (envIndex !== -1) {
+    const splitIndex = command.findIndex((token, index) =>
+      index > envIndex
+      && !token.startsQuoted
+      && (token.value === "-S" || token.value === "--split-string"));
+    if (splitIndex !== -1) {
+      const payload = command.slice(splitIndex + 1).map((token) => token.value).join(" ");
+      candidates.push(...tokenizeCommands(payload));
+    }
+  }
   if (start === 0) return candidates;
   for (let index = start + 1; index < command.length; index += 1) {
     const token = command[index]!;

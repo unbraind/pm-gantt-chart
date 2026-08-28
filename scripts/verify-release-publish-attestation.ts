@@ -95,13 +95,14 @@ export function manifestCommandLines(text: string): string {
   const scripts = (parsed as { scripts?: unknown }).scripts;
   if (typeof scripts !== "object" || scripts === null) return "";
   // Each script is its own command list, so one cannot continue into the next.
-  // A body ending in a backslash would otherwise be joined to the following
-  // script by continuation collapsing, and a script beginning `--provenance`
-  // would lend its flag to the unattested publish that ended the script before
-  // it -- turning two commands into one attested-looking command.
+  // A body ending in an unpaired backslash would otherwise be joined to the
+  // following script by continuation collapsing, and a script beginning
+  // `--provenance` would lend its flag to the unattested publish that ended the
+  // script before it -- turning two commands into one attested-looking command.
+  // Paired trailing backslashes are escaped data and must remain intact.
   return Object.values(scripts as Record<string, unknown>)
     .filter((value): value is string => typeof value === "string")
-    .map((value) => value.replace(/\\+$/, ""))
+    .map((value) => value.replace(/\\+$/, (slashes) => slashes.length % 2 === 1 ? slashes.slice(0, -1) : slashes))
     .join("\n");
 }
 
@@ -162,6 +163,8 @@ export function isPublishCommand(command: ShellCommand): boolean {
  *
  * Quoting is irrelevant to the shell and so is irrelevant here: `npm publish
  * "--provenance"` is attested, and the scan this replaces read it as bare.
+ * Parsing stops at npm's `--` option terminator because later words are
+ * positional arguments rather than npm configuration flags.
  *
  * @param command - One simple command's tokens.
  * @returns True when the command publishes with an attestation.
@@ -171,6 +174,7 @@ export function attestationEnabled(command: ShellCommand): boolean {
   let enabled = false;
   for (let index = 0; index < args.length; index += 1) {
     const token = args[index]!.value;
+    if (token === "--") break;
     if (token === `--no-${ATTESTATION_FLAG.slice(2)}`) {
       enabled = false;
       continue;

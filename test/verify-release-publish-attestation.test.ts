@@ -10,7 +10,7 @@
  */
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -137,6 +137,11 @@ test("a disabled attestation is not an attestation, in every spelling npm accept
   for (const enabled of ["--provenance", "--provenance=true", "--no-provenance --provenance"]) {
     assert.equal(attestationEnabled(onlyCommand(`npm publish --access public ${enabled}`)), true, enabled);
   }
+  assert.equal(
+    attestationEnabled(onlyCommand("npm publish -- --provenance")),
+    false,
+    "flags after npm's option terminator are positional arguments",
+  );
 });
 
 test("a flag that merely starts with the attestation spelling does not enable it", () => {
@@ -154,6 +159,17 @@ test("a publish hidden in an npm script is found, because a manifest is JSON and
   assert.match(result.failures[0]!, /does not enable --provenance/);
   const attested = JSON.stringify({ scripts: { release: ATTESTED } });
   assert.deepEqual(auditPublishAttestation([{ file: "package.json", text: attested }]).failures, []);
+});
+
+test("manifest processing preserves an escaped trailing backslash while still isolating scripts", () => {
+  const trailingBackslashes = "\\\\";
+  const manifest = JSON.stringify({ scripts: { release: UNATTESTED + trailingBackslashes } });
+  assert.equal(manifestCommandLines(manifest), UNATTESTED + trailingBackslashes);
+  assert.equal(
+    auditPublishAttestation([{ file: "package.json", text: manifest }]).failures.length,
+    1,
+    "the publish remains an unattested invocation",
+  );
 });
 
 test("manifestCommandLines survives a manifest that is malformed, empty, or has no scripts", () => {
@@ -560,6 +576,13 @@ test("a package runner is a wrapper, so the publish behind its own options is st
   );
 });
 
+test("GNU env split-string payloads are tokenised as nested shell commands", () => {
+  const text = `          npm publish --provenance\n          env -S '${UNATTESTED}'`;
+  const result = auditPublishAttestation([{ file: "release.yml", text }]);
+  assert.equal(result.failures.length, 1, "the nested publish must not be hidden in one env operand");
+  assert.match(result.failures[0]!, /npm publish --access public --ignore-scripts/);
+});
+
 test("a runner spelled as two words is consumed only when its second word completes it", () => {
   for (const wrapped of ["pnpm dlx npm publish --provenance", "yarn exec npm publish --provenance", "bun x npm publish --provenance"]) {
     assert.equal(
@@ -774,4 +797,27 @@ test("a substitution's quote state does not leak across its lines", () => {
   const found = publishInvocationsIn({ file: "release.yml", text }).map((i) => renderCommand(i.command));
   assert.ok(found.includes("npm publish"), "the publish inside the substitution is still found");
   assert.ok(found.includes("npm publish --provenance"), "and the one after it is not swallowed");
+});
+
+test("history repair records restore every normalized provenance role per event", () => {
+  const expected = new Map([
+    ["wm40", 7],
+    ["canw", 3],
+    ["hgwy", 9],
+    ["k8wm", 11],
+  ]);
+  for (const [item, count] of expected) {
+    const text = readFileSync(resolve(import.meta.dirname, `../.agents/pm/history/pm-gantt-chart-${item}.jsonl`), "utf8");
+    const lines = text.trimEnd().split("\n");
+    const repair = lines.at(-1)!;
+    assert.match(repair, /"op":"history_repair"/);
+    assert.match(repair, new RegExp(`"events_changed":${count}`));
+    assert.equal((repair.match(/"old_provenance"/g) ?? []).length, count, item);
+    assert.equal((repair.match(/"new_provenance"/g) ?? []).length, count, item);
+    assert.equal(
+      lines.slice(0, -1).filter((line) => /"role":\{"value":"1","source":"environment"\}/.test(line)).length,
+      count,
+      item,
+    );
+  }
 });
