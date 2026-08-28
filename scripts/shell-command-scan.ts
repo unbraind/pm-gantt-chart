@@ -481,8 +481,8 @@ export function commandName(input: ShellCommand): string | undefined {
  *
  * A command with no wrapper yields exactly one reading, so ordinary commands
  * are unaffected. GNU `env -S` is an exception: its operand is shell text held
- * in one word, so that operand is tokenised recursively rather than treated as
- * the program name itself.
+ * in one word, whether the split-string option is separate or attached, so that
+ * operand is tokenised recursively rather than treated as the program name.
  *
  * @param command - One simple command's tokens.
  * @returns Each candidate reading, including nested split-string commands.
@@ -495,13 +495,22 @@ export function commandCandidates(input: ShellCommand): ShellCommand[] {
   const envIndex = command.findIndex((token, index) =>
     index < start && !token.startsQuoted && basename(token.value) === "env");
   if (envIndex !== -1) {
-    const splitIndex = command.findIndex((token, index) =>
-      index > envIndex
-      && !token.startsQuoted
-      && (token.value === "-S" || token.value === "--split-string"));
+    const splitIndex = command.findIndex((token, index) => {
+      if (index <= envIndex || token.startsQuoted) return false;
+      return token.value === "-S"
+        || token.value === "--split-string"
+        || token.value.startsWith("-S")
+        || token.value.startsWith("--split-string=");
+    });
     if (splitIndex !== -1) {
-      const payload = command.slice(splitIndex + 1).map((token) => token.value).join(" ");
-      candidates.push(...tokenizeCommands(payload));
+      const option = command[splitIndex]!.value;
+      const attached = option.startsWith("-S") && option !== "-S"
+        ? option.slice(2)
+        : option.startsWith("--split-string=")
+          ? option.slice("--split-string=".length)
+          : "";
+      const payload = attached || command.slice(splitIndex + 1).map((token) => token.value).join(" ");
+      if (payload.length > 0) candidates.push(...tokenizeCommands(payload));
     }
   }
   if (start === 0) return candidates;
@@ -571,20 +580,21 @@ export function bashArrays(text: string): Map<string, string> {
  * invocation line can see, because the invocation line contains no publish. The
  * assignment is where the command actually is.
  *
- * Only literal single- or double-quoted values are indexed. An unquoted value
- * cannot hold a space and so cannot hold a command, and a value built from
- * other variables is not resolvable without evaluating the script, which this
- * module deliberately does not do.
+ * Literal single- or double-quoted values and conservative unquoted values are
+ * indexed. An unquoted value is accepted only while it contains no whitespace,
+ * shell separator, quote, substitution, backtick, or parenthesis; a value built
+ * from other variables is not resolvable without evaluating the script, which
+ * this module deliberately does not do.
  *
  * @param text - File contents with continuations already joined.
  * @returns Variable name mapped to the literal text it holds.
  */
 export function shellScalars(text: string): Map<string, string> {
   const scalars = new Map<string, string>();
-  for (const match of text.matchAll(/(?:^|[\s;&|])([A-Za-z_][A-Za-z0-9_]*)=(?:"([^"\n]*)"|'([^'\n]*)')/g)) {
-    // The alternation guarantees exactly one of the two value groups matched,
-    // so there is no third case to fall back to.
-    const value = match[2] ?? match[3]!;
+  for (const match of text.matchAll(/(?:^|[\s;&|])([A-Za-z_][A-Za-z0-9_]*)=(?:"([^"\n]*)"|'([^'\n]*)'|([^\s;&|"'`()$]+))/g)) {
+    // The alternation guarantees exactly one of the three value groups matched,
+    // so there is no fourth case to fall back to.
+    const value = match[2] ?? match[3] ?? match[4]!;
     // Only a plain literal is inlined. A value carrying a substitution, a
     // backtick, or a quote of its own changes how the line it lands in parses:
     // inlining `pkg_name="$(node -p …)"` injects an unbalanced parenthesis into

@@ -6,16 +6,17 @@ status: closed
 priority: 1
 tags[3]: "area:release","area:supply-chain","type:defect"
 created_at: "2026-08-28T06:35:44.955Z"
-updated_at: "2026-08-28T19:53:34.462Z"
+updated_at: "2026-08-28T21:06:36.939Z"
 closed_at: "2026-08-28T06:35:50.741Z"
 completed_at: "2026-08-28T06:35:50.741Z"
 author: codex
-acceptance_criteria: The release step has no publish path that omits --provenance; three provenance attempts are made; a version that landed despite a reported error is reconciled instead of republished; exhausting the attempts fails the job rather than publishing unattested; the workflow YAML parses and every bash run script passes bash -n.
+acceptance_criteria: The release step has no publish path that omits --provenance; three provenance attempts are made; a version that landed despite a reported error is reconciled instead of republished; exhausting the attempts fails the job rather than publishing unattested; the workflow YAML parses and every bash run script passes bash -n.; Reconciliation performs up to five attestation-aware registry polls; The retry loop does not sleep after the final poll; Reconciliation returns an explicit status and terminal handling runs after polling
 comments[1]{created_at,author,text}:
   "2026-08-28T06:35:44.955Z",codex,"Non-vacuity proof:\nTest A (restore fallback): exit 1 — FAIL - .github/workflows/release.yml: a publish invocation does not enable --provenance, so it would publish an unattested artifact: npm publish --access public --ignore-scripts\nverify-release-publish-attestation: 1 failure(s).\nTest B (--provenance=false): exit 1 — FAIL - .github/workflows/release.yml: a publish invocation does not enable --provenance, so it would publish an unattested artifact: npm publish --access public --provenance=false --ignore-scripts\nverify-release-publish-attestation: 1 failure(s).\nTest C (clean tree): exit 0 — ok - .github/workflows/release.yml: 1 publish invocation(s), each carrying --provenance\nverify-release-publish-attestation: every publish invocation is attested.\n\nGate table:\ntypecheck: 0, coverage: 100/100/100, verify:release-publish-attestation: 0"
-notes[1]{created_at,author,text}:
+notes[2]{created_at,author,text}:
   "2026-08-28T19:48:26.468Z",pi-agent,"PR 82 review backlog triage: four unresolved bot findings are valid. Fix the history records by restoring original provenance and appending an auditable per-event mapping; parse GNU env split-string payloads as nested shell text; preserve escaped trailing manifest backslashes; and stop attestation parsing at the npm option terminator. Add regression coverage for each, then reply, vote, and resolve each bot thread after the gates pass."
-files[8]{path,scope,note}:
+  "2026-08-28T21:06:36.938Z",pi-agent,"PR 82 second review round: fixed append-only provenance restoration for lfn2 and sszc, added attached env split-string parsing, conservative plain scalar expansion, and executable-field decoding for workflow run scalars, Docker RUN instructions, and Make recipe prefixes. Updated the closed item with the complete reconciliation retry contract. Refused the k8wm count finding after checking the committed data: current lines 10 and 11 are also normalized role value 1, so all 11 mappings are correct; no implementer roles exist in those rows."
+files[10]{path,scope,note}:
   .github/workflows/release.yml,project,publish step refuses to downgrade attestation and reconciles a late-landing version
   scripts/shell-command-scan.ts,project,Nested GNU env split-string payloads are audited as shell commands
   scripts/verify-release-publish-attestation.ts,project,Manifest trailing backslash parity and npm option terminator handling
@@ -24,6 +25,8 @@ files[8]{path,scope,note}:
   .agents/pm/history/pm-gantt-chart-canw.jsonl,project,Restored original provenance roles and recorded event mappings
   .agents/pm/history/pm-gantt-chart-hgwy.jsonl,project,Restored original provenance roles and recorded event mappings
   .agents/pm/history/pm-gantt-chart-k8wm.jsonl,project,Restored original provenance roles and recorded event mappings
+  .agents/pm/history/pm-gantt-chart-lfn2.jsonl,project,Restored original provenance roles and recorded event mappings
+  .agents/pm/history/pm-gantt-chart-sszc.jsonl,project,Restored original provenance roles and recorded event mappings
 tests[3]:
   - command: "npm run verify:release-publish-attestation"
     scope: project

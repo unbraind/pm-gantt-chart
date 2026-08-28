@@ -197,17 +197,47 @@ export function attestationEnabled(command: ShellCommand): boolean {
 }
 
 /**
+ * Decode command-bearing syntax around a supported executable field.
+ *
+ * Workflow YAML can hold a command in a quoted or block `run` scalar, Docker
+ * uses an instruction word before its shell, and Make recipes can prefix a
+ * command with `@`, `-`, or `+`. Those wrappers are format syntax rather than
+ * shell words; removing or converting them before tokenisation lets the shared
+ * scanner judge the command itself without making prose look executable.
+ *
+ * @param source - The executable source's path and contents.
+ * @returns Shell text with the supported format syntax normalised.
+ */
+function normalizeExecutableText(source: SourceFile): string {
+  if (/^\.github\/workflows\/[^/]+\.ya?ml$/.test(source.file)) {
+    return source.text
+      .replace(/(^|\n)([ \t]*run:[ \t]*)(?:[|>][+-]?)[ \t]*/g, "$1$2")
+      .replace(/(^|\n)([ \t]*run:[ \t]*)([\"'])([^\n]*?)\3(?=[ \t]*(?:#|\n|$))/g, "$1$2$4");
+  }
+  if (/(^|\/)Dockerfile([.-][^/]*)?$/.test(source.file)) {
+    return source.text.replace(/(^|\n)([ \t]*)RUN[ \t]+/gi, "$1$2run: ");
+  }
+  if (/(^|\/)(?:Makefile|makefile|GNUmakefile)$|\.mk$/.test(source.file)) {
+    return source.text.replace(/(^|\n)([ \t]*)[@+-]+[ \t]*(?=\S)/g, "$1$2");
+  }
+  return source.text;
+}
+
+/**
  * Find every publish invocation in one file's contents.
  *
- * Continuations are joined and shared arrays expanded before tokenising, for
- * the same reason the changelog-date scan does it: a multi-line invocation
- * otherwise looks like fragments, none of which carries the flag.
+ * Supported executable formats are normalised before tokenising: a manifest
+ * yields its script bodies, while workflow, Docker, and Make syntax is reduced
+ * to the shell text each field executes. Continuations are joined and shared
+ * arrays expanded for the same reason the changelog-date scan does it: a
+ * multi-line invocation otherwise looks like fragments, none of which carries
+ * the flag.
  *
  * @param source - The file's path and contents.
  * @returns The publish invocations found, in file order.
  */
 export function publishInvocationsIn(source: SourceFile): PublishInvocation[] {
-  const raw = source.file.endsWith("package.json") ? manifestCommandLines(source.text) : source.text;
+  const raw = source.file.endsWith("package.json") ? manifestCommandLines(source.text) : normalizeExecutableText(source);
   const text = joinContinuations(raw);
   const arrays = bashArrays(text);
   const scalars = shellScalars(text);

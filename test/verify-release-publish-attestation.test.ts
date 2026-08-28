@@ -583,6 +583,15 @@ test("GNU env split-string payloads are tokenised as nested shell commands", () 
   assert.match(result.failures[0]!, /npm publish --access public --ignore-scripts/);
 });
 
+test("attached GNU env split-string payloads are audited beside an attested sibling", () => {
+  for (const wrapped of [`env -S'${UNATTESTED}'`, `env --split-string='${UNATTESTED}'`]) {
+    const text = `          npm publish --provenance\n          ${wrapped}`;
+    const result = auditPublishAttestation([{ file: "release.yml", text }]);
+    assert.equal(result.failures.length, 1, wrapped);
+    assert.match(result.failures[0]!, /npm publish --access public --ignore-scripts/, wrapped);
+  }
+});
+
 test("a runner spelled as two words is consumed only when its second word completes it", () => {
   for (const wrapped of ["pnpm dlx npm publish --provenance", "yarn exec npm publish --provenance", "bun x npm publish --provenance"]) {
     assert.equal(
@@ -664,7 +673,7 @@ test("a command held in a scalar is expanded, so the assignment is where the pub
   const scalars = shellScalars('CMD="npm publish"\nOTHER=\'npm publish --provenance\'\nBARE=npm\n');
   assert.equal(scalars.get("CMD"), "npm publish");
   assert.equal(scalars.get("OTHER"), "npm publish --provenance");
-  assert.equal(scalars.get("BARE"), undefined, "an unquoted value cannot hold a command");
+  assert.equal(scalars.get("BARE"), "npm", "a plain literal is resolvable too");
   assert.equal(expandScalars("$CMD", scalars), "npm publish");
   assert.equal(expandScalars("${CMD}", scalars), "npm publish");
   assert.equal(expandScalars("$UNKNOWN", scalars), "$UNKNOWN", "an unknown name is left in place, not erased");
@@ -705,6 +714,28 @@ test("a quoted parenthesis inside a substitution is a literal, not its delimiter
     text: '          npm publish --provenance\n          x=$(echo ")" && npm publish)\n',
   }]);
   assert.equal(result.failures.length, 1);
+});
+
+test("workflow, Docker, and Make executable fields are decoded before auditing", () => {
+  const sources = [
+    {
+      file: ".github/workflows/release.yml",
+      text: '          run: "npm publish --ignore-scripts"\n          run: "npm publish --provenance"',
+    },
+    {
+      file: "Dockerfile",
+      text: "RUN npm publish --ignore-scripts\nRUN npm publish --provenance",
+    },
+    {
+      file: "Makefile",
+      text: "ship:\n\t@npm publish --ignore-scripts\nattested:\n\t+ npm publish --provenance",
+    },
+  ];
+  const result = auditPublishAttestation(sources);
+  assert.equal(result.failures.length, 3, "each executable format must expose its unattested publish");
+  for (const file of sources.map((source) => source.file)) {
+    assert.ok(result.failures.some((failure) => failure.startsWith(`${file}:`)), file);
+  }
 });
 
 test("one package script cannot continue into the next", () => {
@@ -784,6 +815,18 @@ test("a scalar carrying a substitution or a quote of its own is never inlined", 
   assert.deepEqual(found, ["npm publish --access public --provenance --ignore-scripts"]);
 });
 
+test("plain scalar assignments expand both a program and its publish subcommand", () => {
+  const text = [
+    "          NPM=npm",
+    "          SUBCOMMAND=publish",
+    "          npm publish --provenance",
+    "          $NPM $SUBCOMMAND --ignore-scripts",
+  ].join("\n");
+  const result = auditPublishAttestation([{ file: "release.yml", text }]);
+  assert.equal(result.failures.length, 1, "the expanded plain-scalar publish must be audited");
+  assert.match(result.failures[0]!, /npm publish --ignore-scripts/);
+});
+
 test("a substitution's quote state does not leak across its lines", () => {
   // Workflow prose carries apostrophes inside double-quoted messages. If an
   // unbalanced one persisted past the newline, every later parenthesis would
@@ -805,6 +848,8 @@ test("history repair records restore every normalized provenance role per event"
     ["canw", 3],
     ["hgwy", 9],
     ["k8wm", 11],
+    ["lfn2", 10],
+    ["sszc", 3],
   ]);
   for (const [item, count] of expected) {
     const text = readFileSync(resolve(import.meta.dirname, `../.agents/pm/history/pm-gantt-chart-${item}.jsonl`), "utf8");
@@ -819,5 +864,16 @@ test("history repair records restore every normalized provenance role per event"
       count,
       item,
     );
+  }
+});
+
+test("the PM item records the complete reconciliation retry contract", () => {
+  const item = readFileSync(resolve(import.meta.dirname, "../.agents/pm/issues/pm-gantt-chart-8e6f.toon"), "utf8");
+  for (const criterion of [
+    "Reconciliation performs up to five attestation-aware registry polls",
+    "The retry loop does not sleep after the final poll",
+    "Reconciliation returns an explicit status and terminal handling runs after polling",
+  ]) {
+    assert.ok(item.includes(criterion), criterion);
   }
 });
