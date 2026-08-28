@@ -10,7 +10,6 @@
 
 ### Fixed
 
-- A failed provenance publish silently falls back to an unattested one ([pm-gantt-chart-1j7i](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-1j7i.toon))
 - A failed provenance publish silently falls back to an unattested one ([pm-gantt-chart-8e6f](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-8e6f.toon))
 - Adopt the canonical SDK-certified complete-list reader ([pm-gantt-chart-olgh](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-olgh.toon))
 
