@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Pin pm-changelog 2026.8.30 before the next release ([pm-gantt-chart-kn18](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-kn18.toon))
+
 ## 2026.8.28 - 2026-08-28
 
 ### Fixed
