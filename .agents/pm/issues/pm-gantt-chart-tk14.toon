@@ -1,0 +1,27 @@
+id: pm-gantt-chart-tk14
+title: Rebase the attested-publish release fix onto current main
+description: Rebase PR 82 while preserving current changelog-date protections and the fail-closed provenance publish and reconciliation behavior.
+type: Issue
+status: closed
+priority: 2
+tags: []
+created_at: "2026-08-30T16:45:18.751Z"
+updated_at: "2026-08-30T16:50:43.422Z"
+closed_at: "2026-08-30T16:50:43.005Z"
+completed_at: "2026-08-30T16:50:43.005Z"
+author: pi-agent
+resolution: Rebased the fail-closed provenance publish and artifact reconciliation changes while retaining all current version-derived changelog protections.
+expected_result: "The release never publishes unattested artifacts and only reconciles a registry coordinate with visible attestations, without regressing current main release gates."
+actual_result: "Both verifiers pass, 283 tests pass at 100% coverage, release:check passes, and removing --provenance makes the executable attestation regression gate fail."
+files[6]{path,scope,note}:
+  .github/workflows/release.yml,project,Fail closed unless the exact registry artifact is attested
+  .github/workflows/ci.yml,project,Run both release verifiers
+  package.json,project,Retain current release gates and append attestation verifier
+  scripts/verify-release-publish-attestation.ts,project,Audit every executable publish path
+  scripts/shell-command-scan.ts,project,Shared shell scanner
+  test/verify-release-publish-attestation.test.ts,project,Regression tests
+tests[2]{command,scope,timeout_seconds,provenance{author,created_at,source_kind,source_ref}}:
+  npm test,project,900,pi-agent,"2026-08-30T16:50:16.011Z",local_mutation,fix/refuse-unattested-publish-fallback
+  "npm run verify:release-publish-attestation",project,120,pi-agent,"2026-08-30T16:50:16.011Z",local_mutation,fix/refuse-unattested-publish-fallback
+close_reason: "Rebase verified with full tests, direct release checks, and executable source-revert proof."
+body: ""
