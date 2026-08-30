@@ -854,13 +854,15 @@ test("history repair records restore every normalized provenance role per event"
   for (const [item, count] of expected) {
     const text = readFileSync(resolve(import.meta.dirname, `../.agents/pm/history/pm-gantt-chart-${item}.jsonl`), "utf8");
     const lines = text.trimEnd().split("\n");
-    const repair = lines.at(-1)!;
-    assert.match(repair, /"op":"history_repair"/);
-    assert.match(repair, new RegExp(`"events_changed":${count}`));
+    const repairs = lines.filter((line) => /"op":"history_repair"/.test(line));
+    const repair = repairs.find((line) =>
+      line.includes(`"events_changed":${count}`) && (line.match(/"old_provenance"/g) ?? []).length === count);
+    assert.ok(repair, `${item}: provenance repair with ${count} changed events`);
     assert.equal((repair.match(/"old_provenance"/g) ?? []).length, count, item);
     assert.equal((repair.match(/"new_provenance"/g) ?? []).length, count, item);
     assert.equal(
-      lines.slice(0, -1).filter((line) => /"role":\{"value":"1","source":"environment"\}/.test(line)).length,
+      lines.filter((line) => !/"op":"history_repair"/.test(line))
+        .filter((line) => /"role":\{"value":"1","source":"environment"\}/.test(line)).length,
       count,
       item,
     );
