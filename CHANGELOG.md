@@ -4,12 +4,14 @@
 
 ### Fixed
 
+- Rebase the attested-publish release fix onto current main ([pm-gantt-chart-tk14](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-tk14.toon))
 - Pin pm-changelog 2026.8.30 before the next release ([pm-gantt-chart-kn18](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-kn18.toon))
 
 ## 2026.8.28 - 2026-08-28
 
 ### Fixed
 
+- A failed provenance publish silently falls back to an unattested one ([pm-gantt-chart-8e6f](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-8e6f.toon))
 - Adopt the canonical SDK-certified complete-list reader ([pm-gantt-chart-olgh](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-olgh.toon))
 
 ### Security
