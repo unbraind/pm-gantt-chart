@@ -1,6 +1,6 @@
 {
   "name": "pm-gantt-chart",
-  "version": "2026.8.29",
+  "version": "2026.8.31",
   "description": "ASCII Gantt chart renderer + multi-format exporter for pm-cli",
   "repository": {
     "type": "git",
@@ -30,7 +30,6 @@
     "verify:release-workflow": "node .agents/pm/verify-release-yaml.ts",
     "verify:release-changelog-date": "node scripts/verify-release-changelog-date.ts",
     "verify:release-publish-attestation": "node scripts/verify-release-publish-attestation.ts",
-
     "docstring": "node scripts/docstring-gate.ts",
     "audit:prod": "node --input-type=module -e \"import { spawnSync } from 'node:child_process'; import { devNull } from 'node:os'; const env = { ...process.env, npm_config_userconfig: devNull, NPM_CONFIG_USERCONFIG: devNull }; for (const key of Object.keys(env)) if (key.toLowerCase() === 'npm_config_allow_scripts') delete env[key]; const win = process.platform === 'win32'; const r = spawnSync(win ? 'npm.cmd' : 'npm', ['audit', '--omit=dev', '--ignore-scripts'], { stdio: 'inherit', env, shell: win }); process.exit(r.status ?? 1);\"",
     "accept:packed": "node scripts/accept-packed.ts",
@@ -40,7 +39,6 @@
     "changelog:check": "pm-changelog --pm-root .agents/pm --pm-arg=--output-budget --pm-arg=unbounded --pm-arg=--output-limit --pm-arg=unbounded --mode replace --output CHANGELOG.md --all-release-tags --release-version-from-package --date-from-version --item-url-base https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm --respect-item-release --pm-bin ./node_modules/.bin/pm --check",
     "release:check": "npm run check && npm run verify:release-workflow && npm run docstring && npm run coverage && npm run audit:prod && npm run pack:dry-run && npm run accept:packed && npm run changelog:check && npm run verify:release-changelog-date && npm run verify:release-publish-attestation",
     "release:notes": "pm-changelog --pm-root .agents/pm --pm-arg=--output-budget --pm-arg=unbounded --pm-arg=--output-limit --pm-arg=unbounded --stdout --since-previous-tag --until-release-tag --release-version-from-package --date-from-version --item-url-base https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm --respect-item-release --pm-bin ./node_modules/.bin/pm --github-step-summary",
-
     "prepare": "node scripts/prepare-merge-driver.mjs",
     "merge:install": "pm merge install",
     "coverage": "npm run build && npm run build:test && node scripts/coverage-gate.ts"
