@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Split codeql-action bumps deadlock the codeql check, because init and analyze can only pass together ([pm-gantt-chart-vwdk](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-vwdk.toon))
+
 ## 2026.8.31 - 2026-08-31
 
 ### Fixed
