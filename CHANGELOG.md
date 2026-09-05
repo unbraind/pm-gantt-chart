@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Other
+
+- Pin pm toolchain to 2026.9.5 and changelog 2026.9.2 ([pm-gantt-chart-0i4c](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-0i4c.toon))
+
 ## 2026.9.1 - 2026-09-01
 
 ### Fixed

@@ -1,0 +1,23 @@
+id: pm-gantt-chart-0i4c
+title: Pin pm toolchain to 2026.9.5 and changelog 2026.9.2
+description: "The published toolchain moved to @unbrained/pm-cli 2026.9.5, pm-changelog 2026.9.2, and pm-ops 2026.9.5. pm-changelog 2026.9.2 stopped stamping the wall clock on unflagged headings; this repo already asserts the flag changes the heading rather than pinning the clock form, so the pin is the work."
+type: Chore
+status: closed
+priority: 2
+tags: []
+created_at: "2026-09-05T17:54:46.316Z"
+updated_at: "2026-09-05T17:55:10.022Z"
+closed_at: "2026-09-05T17:55:10.009Z"
+completed_at: "2026-09-05T17:55:10.009Z"
+claim_principal: pi-agent
+author: pi-agent
+resolution: "Pinned @unbrained/pm-cli 2026.9.5, pm-changelog 2026.9.2, and pm-ops 2026.9.5 as exact devDependencies. The changelog-date gate already asserted the unflagged heading differs from the flagged one, so 2026.9.2's bare ## <version> control still proves --date-from-version is load-bearing."
+expected_result: "npm run release:check and pm health --strict-exit both exit 0 against the pinned toolchain."
+actual_result: "release:check exit 0; pm health --strict-exit exit 0. Live headings: flagged ## 2026.1.2 - 2026-01-02, unflagged ## 2026.1.2. Clock-form control: 4/24 tests fail; difference control: 24/24 pass."
+comments[1]{created_at,author,text}:
+  "2026-09-05T17:54:56.734Z",pi-agent,"Pinned exact devDependencies: @unbrained/pm-cli 2026.9.5, pm-changelog 2026.9.2, pm-ops 2026.9.5. npm run release:check exited 0. ./node_modules/.bin/pm health --strict-exit exited 0.\n\nThe date gate already asserted the unflagged heading differs from the flagged one. Live generator output after the pin:\n  with --date-from-version: ## 2026.1.2 - 2026-01-02\n  without: ## 2026.1.2\n\nRevert-proof of that property against this generator: temporarily requiring the clock-derived heading failed 4 of 24 tests in test/verify-release-changelog-date.test.ts (exit 1). Restoring the difference assertion passed 24 of 24 (exit 0). Failures were:\n  a control identical to the flagged run fails, because then the flag discriminates nothing\n  a control derived some other way still passes, because the contract is that the flag changes the heading\n  verify runs both halves against this checkout and reports through the process streams\n  main verifies this checkout and reports through the process streams\n\nNo verifier source change was needed; those tests were already on main."
+files[2]{path,scope}:
+  package.json,project
+  package-lock.json,project
+close_reason: "Pinned @unbrained/pm-cli 2026.9.5, pm-changelog 2026.9.2, and pm-ops 2026.9.5 as exact devDependencies. The changelog-date gate already asserted the unflagged heading differs from the flagged one, so 2026.9.2's bare ## <version> control still proves --date-from-version is load-bearing."
+body: ""
