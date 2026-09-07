@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+- Consume the canonical attestation gate instead of carrying a copy of it ([pm-gantt-chart-k2pz](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-k2pz.toon))
+
 ## 2026.9.6 - 2026-09-06
 
 ### Other
