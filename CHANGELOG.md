@@ -4,6 +4,8 @@
 
 ### Other
 
+- Certify the CLI and SDK on PM 2026.9.7 ([pm-gantt-chart-cafp](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-cafp.toon))
+- Certify pm CLI 2026.9.12 and the pm-ops 2026.9.11 auditor ([pm-gantt-chart-7kuc](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-7kuc.toon))
 - Certify pm CLI 2026.9.10 and pick up the canonical auditor fixes the lockfile was holding back ([pm-gantt-chart-1psl](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-1psl.toon))
 
 ## 2026.9.8 - 2026-09-08
