@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Other
+
+- Certify pm CLI 2026.9.17 ([pm-gantt-chart-jbem](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-jbem.toon))
+
 ## 2026.9.13 - 2026-09-13
 
 ### Other
@@ -34,6 +40,7 @@
 
 ### Fixed
 
+- A failed provenance publish silently falls back to an unattested one ([pm-gantt-chart-8e6f](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-8e6f.toon))
 - Rebase the attested-publish release fix onto current main ([pm-gantt-chart-tk14](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-tk14.toon))
 - Pin pm-changelog 2026.8.30 before the next release ([pm-gantt-chart-kn18](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-kn18.toon))
 
@@ -41,7 +48,6 @@
 
 ### Fixed
 
-- A failed provenance publish silently falls back to an unattested one ([pm-gantt-chart-8e6f](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-8e6f.toon))
 - Adopt the canonical SDK-certified complete-list reader ([pm-gantt-chart-olgh](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-olgh.toon))
 
 ### Security
@@ -61,11 +67,16 @@
 - Fresh installs fail strict health because manifest.json carries an unsupported pm key ([pm-gantt-chart-ugun](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-ugun.toon))
 - Refuse incomplete list-all envelopes before rendering a Gantt chart ([pm-gantt-chart-uidc](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-uidc.toon))
 
-## 2026.8.16 - 2026-08-16
+## 2026.8.17 - 2026-08-17
 
 ### Fixed
 
 - The pm CLI compatibility floor was declared only in peerDependencies, which only npm enforces, and not in manifest.json pm_min_version, which is the field the CLI enforces ([pm-gantt-chart-ud0y](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-ud0y.toon))
+
+## 2026.8.16 - 2026-08-16
+
+### Fixed
+
 - The gantt export alias silently drops out of the preflight override's scope and nothing binds the scope to the registered commands ([pm-gantt-chart-wjv5](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-wjv5.toon))
 
 ## 2026.8.15 - 2026-08-15
