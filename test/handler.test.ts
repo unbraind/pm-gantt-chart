@@ -163,6 +163,91 @@ after(() => {
 });
 
 // ---------------------------------------------------------------------------
+// Shared handler test helpers
+// ---------------------------------------------------------------------------
+
+/** Assert the handler/exporter returned a handled result and return it as a record. */
+function assertHandledResult(res: { handled: boolean; result: unknown }): Record<string, unknown> {
+  assert.equal(res.handled, true);
+  return res.result as Record<string, unknown>;
+}
+
+/** Assert the handler returned an empty chart result, optionally expecting a warning. */
+function assertEmptyResult(res: { handled: boolean; result: unknown }, expectWarning = false): void {
+  const result = assertHandledResult(res);
+  assert.equal(result.itemCount, 0);
+  assert.equal(result.chart, null);
+  if (expectWarning) assert.ok(typeof result.warning === "string");
+}
+
+/** Assert the exporter returned a successful result for the given format and return it. */
+function assertExportResult(res: { handled: boolean; result: unknown }, format: string): Record<string, unknown> {
+  const result = assertHandledResult(res);
+  assert.equal(result.format, format);
+  assert.equal(result.exported, 4);
+  return result;
+}
+
+/** The standard preflight decision block used by override tests. */
+function preflightDecision(): {
+  enforce_item_format_gate: boolean;
+  run_preflight_item_format_sync: boolean;
+  run_extension_migrations: boolean;
+  enforce_mandatory_migration_gate: boolean;
+} {
+  return {
+    enforce_item_format_gate: false,
+    run_preflight_item_format_sync: false,
+    run_extension_migrations: false,
+    enforce_mandatory_migration_gate: false,
+  };
+}
+
+/** Capture stderr writes into a string buffer for the duration of `run`. */
+async function captureStderr<T>(run: () => Promise<T>): Promise<{ stderr: string; result: T }> {
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+  let stderr = "";
+  process.stderr.write = ((chunk: string | Uint8Array): boolean => {
+    stderr += chunk.toString();
+    return true;
+  }) as typeof process.stderr.write;
+  try {
+    const result = await run();
+    return { stderr, result };
+  } finally {
+    process.stderr.write = originalStderrWrite;
+  }
+}
+
+/** Assert that running the gantt command on `pmRoot` rejects with an Error matching all `patterns`. */
+async function assertGanttRejects(pmRoot: string, patterns: readonly RegExp[]): Promise<void> {
+  await assert.rejects(
+    harness.runCommand({ command: "gantt", pmRoot }),
+    (err: unknown) => {
+      assert.ok(err instanceof Error);
+      for (const pattern of patterns) assert.match((err as Error).message, pattern);
+      return true;
+    },
+  );
+}
+
+/** Create a fake `pm` script, shadow PATH with it, and assert the gantt command rejects. */
+async function withFakePmScript(script: string, patterns: readonly RegExp[]): Promise<void> {
+  const fakeDir = mkdtempSync(join(tmpdir(), "gantt-fakepm-"));
+  const fakePm = join(fakeDir, "pm");
+  writeFileSync(fakePm, script, "utf-8");
+  chmodSync(fakePm, 0o755);
+  const originalPath = process.env.PATH!;
+  process.env.PATH = `${fakeDir}:${originalPath}`;
+  try {
+    await assertGanttRejects(normalRoot, patterns);
+  } finally {
+    process.env.PATH = originalPath;
+    rmSync(fakeDir, { recursive: true, force: true });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Harness activation
 // ---------------------------------------------------------------------------
 
@@ -184,8 +269,7 @@ test("gantt command renders items and returns a structured result", async () => 
     pmRoot: normalRoot,
     options: { schedule: true, weeks: "12", from: "2026-06-01" },
   });
-  assert.equal(res.handled, true);
-  const result = res.result as Record<string, unknown>;
+  const result = assertHandledResult(res);
   assert.equal(result.itemCount, 4, "all four items rendered");
   assert.equal(result.schedule, true);
   assert.equal(result.weeks, 12);
@@ -210,8 +294,7 @@ test("gantt command returns its item summary when json is false", async () => {
     options: { schedule: true, weeks: "12", from: "2026-06-01", "group-by": "sprint" },
     global: { json: false },
   });
-  assert.equal(res.handled, true);
-  const result = res.result as Record<string, unknown>;
+  const result = assertHandledResult(res);
   assert.equal(result.itemCount, 4);
 });
 
@@ -224,10 +307,7 @@ test("gantt command returns early with no items on an empty tracker", async () =
     command: "gantt",
     pmRoot: emptyRoot,
   });
-  assert.equal(res.handled, true);
-  const result = res.result as Record<string, unknown>;
-  assert.equal(result.itemCount, 0);
-  assert.equal(result.chart, null);
+  assertEmptyResult(res);
 });
 
 // ---------------------------------------------------------------------------
@@ -240,11 +320,7 @@ test("gantt command returns a warning when the status filter matches nothing", a
     pmRoot: normalRoot,
     options: { status: "canceled" },
   });
-  assert.equal(res.handled, true);
-  const result = res.result as Record<string, unknown>;
-  assert.equal(result.itemCount, 0);
-  assert.equal(result.chart, null);
-  assert.ok(typeof result.warning === "string");
+  assertEmptyResult(res, true);
 });
 
 // ---------------------------------------------------------------------------
@@ -258,11 +334,7 @@ test("gantt command returns a warning with --critical-only when there is no chai
     pmRoot: warnRoot,
     options: { "critical-only": true },
   });
-  assert.equal(res.handled, true);
-  const result = res.result as Record<string, unknown>;
-  assert.equal(result.itemCount, 0);
-  assert.equal(result.chart, null);
-  assert.ok(typeof result.warning === "string");
+  assertEmptyResult(res, true);
 });
 
 // ---------------------------------------------------------------------------
@@ -292,8 +364,7 @@ test("gantt command renders with data-sanity warnings in non-json mode", async (
     pmRoot: warnRoot,
     global: { json: false },
   });
-  assert.equal(res.handled, true);
-  const result = res.result as Record<string, unknown>;
+  const result = assertHandledResult(res);
   assert.ok(result.itemCount, "chart still rendered despite warnings");
 });
 
@@ -302,14 +373,7 @@ test("gantt command renders with data-sanity warnings in non-json mode", async (
 // ---------------------------------------------------------------------------
 
 test("gantt command throws a CommandError when pm root does not exist", async () => {
-  await assert.rejects(
-    harness.runCommand({ command: "gantt", pmRoot: "/nonexistent/path/xyz" }),
-    (err: unknown) => {
-      assert.ok(err instanceof Error);
-      assert.match((err as Error).message, /Failed to fetch pm items/);
-      return true;
-    },
-  );
+  await assertGanttRejects("/nonexistent/path/xyz", [/Failed to fetch pm items/]);
 });
 
 // ---------------------------------------------------------------------------
@@ -320,14 +384,7 @@ test("gantt command respects PM_JSON_MAX_BUFFER env var (small cap causes fetch 
   const prev = process.env.PM_JSON_MAX_BUFFER;
   process.env.PM_JSON_MAX_BUFFER = "1";
   try {
-    await assert.rejects(
-      harness.runCommand({ command: "gantt", pmRoot: normalRoot }),
-      (err: unknown) => {
-        assert.ok(err instanceof Error);
-        assert.match((err as Error).message, /Failed to fetch pm items/);
-        return true;
-      },
-    );
+    await assertGanttRejects(normalRoot, [/Failed to fetch pm items/]);
   } finally {
     if (prev === undefined) {
       delete process.env.PM_JSON_MAX_BUFFER;
@@ -349,10 +406,7 @@ describe("gantt export", () => {
         pmRoot: normalRoot,
         options: { format, schedule: true, weeks: "12", from: "2026-06-01" },
       });
-      assert.equal(res.handled, true);
-      const result = res.result as Record<string, unknown>;
-      assert.equal(result.format, format);
-      assert.equal(result.exported, 4);
+      const result = assertExportResult(res, format);
       // stdout mode → result.output is the rendered string.
       assert.ok(typeof result.output === "string");
       assert.ok((result.output as string).length > 0, `${format} output is non-empty`);
@@ -373,10 +427,7 @@ describe("gantt export --output", () => {
         pmRoot: normalRoot,
         options: { format, schedule: true, weeks: "12", from: "2026-06-01", output: outFile },
       });
-      assert.equal(res.handled, true);
-      const result = res.result as Record<string, unknown>;
-      assert.equal(result.format, format);
-      assert.equal(result.exported, 4);
+      const result = assertExportResult(res, format);
       assert.ok(typeof result.file === "string");
       assert.ok(existsSync(outFile), `${format} file was written`);
       const content = readFileSync(outFile, "utf-8");
@@ -415,8 +466,7 @@ test("exporter returns exported=0 on an empty tracker", async () => {
     pmRoot: emptyRoot,
     options: { format: "mermaid" },
   });
-  assert.equal(res.handled, true);
-  const result = res.result as Record<string, unknown>;
+  const result = assertHandledResult(res);
   assert.equal(result.exported, 0);
 });
 
@@ -431,8 +481,7 @@ test("exporter renders with data-sanity warnings in non-json mode", async () => 
     options: { format: "ascii" },
     global: { json: false },
   });
-  assert.equal(res.handled, true);
-  const result = res.result as Record<string, unknown>;
+  const result = assertHandledResult(res);
   assert.ok((result.exported as number) > 0, "items exported despite warnings");
 });
 
@@ -447,13 +496,8 @@ test("preflight override returns empty delta for the gantt command", async () =>
     options: {},
     global: { json: true },
     pm_root: normalRoot,
-    decision: {
-      enforce_item_format_gate: false,
-      run_preflight_item_format_sync: false,
-      run_extension_migrations: false,
-      enforce_mandatory_migration_gate: false,
-    },
-  } as any);
+    decision: preflightDecision(),
+  });
   assert.equal(res.overridden, true, "override was applied");
   assert.deepEqual(res.warnings, [], "no warnings from empty delta");
 });
@@ -469,13 +513,8 @@ test("preflight override declines for a command pm-gantt-chart does not own", as
     options: {},
     global: { json: true },
     pm_root: normalRoot,
-    decision: {
-      enforce_item_format_gate: false,
-      run_preflight_item_format_sync: false,
-      run_extension_migrations: false,
-      enforce_mandatory_migration_gate: false,
-    },
-  } as any);
+    decision: preflightDecision(),
+  });
   assert.equal(res.overridden, false, "scoped override must decline a non-owned command");
 });
 
@@ -489,14 +528,7 @@ test("preflight override declines for a command pm-gantt-chart does not own", as
 // ---------------------------------------------------------------------------
 
 test("gantt command writes a dropped-milestone NOTE to stderr and includes milestones in the result", async () => {
-  const originalStderrWrite = process.stderr.write.bind(process.stderr);
-  let stderr = "";
-  process.stderr.write = ((chunk: string | Uint8Array): boolean => {
-    stderr += chunk.toString();
-    return true;
-  }) as typeof process.stderr.write;
-  try {
-    const res = await harness.runCommand({
+  const { stderr, result: res } = await captureStderr(() => harness.runCommand({
       command: "gantt",
       pmRoot: normalRoot,
       options: {
@@ -506,9 +538,8 @@ test("gantt command writes a dropped-milestone NOTE to stderr and includes miles
         milestones: "v1.0=2026-06-10,far=2027-01-01",
       },
       global: { json: false },
-    });
-    assert.equal(res.handled, true);
-    const result = res.result as Record<string, unknown>;
+    }));
+    const result = assertHandledResult(res);
     // The return payload includes a milestones array with the in-window entry.
     const milestones = result.milestones as Array<{ name: string; date: string; week: number; inWindow: boolean }>;
     assert.ok(Array.isArray(milestones), "milestones array present in result");
@@ -522,9 +553,6 @@ test("gantt command writes a dropped-milestone NOTE to stderr and includes miles
     // The NOTE about the dropped out-of-window milestone went to stderr.
     assert.match(stderr, /NOTE: 1 milestone\(s\) fall outside the chart window/);
     assert.match(stderr, /far/);
-  } finally {
-    process.stderr.write = originalStderrWrite;
-  }
 });
 
 // ---------------------------------------------------------------------------
@@ -537,21 +565,13 @@ test("gantt command writes a dropped-milestone NOTE to stderr and includes miles
 // ---------------------------------------------------------------------------
 
 test("gantt command writes an infeasible-deadline WARNING to stderr and includes warnings in the result", async () => {
-  const originalStderrWrite = process.stderr.write.bind(process.stderr);
-  let stderr = "";
-  process.stderr.write = ((chunk: string | Uint8Array): boolean => {
-    stderr += chunk.toString();
-    return true;
-  }) as typeof process.stderr.write;
-  try {
-    const res = await harness.runCommand({
+  const { stderr, result: res } = await captureStderr(() => harness.runCommand({
       command: "gantt",
       pmRoot: infeasibleRoot,
       options: { schedule: true, weeks: "12", from: "2026-06-01" },
       global: { json: false },
-    });
-    assert.equal(res.handled, true);
-    const result = res.result as Record<string, unknown>;
+    }));
+    const result = assertHandledResult(res);
     assert.ok(typeof result.infeasibleCount === "number");
     assert.ok((result.infeasibleCount as number) > 0, "at least one infeasible item");
     const warnings = result.warnings as string[];
@@ -560,9 +580,6 @@ test("gantt command writes an infeasible-deadline WARNING to stderr and includes
     // The WARNING went to stderr.
     assert.match(stderr, /WARNING: \d+ item\(s\) have an infeasible deadline/);
     assert.match(stderr, /Tight deadline/);
-  } finally {
-    process.stderr.write = originalStderrWrite;
-  }
 });
 
 // ---------------------------------------------------------------------------
@@ -575,8 +592,7 @@ test("exporter returns exported=0 with --critical-only when there is no chain", 
     pmRoot: warnRoot,
     options: { format: "mermaid", "critical-only": true },
   });
-  assert.equal(res.handled, true);
-  const result = res.result as Record<string, unknown>;
+  const result = assertHandledResult(res);
   assert.equal(result.exported, 0);
   assert.equal(result.format, "mermaid");
 });
@@ -591,14 +607,7 @@ test("exporter returns exported=0 with --critical-only when there is no chain", 
 // ---------------------------------------------------------------------------
 
 test("exporter writes dropped-milestone NOTE and infeasible-deadline WARNING to stderr", async () => {
-  const originalStderrWrite = process.stderr.write.bind(process.stderr);
-  let stderr = "";
-  process.stderr.write = ((chunk: string | Uint8Array): boolean => {
-    stderr += chunk.toString();
-    return true;
-  }) as typeof process.stderr.write;
-  try {
-    const res = await harness.runExporter({
+  const { stderr, result: res } = await captureStderr(() => harness.runExporter({
       exporter: "gantt",
       pmRoot: infeasibleRoot,
       options: {
@@ -608,9 +617,8 @@ test("exporter writes dropped-milestone NOTE and infeasible-deadline WARNING to 
         from: "2026-06-01",
         milestones: "far=2027-01-01",
       },
-    });
-    assert.equal(res.handled, true);
-    const result = res.result as Record<string, unknown>;
+    }));
+    const result = assertHandledResult(res);
     assert.ok((result.exported as number) > 0, "items were exported");
     // The NOTE about the dropped milestone.
     assert.match(stderr, /gantt export NOTE: 1 milestone\(s\) fall outside the chart window/);
@@ -618,9 +626,6 @@ test("exporter writes dropped-milestone NOTE and infeasible-deadline WARNING to 
     // The WARNING about the infeasible deadline.
     assert.match(stderr, /gantt export WARNING: \d+ item\(s\) have an infeasible deadline/);
     assert.match(stderr, /Tight deadline/);
-  } finally {
-    process.stderr.write = originalStderrWrite;
-  }
 });
 
 // ---------------------------------------------------------------------------
@@ -632,26 +637,10 @@ test("exporter writes dropped-milestone NOTE and infeasible-deadline WARNING to 
 // ---------------------------------------------------------------------------
 
 test("gantt command throws a CommandError when pm emits non-JSON output", async () => {
-  const fakeDir = mkdtempSync(join(tmpdir(), "gantt-fakepm-"));
-  const fakePm = join(fakeDir, "pm");
-  writeFileSync(fakePm, "#!/bin/sh\necho 'not json at all'\nexit 0\n", "utf-8");
-  chmodSync(fakePm, 0o755);
-  const originalPath = process.env.PATH!;
-  // Prepend the fake directory so the fake pm shadows the real one.
-  process.env.PATH = `${fakeDir}:${originalPath}`;
-  try {
-    await assert.rejects(
-      harness.runCommand({ command: "gantt", pmRoot: normalRoot }),
-      (err: unknown) => {
-        assert.ok(err instanceof Error);
-        assert.match((err as Error).message, /Failed to parse pm list --all output as JSON/);
-        return true;
-      },
-    );
-  } finally {
-    process.env.PATH = originalPath;
-    rmSync(fakeDir, { recursive: true, force: true });
-  }
+  await withFakePmScript(
+    "#!/bin/sh\necho 'not json at all'\nexit 0\n",
+    [/Failed to parse pm list --all output as JSON/],
+  );
 });
 // ---------------------------------------------------------------------------
 // Command handler: --progress flag (itemProgress in the result object)
@@ -663,8 +652,7 @@ test("gantt command includes itemProgress in the result under --progress", async
     pmRoot: normalRoot,
     options: { schedule: true, progress: true, weeks: "12", from: "2026-06-01" },
   });
-  assert.equal(res.handled, true);
-  const result = res.result as Record<string, unknown>;
+  const result = assertHandledResult(res);
   const itemProgress = result.itemProgress as Array<{ id: string; percent: number }>;
   assert.ok(Array.isArray(itemProgress), "itemProgress array present");
   assert.equal(itemProgress.length, 4, "one entry per item");
@@ -691,8 +679,7 @@ test("gantt command includes overdue items in the result when deadlines have pas
     pmRoot: warnRoot,
     options: { weeks: "200", from: "2019-01-01" },
   });
-  assert.equal(res.handled, true);
-  const result = res.result as Record<string, unknown>;
+  const result = assertHandledResult(res);
   const overdue = result.overdue as Array<{ id: string; deadline: string | null }>;
   assert.ok(Array.isArray(overdue), "overdue array present");
   assert.ok(overdue.length > 0, "at least one overdue item");
@@ -708,8 +695,7 @@ test("exporter defaults to mermaid format when --format is omitted", async () =>
     pmRoot: normalRoot,
     options: { schedule: true, weeks: "12", from: "2026-06-01" },
   });
-  assert.equal(res.handled, true);
-  const result = res.result as Record<string, unknown>;
+  const result = assertHandledResult(res);
   assert.equal(result.format, "mermaid");
   assert.equal(result.exported, 4);
 });
@@ -719,26 +705,10 @@ test("exporter defaults to mermaid format when --format is omitted", async () =>
 // ---------------------------------------------------------------------------
 
 test("gantt command throws a CommandError when pm exits non-zero with no output", async () => {
-  const fakeDir = mkdtempSync(join(tmpdir(), "gantt-fakepm-empty-"));
-  const fakePm = join(fakeDir, "pm");
-  writeFileSync(fakePm, "#!/bin/sh\nexit 1\n", "utf-8");
-  chmodSync(fakePm, 0o755);
-  const originalPath = process.env.PATH!;
-  process.env.PATH = `${fakeDir}:${originalPath}`;
-  try {
-    await assert.rejects(
-      harness.runCommand({ command: "gantt", pmRoot: normalRoot }),
-      (err: unknown) => {
-        assert.ok(err instanceof Error);
-        assert.match((err as Error).message, /Failed to fetch pm items/);
-        assert.match((err as Error).message, /no output/);
-        return true;
-      },
-    );
-  } finally {
-    process.env.PATH = originalPath;
-    rmSync(fakeDir, { recursive: true, force: true });
-  }
+  await withFakePmScript(
+    "#!/bin/sh\nexit 1\n",
+    [/Failed to fetch pm items/, /no output/],
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -758,8 +728,7 @@ test("gantt requests the exact canonical strict full unbounded list and accepts 
   const argsFile = join(tempDir, "fake-pm-args.txt");
   await withFakePm(completeListAllEnvelope(), async () => {
     const res = await harness.runCommand({ command: "gantt", pmRoot: normalRoot });
-    assert.equal(res.handled, true);
-    assert.equal((res.result as Record<string, unknown>).itemCount, 1);
+    assert.equal(assertHandledResult(res).itemCount, 1);
   }, argsFile);
   const invocations = readFileSync(argsFile, "utf8")
     .split("--- invocation ---\n")
@@ -787,8 +756,7 @@ test("gantt requests the exact canonical strict full unbounded list and accepts 
 test("gantt accepts a complete envelope with zero items", async () => {
   await withFakePm(completeListAllEnvelope({ items: [], count: 0, total: 0 }), async () => {
     const res = await harness.runCommand({ command: "gantt", pmRoot: normalRoot });
-    assert.equal(res.handled, true);
-    assert.equal((res.result as Record<string, unknown>).itemCount, 0);
+    assert.equal(assertHandledResult(res).itemCount, 0);
   });
 });
 
@@ -925,8 +893,7 @@ test("gantt command omits the overdue array when no items are overdue", async ()
     pmRoot: normalRoot,
     options: { status: "closed", weeks: "12", from: "2026-06-01" },
   });
-  assert.equal(res.handled, true);
-  const result = res.result as Record<string, unknown>;
+  const result = assertHandledResult(res);
   assert.ok(result.itemCount, "at least one item rendered");
   assert.equal(result.overdue, undefined, "no overdue array when none are overdue");
 });

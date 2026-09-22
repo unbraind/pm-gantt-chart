@@ -18,6 +18,13 @@ import {
 const FROM = "2026-06-01"; // Monday
 const ANCHOR = new Date("2026-06-01T00:00:00");
 
+/** Build rows and render Mermaid for `items` against the standard 8-week window. */
+function renderMermaidForItems(items: PmItem[]): string {
+  const opts = resolveGanttOptions({ from: FROM, weeks: "8" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  return renderMermaid(rows, opts, opts.windowStart);
+}
+
 function sampleItems(): PmItem[] {
   return [
     { id: "A", title: "Design", status: "in_progress", created_at: "2026-06-02", deadline: "2026-06-10", sprint: "S1", dependencies: [] },
@@ -42,11 +49,18 @@ test("parseMilestones returns [] for absent/blank input and tolerates stray comm
   assert.equal(ms.length, 1);
 });
 
-function caught(fn: () => unknown): any {
+/** The caught error shape parseMilestones throws (a CommandError). */
+interface CommandError extends Error {
+  exitCode: number;
+}
+
+function caught(fn: () => unknown): CommandError {
   try {
     fn();
   } catch (e) {
-    return e;
+    // The assertions below pin the CommandError shape (message + exitCode).
+    assert.ok(e instanceof Error, "thrown value is an Error");
+    return e as CommandError;
   }
   throw new Error("expected throw");
 }
@@ -165,9 +179,7 @@ test("renderMermaid emits a task line for an item with only a deadline (no creat
   const items: PmItem[] = [
     { id: "DL", title: "Deadline only", status: "open", deadline: "2026-06-10", sprint: "S1", dependencies: [] },
   ];
-  const opts = resolveGanttOptions({ from: FROM, weeks: "8" });
-  const rows = buildRows(items, opts, opts.windowStart);
-  const mmd = renderMermaid(rows, opts, opts.windowStart);
+  const mmd = renderMermaidForItems(items);
   // endDate-only branch: start is back-derived from deadline (deadline - 1 week),
   // end is the deadline + 1 day (mermaid exclusive end). Verify the task line
   // exists and carries the deadline-derived end date.
@@ -179,9 +191,7 @@ test("renderMermaid emits a task line for an item with only created_at (no deadl
   const items: PmItem[] = [
     { id: "CA", title: "Created only", status: "open", created_at: "2026-06-02", sprint: "S1", dependencies: [] },
   ];
-  const opts = resolveGanttOptions({ from: FROM, weeks: "8" });
-  const rows = buildRows(items, opts, opts.windowStart);
-  const mmd = renderMermaid(rows, opts, opts.windowStart);
+  const mmd = renderMermaidForItems(items);
   // startDate-only branch: end is start + 1 week. Verify the task line exists
   // and carries the created_at-derived start date.
   assert.match(mmd, /Created only/);
@@ -192,9 +202,7 @@ test("renderMermaid emits a task line for an undated item (no created_at, no dea
   const items: PmItem[] = [
     { id: "UD", title: "Undated", status: "open", sprint: "S1", dependencies: [] },
   ];
-  const opts = resolveGanttOptions({ from: FROM, weeks: "8" });
-  const rows = buildRows(items, opts, opts.windowStart);
-  const mmd = renderMermaid(rows, opts, opts.windowStart);
+  const mmd = renderMermaidForItems(items);
   // Undated items get a 1-week marker at the window start (2026-06-01).
   assert.match(mmd, /Undated.*2026-06-01/);
 });

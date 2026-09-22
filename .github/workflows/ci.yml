@@ -73,6 +73,12 @@ jobs:
       - name: Type check
         run: npm run check
 
+      - name: Lint with the canonical fleet ESLint policy
+        run: npm run lint
+
+      - name: Duplication gate
+        run: npm run duplication
+
       - name: Build and verify committed output is current
         shell: bash
         run: |

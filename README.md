@@ -303,7 +303,7 @@ not override repository-owned privacy or all-source coverage blockers.
 This repo tracks its project management in `.agents/pm/` and ships a committed `.gitattributes`
 that maps those tracker artifacts to pm-cli's field-aware Git merge drivers, so concurrent-branch
 tracker edits merge cleanly instead of hard-conflicting. The driver **definitions** live in
-per-clone Git config; `npm install` / `npm ci` wires them automatically via the `prepare` script (a portable Node guard, `scripts/prepare-merge-driver.mjs`: it runs
+per-clone Git config; `npm install` / `npm ci` wires them automatically via the `prepare` script (a portable TypeScript launcher, `scripts/prepare-merge-driver.ts`, over the canonical `pm-ops/merge-driver` implementation: it runs
 `pm merge install` only when the `pm` CLI is on `PATH`, and no-ops cleanly otherwise so
 production / `--omit=dev` installs are not broken; being Node-based it behaves identically
 on POSIX shells and Windows `cmd.exe`). To (re)run manually: `npm run merge:install`.
