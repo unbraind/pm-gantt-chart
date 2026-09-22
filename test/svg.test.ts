@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { PmItem } from "../index.ts";
+import { chainItems, pastDatedItem, futureDatedItem, inProgressDatedItem } from "./chain-items.ts";
 import {
   renderSvg,
   renderHtml,
@@ -12,16 +13,14 @@ import {
 } from "../index.ts";
 
 // Deterministic chain + isolated item, anchored on a Monday.
-function chainItems(): PmItem[] {
-  return [
-    { id: "A", title: "Design API", status: "closed", estimated_minutes: 480, sprint: "S1", dependencies: [] },
-    { id: "B", title: "Build endpoint", status: "in_progress", estimated_minutes: 960, sprint: "S1", dependencies: [{ id: "A", kind: "blocked_by" }] },
-    { id: "C", title: "Integration tests", status: "open", estimated_minutes: 720, sprint: "S2", dependencies: [{ id: "B", kind: "blocked_by" }] },
-    { id: "D", title: "Write docs", status: "open", estimated_minutes: 480, sprint: "S2", dependencies: [] },
-  ];
-}
-
 const FROM = "2026-06-01"; // Monday
+
+/** Render SVG for off-window items against a 4-week window starting 2026-06-01. */
+function renderOffWindowSvg(items: PmItem[]): string {
+  const opts = resolveGanttOptions({ from: "2026-06-01", weeks: "4" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  return renderSvg(rows, opts, opts.windowStart);
+}
 
 // ---------------------------------------------------------------------------
 // SVG format scaffolding
@@ -133,7 +132,7 @@ test("renderSvg renders overdue bars in the overdue color and marker", () => {
   // function via a known overdue row by constructing opts with today after deadline.
   const opts = resolveGanttOptions({ from: FROM, weeks: "4" });
   // Override today to a date after the deadline to force overdue.
-  (opts as any).today = new Date("2026-07-01T00:00:00");
+  opts.today = new Date("2026-07-01T00:00:00");
   const rows = buildRows(items2, opts, opts.windowStart);
   const svg = renderSvg(rows, opts, opts.windowStart);
   assert.match(svg, /fill="#c23b3b"/, "overdue bar uses the overdue red");
@@ -169,9 +168,7 @@ test("renderSvg output is well-formed enough to contain matching open/close tags
 // ---------------------------------------------------------------------------
 
 test("renderHtml --show-progress emits the fill overlay (alias parity with --progress)", () => {
-  const items: PmItem[] = [
-    { id: "A", title: "A", status: "in_progress", created_at: "2026-06-01", deadline: "2026-06-15", sprint: "S1", dependencies: [] },
-  ];
+  const items: PmItem[] = [inProgressDatedItem()];
   const opts = resolveGanttOptions({ "show-progress": true, from: FROM, weeks: "6" });
   const rows = buildRows(items, opts, opts.windowStart);
   const html = renderHtml(rows, opts, opts.windowStart);
@@ -192,13 +189,13 @@ test("renderHtml --width sets the table width style", () => {
 // ---------------------------------------------------------------------------
 
 test("getGroupKey resolves sprint / type / assignee grouping keys", () => {
-  const item: any = { id: "x", title: "x", status: "open", sprint: "S1", type: "bug", assignee: "alice" };
+  const item: PmItem = { id: "x", title: "x", status: "open", sprint: "S1", type: "bug", assignee: "alice" };
   assert.equal(getGroupKey(item, "sprint"), "S1");
   assert.equal(getGroupKey(item, "type"), "bug");
   assert.equal(getGroupKey(item, "assignee"), "alice");
   // fallbacks for missing values
-  assert.equal(getGroupKey({ id: "y", title: "y", status: "open" } as any, "type"), "(no type)");
-  assert.equal(getGroupKey({ id: "y", title: "y", status: "open" } as any, "assignee"), "(unassigned)");
+  assert.equal(getGroupKey({ id: "y", title: "y", status: "open" }, "type"), "(no type)");
+  assert.equal(getGroupKey({ id: "y", title: "y", status: "open" }, "assignee"), "(unassigned)");
 });
 
 test("EXPORT_FORMATS includes svg", () => {
@@ -208,7 +205,7 @@ test("EXPORT_FORMATS includes svg", () => {
 test("renderSvg draws the TODAY rule after body rows so backgrounds can't cover it", () => {
   const opts = resolveGanttOptions({ from: FROM, weeks: "6" });
   // Force today inside the window so the rule is drawn.
-  (opts as any).today = new Date("2026-06-10T00:00:00");
+  opts.today = new Date("2026-06-10T00:00:00");
   const rows = buildRows(chainItems(), opts, opts.windowStart);
   const svg = renderSvg(rows, opts, opts.windowStart);
   const ruleAt = svg.indexOf("▼ today");
@@ -225,23 +222,13 @@ test("renderSvg draws the TODAY rule after body rows so backgrounds can't cover 
 test("renderSvg draws a ← arrow for before-window undated-bar rows", () => {
   // Item with dates entirely before the window -> offWindow "before",
   // startWeek null -> the SVG loop draws a ← at the first column.
-  const items: PmItem[] = [
-    { id: "P", title: "Past", status: "open", created_at: "2020-01-01", deadline: "2020-01-08", sprint: "S1", dependencies: [] },
-  ];
-  const opts = resolveGanttOptions({ from: "2026-06-01", weeks: "4" });
-  const rows = buildRows(items, opts, opts.windowStart);
-  const svg = renderSvg(rows, opts, opts.windowStart);
+  const svg = renderOffWindowSvg([pastDatedItem()]);
   assert.match(svg, /←/, "before-window arrow present in SVG");
 });
 
 test("renderSvg draws a → arrow for after-window undated-bar rows", () => {
   // Item with dates entirely after the window -> offWindow "after",
   // startWeek null -> the SVG loop draws a → at the last column.
-  const items: PmItem[] = [
-    { id: "F", title: "Future", status: "open", created_at: "2030-01-01", deadline: "2030-01-08", sprint: "S1", dependencies: [] },
-  ];
-  const opts = resolveGanttOptions({ from: "2026-06-01", weeks: "4" });
-  const rows = buildRows(items, opts, opts.windowStart);
-  const svg = renderSvg(rows, opts, opts.windowStart);
+  const svg = renderOffWindowSvg([futureDatedItem()]);
   assert.match(svg, /→/, "after-window arrow present in SVG");
 });

@@ -190,6 +190,15 @@ function weekLabel(d: Date): string {
   return `${m} ${day}`;
 }
 
+/** Week-column labels for a chart window of `weeks` weeks opening on `windowStart`. */
+function buildWeekLabels(windowStart: Date, weeks: number): string[] {
+  const weekLabels: string[] = [];
+  for (let w = 0; w < weeks; w++) {
+    weekLabels.push(weekLabel(addWeeks(windowStart, w)));
+  }
+  return weekLabels;
+}
+
 /** Parse an ISO date string into a Date (midnight UTC treated as local). */
 function parseDate(s: string): Date | null {
   // Accept "YYYY-MM-DD" or full ISO.  All callers guard against falsy input,
@@ -405,7 +414,7 @@ function checklistRatio(body: string | undefined): number | null {
   let total = 0;
   let done = 0;
   for (const line of body.split("\n")) {
-    const m = /^\s*[-*]\s*\[([ xX\-])\]/.exec(line);
+    const m = /^\s*[-*]\s*\[([ xX-])\]/.exec(line);
     if (!m) continue;
     total++;
     if (m[1] === "x" || m[1] === "X") done++;
@@ -1137,6 +1146,17 @@ const BLOCK_UNDATED = "··";
 const OFF_WINDOW_BEFORE = "←·"; // dates fall entirely before the window
 const OFF_WINDOW_AFTER = "·→";  // dates fall entirely after the window
 const COL_SEP = "  ";
+const COL_GROUP = 18; // ASCII chart: group column width
+const COL_ITEM = 24;  // ASCII chart: item column width
+const COL_ST = 2;    // ASCII chart: status symbol column width
+const WEEK_COL = 6;  // ASCII chart: week column width ("May 11" = 6 chars)
+
+/** Append one full-width marker row (▼TODAY, ▼<milestone>) to the ASCII chart. */
+function pushMarkerLine(lines: string[], markerCells: string[]): void {
+  lines.push(
+    `${"".padEnd(COL_GROUP)}  ${"".padEnd(COL_ITEM)}  ${"".padEnd(COL_ST)}  ${markerCells.join(COL_SEP)}`
+  );
+}
 
 /** Half-filled block glyphs for a coarse 0..100 % progress indicator in ASCII.
  *  Mapped onto the existing 2-char cell width so alignment is preserved. */
@@ -1192,17 +1212,9 @@ function renderGantt(
   const { weeks } = opts;
 
   // Build week header labels
-  const weekLabels: string[] = [];
-  for (let w = 0; w < weeks; w++) {
-    weekLabels.push(weekLabel(addWeeks(windowStart, w)));
-  }
+  const weekLabels = buildWeekLabels(windowStart, weeks);
 
   // Column widths
-  const COL_GROUP = 18;
-  const COL_ITEM = 24;
-  const COL_ST = 2; // status symbol
-  const WEEK_COL = 6; // "May 11" = 6 chars
-
   const totalWidth =
     COL_GROUP + 2 + COL_ITEM + 2 + COL_ST + 2 +
     weeks * (WEEK_COL + COL_SEP.length);
@@ -1245,9 +1257,7 @@ function renderGantt(
     const markerCells = weekLabels.map((_, w) =>
       (w === todayWeek ? "▼TODAY" : "").padEnd(WEEK_COL),
     );
-    lines.push(
-      `${"".padEnd(COL_GROUP)}  ${"".padEnd(COL_ITEM)}  ${"".padEnd(COL_ST)}  ${markerCells.join(COL_SEP)}`
-    );
+    pushMarkerLine(lines, markerCells);
   }
 
   // Milestone marker line(s) — fixed release/deadline dates dropped as labeled
@@ -1268,9 +1278,7 @@ function renderGantt(
     const markerCells = weekLabels.map((_, w) =>
       perWeek[w].length > 0 ? `▼${perWeek[w].join(",")}` : "".padEnd(WEEK_COL),
     );
-    lines.push(
-      `${"".padEnd(COL_GROUP)}  ${"".padEnd(COL_ITEM)}  ${"".padEnd(COL_ST)}  ${markerCells.join(COL_SEP)}`
-    );
+    pushMarkerLine(lines, markerCells);
   }
   lines.push("─".repeat(Math.min(totalWidth, 90)));
 
@@ -1788,8 +1796,7 @@ function computeSummary(rows: GanttRow[]): GanttSummary {
  */
 function renderHtml(rows: GanttRow[], opts: GanttOptions, windowStart: Date): string {
   const weeks = opts.weeks;
-  const weekLabels: string[] = [];
-  for (let w = 0; w < weeks; w++) weekLabels.push(weekLabel(addWeeks(windowStart, w)));
+  const weekLabels = buildWeekLabels(windowStart, weeks);
 
   // TODAY column: highlight the week column containing opts.today (parity with
   // the ASCII ▼TODAY row and the Mermaid `%% today:` comment). -1 when today
@@ -2017,8 +2024,7 @@ function svgEscape(s: string): string {
  */
 function renderSvg(rows: GanttRow[], opts: GanttOptions, windowStart: Date): string {
   const weeks = opts.weeks;
-  const weekLabels: string[] = [];
-  for (let w = 0; w < weeks; w++) weekLabels.push(weekLabel(addWeeks(windowStart, w)));
+  const weekLabels = buildWeekLabels(windowStart, weeks);
 
   // Layout constants (px). The left gutter holds the group + item + status
   // labels; the chart area fills the remaining width. --width is the requested

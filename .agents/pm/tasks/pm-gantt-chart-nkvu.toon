@@ -1,0 +1,33 @@
+id: pm-gantt-chart-nkvu
+title: "Certify pm CLI 2026.9.21 and move onto the canonical pm-ops merge-driver, lint and duplication gates"
+description: "Pin @unbrained/pm-cli 2026.9.21, pm-changelog 2026.9.18, pm-ops 2026.9.18 exactly; replace the vendored scripts/prepare-merge-driver.mjs with the thin TypeScript launcher over pm-ops/merge-driver; add canonical lint (pm-ops/eslint) and duplication (pm-ops/duplication, threshold 0, minTokens 50) gates wired into release:check and CI; fix every lint and duplication finding including the ~62 explicit any sites in test/; absorb open Dependabot PRs. Companion epic pm-cli-website-5s6z (hub), release-window fix companion item pm-cli-website-3y5d; overlaps open issue pm-gantt-chart-2u8i (enriched, remaining coverage-inventory scope kept open there)."
+type: Task
+status: in_progress
+priority: 1
+tags[4]: certify,multi-agent,pm-cli-2026.9.21,quality
+created_at: "2026-09-22T05:09:00.135Z"
+updated_at: "2026-09-22T19:41:09.742Z"
+assignee: pi-agent
+claim_principal: pi-agent
+author: pi-agent
+acceptance_criteria: "devDependencies pinned exactly: @unbrained/pm-cli 2026.9.21, pm-changelog 2026.9.18, pm-ops 2026.9.18; scripts/prepare-merge-driver.ts is the thin pm-ops/merge-driver launcher and pm health --strict-exit --require-merge-drivers exits 0; npm run lint and npm run duplication both exit 0 with zero findings, wired into release:check after the first typecheck-or-check step and into CI; no eslint-disable, ts-ignore, any-dodging ignores, threshold raises or behaviour changes; tests keep asserting the same behaviour; release:check exits 0; coverage thresholds not lowered and measured numbers not dropped"
+comments[2]{created_at,author,text}:
+  "2026-09-22T05:10:16.524Z",pi-agent,"Baseline measured with canonical pm-ops 2026.9.18 gates before touching source (throwaway runner importing pm-ops/eslint and pm-ops/duplication, cwd=worktree): lint 64 errors (63 no-restricted-syntax explicit any across test/handler,test/scheduler,test/svg,test/json-export,test/preflight,test/milestones + 1 no-useless-escape index.ts:408); duplication 2.13% (192/9032 lines), 34 clone pairs, threshold 0, minTokens 50. Pins applied: @unbrained/pm-cli 2026.9.21, pm-changelog 2026.9.18, pm-ops 2026.9.18, yaml 2.9.1 (Dependabot #116), @types/node lockfile 26.6.1 (Dependabot #115, lockfile-only)."
+  "2026-09-22T19:40:49.474Z",pi-glm-pm-gantt-chart,"Duplication gate reduced from 1.56% (25 clone pairs) to 0% (0 clone pairs) by extracting genuinely shared logic into documented helpers with multiple call sites: test/chain-items.ts gained pastDatedItem/futureDatedItem/inProgressDatedItem fixtures shared across svg.test.ts and scheduler.test.ts; preflight.test.ts gained assertSingleWarning; milestones.test.ts gained renderMermaidForItems; json-export.test.ts gained scheduledSprintOpts and assertXGatingDeps; scheduler.test.ts gained rootItem/blockedItem/createdOnlySchedulerItem/alphaBetaItems/scheduledCriticalOpts/assigneeChainItems/renderProgressAscii/undefinedKindChainItems; handler.test.ts gained assertHandledResult/assertEmptyResult/assertExportResult/preflightDecision/captureStderr/assertGanttRejects/withFakePmScript. Lint exit 0, duplication 0%, release:check exit 0 (coverage thresholds met), pm health --strict-exit exit 0. No eslint-disable, jscpd ignore, threshold changes, or deleted tests. Test count: 224 (unchanged)."
+files[13]{path,scope}:
+  .github/workflows/ci.yml,project
+  index.ts,project
+  package.json,project
+  scripts/duplication-gate.ts,project
+  scripts/lint.ts,project
+  scripts/prepare-merge-driver.ts,project
+  test/chain-items.ts,project
+  test/handler.test.ts,project
+  test/json-export.test.ts,project
+  test/milestones.test.ts,project
+  test/preflight.test.ts,project
+  test/scheduler.test.ts,project
+  test/svg.test.ts,project
+tests[1]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
+  "npm run release:check",project,pi-glm-pm-gantt-chart,"2026-09-22T19:41:09.711Z",local_mutation,pm-cli-2026-9-21-canonical-pm-ops-gates
+body: ""

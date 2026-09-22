@@ -2,24 +2,52 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { PmItem } from "../index.ts";
+import { chainItems } from "./chain-items.ts";
 import {
   buildRows,
   resolveGanttOptions,
   renderJson,
 } from "../index.ts";
 
-// Same deterministic A -> B -> C chain (+ isolated D) used by scheduler.test.ts.
-function chainItems(): PmItem[] {
-  return [
-    { id: "A", title: "Design API", status: "closed", estimated_minutes: 480, sprint: "S1", dependencies: [] },
-    { id: "B", title: "Build endpoint", status: "in_progress", estimated_minutes: 960, sprint: "S1", dependencies: [{ id: "A", kind: "blocked_by" }] },
-    { id: "C", title: "Integration tests", status: "open", estimated_minutes: 720, sprint: "S2", dependencies: [{ id: "B", kind: "blocked_by" }] },
-    { id: "D", title: "Write docs", status: "open", estimated_minutes: 480, sprint: "S2", dependencies: [] },
-  ];
+/** Per-item payload `renderJson` emits (see renderJson in index.ts). */
+interface JsonExportItem {
+  id: string;
+  group: string;
+  status: string;
+  start: string | null;
+  end: string | null;
+  durationDays: number | null;
+  progress: number;
+  critical: boolean;
+  deps: string[];
 }
 
+/** Parse the per-item array a `renderJson` payload carries. */
+function parseJsonItems(rendered: string): JsonExportItem[] {
+  return (JSON.parse(rendered) as { items: JsonExportItem[] }).items;
+}
+
+/** Resolve the standard scheduled-sprint options shared by multiple JSON export tests. */
+function scheduledSprintOpts(): ReturnType<typeof resolveGanttOptions> {
+  return resolveGanttOptions({ schedule: true, "group-by": "sprint", weeks: "12", from: "2026-06-01" });
+}
+
+/** Assert that item X's gating deps list contains only Y, given X's first dep. */
+function assertXGatingDeps(firstDep: NonNullable<PmItem["dependencies"]>[number], message: string): void {
+  const items: PmItem[] = [
+    { id: "X", title: "X", status: "open", estimated_minutes: 480, dependencies: [firstDep, { id: "Z", kind: "related" }] },
+    { id: "Y", title: "Y", status: "open", estimated_minutes: 480, dependencies: [] },
+    { id: "Z", title: "Z", status: "open", estimated_minutes: 480, dependencies: [] },
+  ];
+  const opts = resolveGanttOptions({ schedule: true, from: "2026-06-01", weeks: "12" });
+  const rows = buildRows(items, opts, opts.windowStart);
+  const x = parseJsonItems(renderJson(rows, opts, opts.windowStart, opts.milestones)).find((i) => i.id === "X");
+  assert.deepEqual(x!.deps, ["Y"], message);
+}
+
+// Same deterministic A -> B -> C chain (+ isolated D) used by scheduler.test.ts.
 test("renderJson emits a structured schedule with window, options, summary and items", () => {
-  const opts = resolveGanttOptions({ schedule: true, "group-by": "sprint", weeks: "12", from: "2026-06-01" });
+  const opts = scheduledSprintOpts();
   const rows = buildRows(chainItems(), opts, opts.windowStart);
   const parsed = JSON.parse(renderJson(rows, opts, opts.windowStart, opts.milestones));
 
@@ -38,38 +66,27 @@ test("renderJson emits a structured schedule with window, options, summary and i
 });
 
 test("renderJson per-item fields carry ISO dates, gating deps, progress and group", () => {
-  const opts = resolveGanttOptions({ schedule: true, "group-by": "sprint", weeks: "12", from: "2026-06-01" });
+  const opts = scheduledSprintOpts();
   const rows = buildRows(chainItems(), opts, opts.windowStart);
-  const items = JSON.parse(renderJson(rows, opts, opts.windowStart, opts.milestones)).items as any[];
+  const items = parseJsonItems(renderJson(rows, opts, opts.windowStart, opts.milestones));
 
   const b = items.find((i) => i.id === "B");
   assert.ok(b, "B present");
   assert.equal(b.group, "S1");
   assert.equal(b.status, "in_progress");
-  assert.match(b.start, /^\d{4}-\d{2}-\d{2}$/, "ISO start");
-  assert.match(b.end, /^\d{4}-\d{2}-\d{2}$/, "ISO end");
+  assert.match(b.start!, /^\d{4}-\d{2}-\d{2}$/, "ISO start");
+  assert.match(b.end!, /^\d{4}-\d{2}-\d{2}$/, "ISO end");
   assert.deepEqual(b.deps, ["A"], "B's gating dep is A");
   assert.equal(typeof b.progress, "number");
   assert.equal(typeof b.durationDays, "number");
 
   // A closed item reports 100% progress.
   const a = items.find((i) => i.id === "A");
-  assert.equal(a.progress, 100, "closed item is 100% complete");
+  assert.equal(a!.progress, 100, "closed item is 100% complete");
 });
 
 test("renderJson excludes non-gating dependency kinds from deps", () => {
-  const items = [
-    { id: "X", title: "X", status: "open", estimated_minutes: 480, dependencies: [
-      { id: "Y", kind: "blocked_by" },
-      { id: "Z", kind: "related" },
-    ] },
-    { id: "Y", title: "Y", status: "open", estimated_minutes: 480, dependencies: [] },
-    { id: "Z", title: "Z", status: "open", estimated_minutes: 480, dependencies: [] },
-  ] as any[];
-  const opts = resolveGanttOptions({ schedule: true, from: "2026-06-01", weeks: "12" });
-  const rows = buildRows(items, opts, opts.windowStart);
-  const x = (JSON.parse(renderJson(rows, opts, opts.windowStart, opts.milestones)).items as any[]).find((i) => i.id === "X");
-  assert.deepEqual(x.deps, ["Y"], "only the blocking dep is listed; related is excluded");
+  assertXGatingDeps({ id: "Y", kind: "blocked_by" }, "only the blocking dep is listed; related is excluded");
 });
 
 test("renderJson surfaces milestones and is deterministic (no wall-clock)", () => {
@@ -90,10 +107,10 @@ test("renderJson surfaces milestones and is deterministic (no wall-clock)", () =
 
 test("renderJson summary.criticalPathLength matches the count of critical items", () => {
   // --schedule populates slackDays so the slack==0 critical predicate is exercised.
-  const opts = resolveGanttOptions({ schedule: true, "group-by": "sprint", weeks: "12", from: "2026-06-01" });
+  const opts = scheduledSprintOpts();
   const rows = buildRows(chainItems(), opts, opts.windowStart);
   const parsed = JSON.parse(renderJson(rows, opts, opts.windowStart, opts.milestones));
-  const criticalItems = (parsed.items as any[]).filter((i) => i.critical).length;
+  const criticalItems = (JSON.parse(renderJson(rows, opts, opts.windowStart, opts.milestones)) as { items: JsonExportItem[] }).items.filter((i) => i.critical).length;
   assert.equal(
     parsed.summary.criticalPathLength,
     criticalItems,
@@ -110,16 +127,5 @@ test("renderJson output round-trips through JSON.parse (valid JSON)", () => {
 test("renderJson includes a gating dep with undefined kind in the deps array", () => {
   // A dependency without an explicit `kind` defaults to "blocked_by" (via ??),
   // so it must appear in the gating deps list. A "related" dep must not.
-  const items = [
-    { id: "X", title: "X", status: "open", estimated_minutes: 480, dependencies: [
-      { id: "Y" },
-      { id: "Z", kind: "related" },
-    ] },
-    { id: "Y", title: "Y", status: "open", estimated_minutes: 480, dependencies: [] },
-    { id: "Z", title: "Z", status: "open", estimated_minutes: 480, dependencies: [] },
-  ] as any[];
-  const opts = resolveGanttOptions({ schedule: true, from: "2026-06-01", weeks: "12" });
-  const rows = buildRows(items, opts, opts.windowStart);
-  const x = (JSON.parse(renderJson(rows, opts, opts.windowStart, opts.milestones)).items as any[]).find((i) => i.id === "X");
-  assert.deepEqual(x.deps, ["Y"], "undefined-kind dep is gating; related is excluded");
+  assertXGatingDeps({ id: "Y" }, "undefined-kind dep is gating; related is excluded");
 });

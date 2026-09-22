@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { detectCycles, dataSanityReport, computeSchedule, computeCriticalPath, computeSlack } from "../index.ts";
+import type { PmItem } from "../index.ts";
 
 // Minimal item shape for the data-sanity helpers.
-function item(id: string, opts: Partial<any> = {}): any {
+function item(id: string, opts: Partial<PmItem> = {}): PmItem {
   return { id, title: opts.title ?? id, status: "open", ...opts };
 }
 
@@ -63,7 +64,7 @@ test("every dependency traversal shares one gating predicate, so the graph is re
   // project through B and cannot slip at all — zero slack. A computeSlack that
   // ignored the predicate would report the gated answer for annotation edges.
   for (const kind of ["related", "related_to", "relates_to", "duplicate", "duplicate_of", "discovered_from", "supersedes", "verifies", "parent", "child"]) {
-    const items: any[] = [
+    const items = [
       item("A", { title: "A", estimated_minutes: 480, dependencies: [] }),
       item("B", { title: "B", estimated_minutes: 2400, dependencies: [{ id: "A", kind }] }),
     ];
@@ -79,7 +80,7 @@ test("every dependency traversal shares one gating predicate, so the graph is re
     );
   }
   // The gating control: blocked_by still does all three.
-  const gated: any[] = [
+  const gated = [
     item("A", { title: "A", estimated_minutes: 480, dependencies: [] }),
     item("B", { title: "B", estimated_minutes: 2400, dependencies: [{ id: "A", kind: "blocked_by" }] }),
   ];
@@ -124,24 +125,26 @@ test("dataSanityReport: cycle is fatal", () => {
   assert.strictEqual(r.warnings.length, 0);
 });
 
-test("dataSanityReport: deadline-before-start warns, does not fail", () => {
-  const items = [
-    item("A", { created_at: "2026-06-10", deadline: "2026-06-01" }),
-  ];
+/** Assert that `dataSanityReport` finds exactly one warning matching `pattern` and no fatals. */
+function assertSingleWarning(items: PmItem[], pattern: RegExp): void {
   const r = dataSanityReport(items);
   assert.strictEqual(r.fatal.length, 0);
   assert.strictEqual(r.warnings.length, 1);
-  assert.match(r.warnings[0], /deadline .* is before its start/);
+  assert.match(r.warnings[0], pattern);
+}
+
+test("dataSanityReport: deadline-before-start warns, does not fail", () => {
+  assertSingleWarning(
+    [item("A", { created_at: "2026-06-10", deadline: "2026-06-01" })],
+    /deadline .* is before its start/,
+  );
 });
 
 test("dataSanityReport: absurd estimate warns, does not fail", () => {
-  const items = [
-    item("A", { estimated_minutes: 9_999_999 }),
-  ];
-  const r = dataSanityReport(items);
-  assert.strictEqual(r.fatal.length, 0);
-  assert.strictEqual(r.warnings.length, 1);
-  assert.match(r.warnings[0], /implausibly large/);
+  assertSingleWarning(
+    [item("A", { estimated_minutes: 9_999_999 })],
+    /implausibly large/,
+  );
 });
 
 test("dataSanityReport: normal valid data is clean", () => {
