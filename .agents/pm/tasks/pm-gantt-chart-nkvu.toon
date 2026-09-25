@@ -6,8 +6,7 @@ status: canceled
 priority: 1
 tags[4]: certify,multi-agent,pm-cli-2026.9.21,quality
 created_at: "2026-09-22T05:09:00.135Z"
-updated_at: "2026-09-25T08:13:51.306Z"
-claim_principal: pi-agent
+updated_at: "2026-09-25T09:10:22.487Z"
 author: pi-agent
 acceptance_criteria: "devDependencies pinned exactly: @unbrained/pm-cli 2026.9.21, pm-changelog 2026.9.18, pm-ops 2026.9.18; scripts/prepare-merge-driver.ts is the thin pm-ops/merge-driver launcher and pm health --strict-exit --require-merge-drivers exits 0; npm run lint and npm run duplication both exit 0 with zero findings, wired into release:check after the first typecheck-or-check step and into CI; no eslint-disable, ts-ignore, any-dodging ignores, threshold raises or behaviour changes; tests keep asserting the same behaviour; release:check exits 0; coverage thresholds not lowered and measured numbers not dropped"
 comments[3]{created_at,author,text}:
