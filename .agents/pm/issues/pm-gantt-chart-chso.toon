@@ -1,0 +1,29 @@
+id: pm-gantt-chart-chso
+title: jscpd 5.3.2 detects two duplicate pairs and blocks dependency PR #122
+description: The jscpd 5.3.2 update on PR #122 makes the zero-duplication CI gate fail on duplicated entry guard code and a JSON-export test payload. Consolidate the production guard and remove redundant test work without relaxing the zero threshold.
+type: Issue
+status: in_progress
+priority: 2
+tags: []
+created_at: "2026-09-29T11:47:20.305Z"
+updated_at: "2026-09-29T11:50:41.909Z"
+assignee: codex
+claim_principal: codex
+author: codex
+estimated_minutes: 90
+acceptance_criteria: "jscpd 5.3.2 duplication gate reports zero clone pairs at its existing zero threshold; docstring, typecheck, full test and coverage gates pass; exact pushed-head CI and substantive reviewer findings are resolved"
+repro_steps: Run npm run duplication on PR #122 head 6ee58d2; see GitHub Actions run 36257622444.
+expected_result: The dependency PR passes the unchanged zero-duplication gate and package release checks.
+actual_result: Both Node CI jobs fail with two clone pairs totaling nine duplicated lines.
+notes[1]{created_at,author,text}:
+  "2026-09-29T11:50:41.908Z",codex,"At Dependabot head 6ee58d2, both Node CI jobs failed at the unchanged zero-duplication gate: 9 duplicated lines in two clone pairs. Reused the existing canonical main-invocation guard and removed a second JSON render in the critical-path test. With jscpd 5.3.2 installed from this branch lockfile, duplication reports 0/9181 lines across 27 sources and zero clone pairs. Local npm run release:check passed, including typecheck, lint, docstrings (60 declarations), package coverage gate, production audit, packed npm/Bun/minimum-host acceptance, changelog, and release-attestation checks. Packed acceptance currently names PM hosts 2026.9.23 and 2026.8.20; latest 2026.9.29 acceptance and exact pushed-head CI/reviews remain separate work."
+files[3]{path,scope,note}:
+  scripts/docstring-gate.ts,project,Use canonical shared entry guard
+  test/docstring-gate.test.ts,project,Keep direct guard regression coverage
+  test/json-export.test.ts,project,Preserve critical-path assertion with one JSON render
+tests[1]{command,path,scope,timeout_seconds,provenance{author,created_at,source_kind,source_ref}}:
+  "npm run release:check",package.json,project,900,codex,"2026-09-29T11:50:32.538Z",local_mutation,dependabot/npm_and_yarn/jscpd-5.3.2
+docs[2]{path,scope,note}:
+  "https://github.com/unbraind/pm-gantt-chart/actions/runs/36257622444",global,Node 22 and 26 failing duplicate-gate evidence
+  "https://github.com/unbraind/pm-gantt-chart/pull/122",global,Dependency update candidate
+body: ""
