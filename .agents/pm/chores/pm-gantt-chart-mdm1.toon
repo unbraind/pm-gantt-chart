@@ -1,16 +1,16 @@
 id: pm-gantt-chart-mdm1
 title: Certify pm-gantt-chart on PM CLI/SDK 2026.10.4 and consolidate pending dependency updates
-description: "Raise the exact development pin @unbrained/pm-cli to 2026.10.4 together with pm-ops 2026.10.4 and pm-changelog 2026.9.25; carry Dependabot #122 (jscpd 5.x with the zero-duplication gate fixes: shared main-invocation guard, single JSON render in the critical-path test, packed-acceptance PM_PATH isolation), #123 codeql-action SHA group, #124/#125/#126/#127; keep the canonical pm-ops merge-driver launcher byte-identical; certify with the full release gate plus isolated real-tracker dogfooding on npm and Bun."
+description: "Exact-pin PM CLI/ops/changelog 2026.10.4 and all development dependencies; consolidate Dependabot #122 through #127 including pinned CodeQL SHAs and jscpd 5 zero-duplication fixes; preserve the canonical launcher and unchanged gates. Require clean all-scope and production audits, packed real-tracker npm/bun acceptance and read-only managed GitHub previews. Full audit is currently blocked on the required unpatched braces chain (pm-gantt-chart-e7rd); retain fast-glob for the duplication gate."
 type: Chore
 status: in_progress
 priority: 2
 tags[4]: cli,dependencies,release-readiness,sdk
 created_at: "2026-10-04T09:32:11.603Z"
-updated_at: "2026-10-04T11:10:25.114Z"
+updated_at: "2026-10-04T11:25:26.371Z"
 author: pi-glm
 acceptance_criteria: "npm run release:check passes with configured coverage thresholds and the unchanged zero-duplication gate; pm health with the repo-pinned 2026.10.4 binary is clean; packed tarball passes real-tracker gantt render/export scenarios via npx @unbrained/pm-cli@2026.10.4 and bunx; pm-github managed extension installed with read-only preview only"
 actual_result: "Exact devDependency pins completed; CLI/ops/changelog 2026.10.4. Retained fast-glob 3.3.3 restoration and prior provenance commit. Canonical launcher unchanged; unconditional broken-install/lookup tests pass 8/8. Clean npm ci and full serialized release:check PASS: 232/232, 0 skipped, unchanged coverage, duplication zero clones across 27 sources. Packed real tracker npx/bunx renders and JSON/SVG exports pass (95 exported items, npm/Bun JSON byte-identical); scratch removed. pm health ok with stale_in_progress_items:2 advisory; pm-github read-only preview planned 0. Open Dependabot alerts none; prod audit 0; full audit 4 high dev-only reports from unpatched braces 3.0.3 chain. NOT READY; follow-up pm-gantt-chart-e7rd and substantive review availability remain open."
-comments[7]{created_at,author,text}:
+comments[9]{created_at,author,text}:
   "2026-10-04T09:32:17.384Z",pi-glm,"Starting at 7145c6f (Release pm-gantt-chart v2026.09.26). Plan: pm-cli 2026.9.23->2026.10.4, pm-ops->2026.10.4, pm-changelog->2026.9.25, jscpd ^4.3.0->^5.4.0 with #122's zero-dup fixes (shared main-invocation guard, single JSON render, accept-packed PM_PATH isolation), codeql SHA 1c5b6756, @types/node 26.6.4, eslint latest in range; carry #122's pm issue pm-gantt-chart-chso; recopy canonical prepare-merge-driver.ts from pm-ops 2026.10.4; full gate + dogfood + pm-github preview."
   "2026-10-04T10:12:35.700Z",pi-glm,"Real-tracker dogfood PASS. Packed pm-gantt-chart-2026.9.26.tgz installed into a scratch copy of this repo's real .agents/pm and registered via pm package install with CLI 2026.10.4 (capabilities incl. commands/schema). npm path (npx -y @unbrained/pm-cli@2026.10.4): pm gantt renders the full real tracker (19 rows, milestones + TODAY marker); pm gantt --group-by status renders grouped; pm gantt export --format json to stdout and --output gantt.json produce correct window/summary/items (projectStart 2026-05-26); pm gantt export --format svg --output roadmap.svg writes a 41109-byte SVG. bun path (bunx @unbrained/pm-cli@2026.10.4): pm gantt renders identically (exit 0); gantt export --format json --output gantt-bun.json writes the same JSON. Scratch deleted after evidence capture. Also repaired the carried pm-gantt-chart-chso history chain drift with pm history-repair (pinned CLI 2026.10.4, 9 entries rehashed, verify_ok), clearing the gate_failing history_drift health finding."
   "2026-10-04T10:13:13.487Z",pi-glm,"pm-github installed as managed project extension at latest npm 2026.10.4 (published during this certification; superseding the earlier 2026.9.26 in the same cycle). Read-only previews against unbraind/pm-gantt-chart: pm github validate -> ok (token via gh CLI, HTTP 200, quota 4916/5000); pm github export --dry-run -> plan only, writes nothing; pm github sync --dry-run -> planned 0, no mutation. No issues created/modified, no scheduled sync enabled."
@@ -18,6 +18,8 @@ comments[7]{created_at,author,text}:
   "2026-10-04T10:58:40.995Z",codex-sol,"Resumed retained worktree, including the unpushed pi-glm release-provenance commit 5869752. Verified exact-head CI now passes after fast-glob restoration. Finish exact devDependency pins, pm-changelog 2026.10.4, and focused canonical-launcher regressions. Full npm audit remains blocked on GHSA-vfj7-8cjw-p6xm: npm braces latest 3.0.3 is affected and fast-glob latest 3.3.3 is required by pm-ops duplication. Record a package follow-up instead of weakening the gate."
   "2026-10-04T11:07:23.556Z",codex-sol,"Resumption validation: clean npm ci and flock-serialized npm run release:check PASS (232/232 tests, 0 skipped; unchanged measured lines/branches/functions thresholds; duplication 0/9239 lines, 27 sources, 0 clones). Launcher suite passed 8/8 with unconditional incomplete/dangling installation and lookup-loop fixtures; canonical launcher unchanged. Real tracker packed dogfood PASS: npx -y @unbrained/pm-cli@2026.10.4 gantt; gantt export --format json --output real.json; gantt export --format svg --output real.svg; bunx @unbrained/pm-cli@2026.10.4 gantt; gantt export --format json --output real-bun.json; JSON/SVG exports contain 95 items and cmp real.json real-bun.json passes. Scratch deleted. npx pm health ok with stale_in_progress_items:2 advisory. Managed pm-github sync --dry-run --repo unbraind/pm-gantt-chart: planned 0. npm audit --omit=dev: 0; full npm audit: 4 high dev-only reports, blocked on unpublished braces fix (follow-up pm-gantt-chart-e7rd). NOT READY for certification despite green production gates."
   "2026-10-04T11:10:24.488Z",codex-sol,"Applied the cross-repo Windows portability finding proactively: new link fixtures use Node junction type with absolute targets, retaining unconditional execution without privileges needed for directory symbolic links. Linux launcher suite 8/8 and zero-duplication gate pass. Windows runtime not available on this host; canonical launcher unchanged."
+  "2026-10-04T11:17:15.307Z",codex-sol,"Review round 2: reproduced CodeRabbit NODE_PATH leakage with NODE_PATH pointing at this checkout node_modules: launcher fixtures fail when an external pm-ops can mask an incomplete local install. Cleared ambient NODE_PATH in the fixture helper; the explicit looping-path fixture keeps its own path. Hostile-environment launcher suite now passes 8/8, zero skips; duplication remains zero. Corrected the linked package.json note through pm files to state fast-glob 3.3.3 remains and full audit has four high dev-only reports; current actual_result already states NOT READY. No historical tracker rows were rewritten."
+  "2026-10-04T11:25:25.306Z",codex-sol,"Review correction validation: the full flock-serialized npm run release:check re-run passes 232/232 with zero skips, unchanged coverage and zero duplication. The linked hostile NODE_PATH launcher run passes 8/8. Corrected package file note is current, including fast-glob retained and full npm audit blocked. No threshold/ignore/skip changes. Portable junction fixtures tested on Linux; Windows runner unavailable. Core package dogfood remains unchanged and passed on npx/bunx."
 files[11]:
   - path: .agents/pm/extensions/.managed-extensions.json
     scope: project
@@ -33,7 +35,7 @@ files[11]:
     note: Resolved dependency graph with consolidated Dependabot bumps
   - path: package.json
     scope: project
-    note: "Exact CLI/ops/changelog pins; jscpd ^5.4.0; fast-glob devDep removed (unused, cleared braces advisory)"
+    note: Exact CLI/ops/changelog 2026.10.4 and jscpd 5.4.0; required fast-glob 3.3.3 retained; full audit blocked on unpatched braces
   - path: scripts/accept-packed.ts
     scope: project
     note: Packed-acceptance PM_PATH isolation carried from #122
@@ -51,7 +53,7 @@ files[11]:
     note: Single JSON render in critical-path assertion (jscpd 5 dedupe)
   - path: test/prepare-merge-driver.test.ts
     scope: project
-tests[5]:
+tests[6]:
   - command: "npm run release:check"
     scope: project
     provenance:
@@ -86,6 +88,14 @@ tests[5]:
     provenance:
       author: codex-sol
       created_at: "2026-10-04T11:00:04.166Z"
+      source_kind: local_mutation
+      source_ref: chore/pm-gantt-chart-pm-cli-2026-10-4
+  - command: "env NODE_PATH=\"$PWD/node_modules\" node --test test/prepare-merge-driver.test.ts"
+    scope: project
+    pm_context_mode: tracker
+    provenance:
+      author: codex-sol
+      created_at: "2026-10-04T11:19:02.633Z"
       source_kind: local_mutation
       source_ref: chore/pm-gantt-chart-pm-cli-2026-10-4
 body: ""

@@ -67,7 +67,7 @@ function stubPm(name: string, status: number, body = ""): string {
 
 /** Run the launcher as npm's `prepare` hook would: as the entry point, from `cwd`, with `path` as PATH. */
 function prepare(cwd: string, path: string): SpawnSyncReturns<string> {
-  return spawnSync(process.execPath, [launcher], { cwd, encoding: "utf8", env: { ...process.env, PATH: path } });
+  return spawnSync(process.execPath, [launcher], { cwd, encoding: "utf8", env: { ...process.env, PATH: path, NODE_PATH: "" } });
 }
 
 /** The merge drivers registered in a checkout's LOCAL Git config, by name. */
