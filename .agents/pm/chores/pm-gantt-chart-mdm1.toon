@@ -6,7 +6,7 @@ status: in_progress
 priority: 2
 tags[4]: cli,dependencies,release-readiness,sdk
 created_at: "2026-10-04T09:32:11.603Z"
-updated_at: "2026-10-04T10:45:16.561Z"
+updated_at: "2026-10-04T10:45:35.051Z"
 author: pi-glm
 acceptance_criteria: "npm run release:check passes with configured coverage thresholds and the unchanged zero-duplication gate; pm health with the repo-pinned 2026.10.4 binary is clean; packed tarball passes real-tracker gantt render/export scenarios via npx @unbrained/pm-cli@2026.10.4 and bunx; pm-github managed extension installed with read-only preview only"
 actual_result: "Pins raised: @unbrained/pm-cli 2026.10.4 (exact), pm-ops 2026.10.4, pm-changelog 2026.9.25, jscpd ^5.4.0; codeql-action SHA group 2892aa5; fast-glob ^3.3.3 retained because pm-ops's duplication gate hard-requires it (optional-peer defect reproduced in CI: ERR_MODULE_NOT_FOUND; fixed by restoring it). Carried #122's zero-dup fixes and pm item pm-gantt-chart-chso with its history chain re-anchored (history_drift health finding cleared). npm audit --omit=dev: 0 vulnerabilities; full npm audit carries only the same pre-existing unfixable dev-only braces chain as main (4 vs main's 7 high - reduced by this PR's upgrades; no patched braces version exists). npm ci + full npm run release:check PASS with unchanged zero-duplication gate and coverage thresholds; accept:packed green on hosts 2026.10.4 and 2026.8.20. npx pm health exit 0. Real-tracker dogfood via npx and bunx passed (gantt render, group-by, json/svg export). pm-github 2026.10.4 managed extension with read-only previews only."
