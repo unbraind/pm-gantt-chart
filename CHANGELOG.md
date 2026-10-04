@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Other
+
+- Auto-merge green Dependabot updates and group the pm toolchain into one daily PR ([pm-gantt-chart-krx1](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-krx1.toon))
+
 ## 2026.9.26 - 2026-09-26
 
 ### Fixed
