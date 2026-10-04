@@ -1,0 +1,16 @@
+id: pm-gantt-chart-e7rd
+title: Replace the duplication tooling braces dependency once a compatible patched package is published
+description: "Full npm audit has 4 high dev-only advisories from required pm-ops -> fast-glob 3.3.3 -> micromatch -> braces 3.0.3 (GHSA-vfj7-8cjw-p6xm). npm view braces version confirms 3.0.3 is latest and affected. Removing fast-glob already broke exact-head duplication CI; downgrading pm-ops violates the certification pin. Production npm audit is clean. Preserve the duplication gate and wait for an upstream compatible fix, then rerun clean npm ci, both audit scopes and the full gate."
+type: Issue
+status: open
+priority: 1
+tags[2]: dependencies,security
+created_at: "2026-10-04T10:58:41.747Z"
+updated_at: "2026-10-04T11:07:24.920Z"
+author: codex-sol
+acceptance_criteria: Clean full npm audit and production audit with CLI/ops 2026.10.4 or newer and unchanged duplication/coverage gates
+files[3]{path,scope}:
+  package-lock.json,project
+  package.json,project
+  scripts/duplication-gate.ts,project
+body: ""

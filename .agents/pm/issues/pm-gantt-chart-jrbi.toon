@@ -1,0 +1,12 @@
+id: pm-gantt-chart-jrbi
+title: Assess the inherited historical-provenance warning reported by PM health
+description: "The full pinned PM CLI 2026.10.4 health receipt exits 0 with provenance_value_domain_invalid:claude-code:role:single_digit:43 plus stale_in_progress_items:2 advisories. Prior history normalization audit receipts retain invalid_values describing removed observations. Preserve those audited records. Assess whether this is intentional historical reporting or a reproducible CLI defect before normalizing history or filing upstream. There are no gate-failing health findings."
+type: Issue
+status: open
+priority: 2
+tags[2]: health,provenance
+created_at: "2026-10-04T11:51:31.014Z"
+updated_at: "2026-10-04T11:51:31.014Z"
+author: codex-sol
+acceptance_criteria: Classify the historical advisory with a disposable synthetic reproduction and preserve audited history; file upstream only for a confirmed defect after duplicate search
+body: ""

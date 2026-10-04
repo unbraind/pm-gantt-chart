@@ -108,9 +108,13 @@ test("renderJson surfaces milestones and is deterministic (no wall-clock)", () =
 test("renderJson summary.criticalPathLength matches the count of critical items", () => {
   // --schedule populates slackDays so the slack==0 critical predicate is exercised.
   const opts = scheduledSprintOpts();
-  const rows = buildRows(chainItems(), opts, opts.windowStart);
-  const parsed = JSON.parse(renderJson(rows, opts, opts.windowStart, opts.milestones));
-  const criticalItems = (JSON.parse(renderJson(rows, opts, opts.windowStart, opts.milestones)) as { items: JsonExportItem[] }).items.filter((i) => i.critical).length;
+  const parsed = JSON.parse(renderJson(
+    buildRows(chainItems(), opts, opts.windowStart), opts, opts.windowStart, opts.milestones,
+  )) as {
+    items: JsonExportItem[];
+    summary: { criticalPathLength: number };
+  };
+  const criticalItems = parsed.items.filter((item) => item.critical).length;
   assert.equal(
     parsed.summary.criticalPathLength,
     criticalItems,
