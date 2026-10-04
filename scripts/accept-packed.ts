@@ -49,6 +49,11 @@ const cleanEnvironment: NodeJS.ProcessEnv = {
   npm_config_userconfig: devNull,
   NPM_CONFIG_USERCONFIG: devNull,
 };
+// PM linked tests select a sandbox tracker through PM_PATH. Each packed
+// scenario must initialize its own tracker inside its fresh project directory.
+delete cleanEnvironment.PM_PATH;
+delete cleanEnvironment.PM_SOURCE_PM_PATH;
+delete cleanEnvironment.PM_SOURCE_WORKSPACE_ROOT;
 for (const key of Object.keys(cleanEnvironment)) {
   if (key.toLowerCase() === "npm_config_allow_scripts") delete cleanEnvironment[key];
 }
