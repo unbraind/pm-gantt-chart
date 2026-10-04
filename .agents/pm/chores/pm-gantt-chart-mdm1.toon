@@ -6,29 +6,85 @@ status: in_progress
 priority: 2
 tags[4]: cli,dependencies,release-readiness,sdk
 created_at: "2026-10-04T09:32:11.603Z"
-updated_at: "2026-10-04T10:45:35.051Z"
+updated_at: "2026-10-04T11:07:25.501Z"
 author: pi-glm
 acceptance_criteria: "npm run release:check passes with configured coverage thresholds and the unchanged zero-duplication gate; pm health with the repo-pinned 2026.10.4 binary is clean; packed tarball passes real-tracker gantt render/export scenarios via npx @unbrained/pm-cli@2026.10.4 and bunx; pm-github managed extension installed with read-only preview only"
-actual_result: "Pins raised: @unbrained/pm-cli 2026.10.4 (exact), pm-ops 2026.10.4, pm-changelog 2026.9.25, jscpd ^5.4.0; codeql-action SHA group 2892aa5; fast-glob ^3.3.3 retained because pm-ops's duplication gate hard-requires it (optional-peer defect reproduced in CI: ERR_MODULE_NOT_FOUND; fixed by restoring it). Carried #122's zero-dup fixes and pm item pm-gantt-chart-chso with its history chain re-anchored (history_drift health finding cleared). npm audit --omit=dev: 0 vulnerabilities; full npm audit carries only the same pre-existing unfixable dev-only braces chain as main (4 vs main's 7 high - reduced by this PR's upgrades; no patched braces version exists). npm ci + full npm run release:check PASS with unchanged zero-duplication gate and coverage thresholds; accept:packed green on hosts 2026.10.4 and 2026.8.20. npx pm health exit 0. Real-tracker dogfood via npx and bunx passed (gantt render, group-by, json/svg export). pm-github 2026.10.4 managed extension with read-only previews only."
-comments[4]{created_at,author,text}:
+actual_result: "Exact devDependency pins completed; CLI/ops/changelog 2026.10.4. Retained fast-glob 3.3.3 restoration and prior provenance commit. Canonical launcher unchanged; unconditional broken-install/lookup tests pass 8/8. Clean npm ci and full serialized release:check PASS: 232/232, 0 skipped, unchanged coverage, duplication zero clones across 27 sources. Packed real tracker npx/bunx renders and JSON/SVG exports pass (95 exported items, npm/Bun JSON byte-identical); scratch removed. pm health ok with stale_in_progress_items:2 advisory; pm-github read-only preview planned 0. Open Dependabot alerts none; prod audit 0; full audit 4 high dev-only reports from unpatched braces 3.0.3 chain. NOT READY; follow-up pm-gantt-chart-e7rd and substantive review availability remain open."
+comments[6]{created_at,author,text}:
   "2026-10-04T09:32:17.384Z",pi-glm,"Starting at 7145c6f (Release pm-gantt-chart v2026.09.26). Plan: pm-cli 2026.9.23->2026.10.4, pm-ops->2026.10.4, pm-changelog->2026.9.25, jscpd ^4.3.0->^5.4.0 with #122's zero-dup fixes (shared main-invocation guard, single JSON render, accept-packed PM_PATH isolation), codeql SHA 1c5b6756, @types/node 26.6.4, eslint latest in range; carry #122's pm issue pm-gantt-chart-chso; recopy canonical prepare-merge-driver.ts from pm-ops 2026.10.4; full gate + dogfood + pm-github preview."
   "2026-10-04T10:12:35.700Z",pi-glm,"Real-tracker dogfood PASS. Packed pm-gantt-chart-2026.9.26.tgz installed into a scratch copy of this repo's real .agents/pm and registered via pm package install with CLI 2026.10.4 (capabilities incl. commands/schema). npm path (npx -y @unbrained/pm-cli@2026.10.4): pm gantt renders the full real tracker (19 rows, milestones + TODAY marker); pm gantt --group-by status renders grouped; pm gantt export --format json to stdout and --output gantt.json produce correct window/summary/items (projectStart 2026-05-26); pm gantt export --format svg --output roadmap.svg writes a 41109-byte SVG. bun path (bunx @unbrained/pm-cli@2026.10.4): pm gantt renders identically (exit 0); gantt export --format json --output gantt-bun.json writes the same JSON. Scratch deleted after evidence capture. Also repaired the carried pm-gantt-chart-chso history chain drift with pm history-repair (pinned CLI 2026.10.4, 9 entries rehashed, verify_ok), clearing the gate_failing history_drift health finding."
   "2026-10-04T10:13:13.487Z",pi-glm,"pm-github installed as managed project extension at latest npm 2026.10.4 (published during this certification; superseding the earlier 2026.9.26 in the same cycle). Read-only previews against unbraind/pm-gantt-chart: pm github validate -> ok (token via gh CLI, HTTP 200, quota 4916/5000); pm github export --dry-run -> plan only, writes nothing; pm github sync --dry-run -> planned 0, no mutation. No issues created/modified, no scheduled sync enabled."
   "2026-10-04T10:45:06.256Z",pi-glm,"CI correction: exact-head CI failed the Duplication gate with ERR_MODULE_NOT_FOUND 'fast-glob' imported from pm-ops/dist/duplication.js. Root cause: pm-ops declares fast-glob as an OPTIONAL peer, but its duplication gate hard-requires it at runtime; this repo's direct fast-glob devDependency exists precisely to satisfy that peer, so removing it broke the gate while my earlier local gate passed only against a stale node_modules (npm install had not pruned it at that point; npm ci is authoritative). fast-glob ^3.3.3 restored; npm ci + full npm run release:check PASS again (duplication-gate 0/9209 lines, 27 sources, 0 clone pairs at threshold 0%). npm audit now reports the same pre-existing dev-only braces (GHSA-vfj7-8cjw-p6xm) chain that origin/main also reports (main: 7 high; this branch: 4 high - the eslint 10.12/jscpd 5.4 upgrades shrink it), with no patched braces version published, so it is unfixable in-tree without breaking the pm-ops gate; npm audit --omit=dev remains 0 vulnerabilities, which is the gate this repo enforces. Upstream defect to file: pm-ops's fast-glob peer is not actually optional."
-files[10]{path,scope,note}:
-  .agents/pm/extensions/.managed-extensions.json,project,pm-github 2026.10.4 managed extension registration
-  .agents/pm/issues/pm-gantt-chart-chso.toon,project,jscpd 5 zero-dup item carried from #122 with history chain re-anchored
-  .github/workflows/codeql.yml,project,codeql-action pinned SHA group 1c5b6756
-  package-lock.json,project,Resolved dependency graph with consolidated Dependabot bumps
-  package.json,project,"Exact CLI/ops/changelog pins; jscpd ^5.4.0; fast-glob devDep removed (unused, cleared braces advisory)"
-  scripts/accept-packed.ts,project,Packed-acceptance PM_PATH isolation carried from #122
-  scripts/docstring-gate.ts,project,Shared canonical main-invocation guard carried from #122
-  scripts/prepare-merge-driver.ts,project,Canonical pm-ops 2026.10.4 launcher recopied byte-for-byte
-  test/docstring-gate.test.ts,project,isMainInvocation import moved to main-invocation module
-  test/json-export.test.ts,project,Single JSON render in critical-path assertion (jscpd 5 dedupe)
-tests[4]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
-  "npm run release:check",project,pi-glm,"2026-10-04T10:13:32.359Z",local_mutation,chore/pm-gantt-chart-pm-cli-2026-10-4
-  npx pm health,project,pi-glm,"2026-10-04T10:13:33.943Z",local_mutation,chore/pm-gantt-chart-pm-cli-2026-10-4
-  npx -y @unbrained/pm-cli@2026.10.4 gantt export --format json --output gantt.json,project,pi-glm,"2026-10-04T10:13:35.446Z",local_mutation,chore/pm-gantt-chart-pm-cli-2026-10-4
-  bunx @unbrained/pm-cli@2026.10.4 gantt export --format json --output gantt-bun.json,project,pi-glm,"2026-10-04T10:13:36.552Z",local_mutation,chore/pm-gantt-chart-pm-cli-2026-10-4
+  "2026-10-04T10:58:40.995Z",codex-sol,"Resumed retained worktree, including the unpushed pi-glm release-provenance commit 5869752. Verified exact-head CI now passes after fast-glob restoration. Finish exact devDependency pins, pm-changelog 2026.10.4, and focused canonical-launcher regressions. Full npm audit remains blocked on GHSA-vfj7-8cjw-p6xm: npm braces latest 3.0.3 is affected and fast-glob latest 3.3.3 is required by pm-ops duplication. Record a package follow-up instead of weakening the gate."
+  "2026-10-04T11:07:23.556Z",codex-sol,"Resumption validation: clean npm ci and flock-serialized npm run release:check PASS (232/232 tests, 0 skipped; unchanged measured lines/branches/functions thresholds; duplication 0/9239 lines, 27 sources, 0 clones). Launcher suite passed 8/8 with unconditional incomplete/dangling installation and lookup-loop fixtures; canonical launcher unchanged. Real tracker packed dogfood PASS: npx -y @unbrained/pm-cli@2026.10.4 gantt; gantt export --format json --output real.json; gantt export --format svg --output real.svg; bunx @unbrained/pm-cli@2026.10.4 gantt; gantt export --format json --output real-bun.json; JSON/SVG exports contain 95 items and cmp real.json real-bun.json passes. Scratch deleted. npx pm health ok with stale_in_progress_items:2 advisory. Managed pm-github sync --dry-run --repo unbraind/pm-gantt-chart: planned 0. npm audit --omit=dev: 0; full npm audit: 4 high dev-only reports, blocked on unpublished braces fix (follow-up pm-gantt-chart-e7rd). NOT READY for certification despite green production gates."
+files[11]:
+  - path: .agents/pm/extensions/.managed-extensions.json
+    scope: project
+    note: pm-github 2026.10.4 managed extension registration
+  - path: .agents/pm/issues/pm-gantt-chart-chso.toon
+    scope: project
+    note: jscpd 5 zero-dup item carried from #122 with history chain re-anchored
+  - path: .github/workflows/codeql.yml
+    scope: project
+    note: codeql-action pinned SHA group 1c5b6756
+  - path: package-lock.json
+    scope: project
+    note: Resolved dependency graph with consolidated Dependabot bumps
+  - path: package.json
+    scope: project
+    note: "Exact CLI/ops/changelog pins; jscpd ^5.4.0; fast-glob devDep removed (unused, cleared braces advisory)"
+  - path: scripts/accept-packed.ts
+    scope: project
+    note: Packed-acceptance PM_PATH isolation carried from #122
+  - path: scripts/docstring-gate.ts
+    scope: project
+    note: Shared canonical main-invocation guard carried from #122
+  - path: scripts/prepare-merge-driver.ts
+    scope: project
+    note: Canonical pm-ops 2026.10.4 launcher recopied byte-for-byte
+  - path: test/docstring-gate.test.ts
+    scope: project
+    note: isMainInvocation import moved to main-invocation module
+  - path: test/json-export.test.ts
+    scope: project
+    note: Single JSON render in critical-path assertion (jscpd 5 dedupe)
+  - path: test/prepare-merge-driver.test.ts
+    scope: project
+tests[5]:
+  - command: "npm run release:check"
+    scope: project
+    provenance:
+      author: pi-glm
+      created_at: "2026-10-04T10:13:32.359Z"
+      source_kind: local_mutation
+      source_ref: chore/pm-gantt-chart-pm-cli-2026-10-4
+  - command: npx pm health
+    scope: project
+    provenance:
+      author: pi-glm
+      created_at: "2026-10-04T10:13:33.943Z"
+      source_kind: local_mutation
+      source_ref: chore/pm-gantt-chart-pm-cli-2026-10-4
+  - command: npx -y @unbrained/pm-cli@2026.10.4 gantt export --format json --output gantt.json
+    scope: project
+    provenance:
+      author: pi-glm
+      created_at: "2026-10-04T10:13:35.446Z"
+      source_kind: local_mutation
+      source_ref: chore/pm-gantt-chart-pm-cli-2026-10-4
+  - command: bunx @unbrained/pm-cli@2026.10.4 gantt export --format json --output gantt-bun.json
+    scope: project
+    provenance:
+      author: pi-glm
+      created_at: "2026-10-04T10:13:36.552Z"
+      source_kind: local_mutation
+      source_ref: chore/pm-gantt-chart-pm-cli-2026-10-4
+  - command: node --test test/prepare-merge-driver.test.ts
+    scope: project
+    pm_context_mode: tracker
+    provenance:
+      author: codex-sol
+      created_at: "2026-10-04T11:00:04.166Z"
+      source_kind: local_mutation
+      source_ref: chore/pm-gantt-chart-pm-cli-2026-10-4
 body: ""
