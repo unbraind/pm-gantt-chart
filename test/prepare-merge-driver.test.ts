@@ -115,7 +115,7 @@ test("incomplete directories and dangling pm-ops links fail instead of reporting
     mkdirSync(join(directory, "node_modules"));
     const packagePath = join(directory, "node_modules", "pm-ops");
     if (installation === "incomplete") mkdirSync(packagePath);
-    else symlinkSync(join(directory, "missing-pm-ops"), packagePath, "dir");
+    else symlinkSync(join(directory, "missing-pm-ops"), packagePath, "junction");
     const result = prepare(directory, hostPath);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /Cannot find module 'pm-ops\/merge-driver\/prepare'/);
@@ -127,7 +127,7 @@ test("incomplete directories and dangling pm-ops links fail instead of reporting
 test("a looping lookup path preserves the original installer error", () => {
   const directory = checkout("lookup-loop", "absent");
   const lookup = join(directory, "lookup");
-  symlinkSync(lookup, lookup, "dir");
+  symlinkSync(lookup, lookup, "junction");
   const result = spawnSync(process.execPath, [launcher], {
     cwd: directory,
     encoding: "utf8",
