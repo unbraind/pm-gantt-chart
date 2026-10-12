@@ -25,7 +25,7 @@ Legend: ██ in_progress/blocked  ░░ open/planned  ▓▓ critical-path (*
 
 ## Installation
 
-Requires pm CLI `2026.8.20` or newer. Development and CI exact-pin 2026.8.21;
+Requires pm CLI `2026.10.6` or newer. Development and CI exact-pin 2026.10.6;
 the consumer floor is independently exercised by packed npm acceptance.
 
 ```sh
@@ -240,7 +240,7 @@ The HTML export ends with a **Summary** footer — project span (start → end a
 - **Columns** — each column is one calendar week, starting from the Monday of the anchor week (`--from`, or the current week by default). `--to` clips the window and derives the week count.
 - **Rows** — items are grouped by the chosen field; items with no value land in a `(no milestone)` / `(no sprint)` / `(no release)` / `(no type)` / `(unassigned)` / `(no tag)` group. `--group-by status` groups by lifecycle status.
 - **Bars (default)** — a bar spans from the item's `created_at` to its `deadline`. If only a deadline is known, a one-week bar ending on it is shown. Items with no dates at all are shown as `··` (undated).
-- **Bars (`--schedule`)** — a forward pass schedules each item to start the day after the latest item it is `blocked_by` finishes. Duration comes from `estimated_minutes` (8h workday, rounded up to whole days) or `--default-duration`. Items with a reachable `deadline` are back-anchored to end on it. The chain ordering, not the calendar, drives the bars — a late chain can push a dependent past its deadline, which is exactly what a schedule should expose.
+- **Bars (`--schedule`)** — a forward pass schedules each item after its registry-defined prerequisites finish. `A blocks B` and `B blocked_by A` both put A before B; equivalent inverse rows are deduplicated. Active extension kinds use their declared ordering and precedence. Association, implementation, provenance, temporal, and unknown kinds remain context without ordering work. Duration comes from `estimated_minutes` (8h workday, rounded up to whole days) or `--default-duration`. Items with a reachable `deadline` are back-anchored to end on it. The chain ordering, not the calendar, drives the bars — a late chain can push a dependent past its deadline, which is exactly what a schedule should expose.
 - **Critical path** — with `--critical-path` (or `--critical-only`), the longest chain of `dependencies` edges is computed (cycle-safe), its items prefixed with `*` and drawn with `▓▓` bars. Ties break toward the chain with the latest final deadline. `--critical-only` drops every off-path item.
 - **Symbols** — `██` = in_progress/blocked, `░░` = open/planned, `▓▓` = critical path, `··` = undated, `←·` / `·→` = off-window (dates earlier / later than the window), `‼ OVERDUE` = past deadline & not closed.
 
@@ -266,7 +266,7 @@ exits non-zero instead of drawing a plausible-looking chart with missing work.
 | `assignee` | Group key for `--group-by assignee` |
 | `status` | Group key for `--group-by status`; also bar style |
 | `tags[0]` | Group key for `--group-by tag` |
-| `dependencies[].id` (kind `blocked_by`) | Edges used for scheduling and the critical path |
+| `dependencies[].id` (registry `ordering: true`) | Normalized prerequisites used for scheduling, cycles, critical path, slack, and CSV/JSON exports |
 
 ## Development
 
@@ -292,8 +292,8 @@ MIT
 The repository release gate runs type checking, build, coverage, docstrings,
 production dependency audit, package packing, and unbounded pm-changelog
 validation. It also installs the real tarball into fresh npm/npx and Bun/bunx
-projects on the current 2026.8.21 host and into npm/npx on the declared
-2026.8.20 minimum, then executes both `pm gantt` and `pm --quiet gantt export
+projects on the current 2026.10.6 host and into npm/npx on the declared
+2026.10.6 minimum, then executes both `pm gantt` and `pm --quiet gantt export
 --format json` against real tracker data. The daily workflow publishes at most
 once when commits exist after the latest release tag. These technical gates do
 not override repository-owned privacy or all-source coverage blockers.

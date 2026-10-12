@@ -1,4 +1,5 @@
 import type { ExtensionApi } from "@unbrained/pm-cli/sdk/authoring";
+import type { RelationshipKindRegistry } from "@unbrained/pm-cli/sdk";
 interface PmDependency {
     id: string;
     kind?: string;
@@ -58,6 +59,8 @@ type OffWindow = "undated" | "before" | "after";
 interface GanttRow {
     group: string;
     item: PmItem;
+    /** Normalized prerequisites retained even when chart rows are filtered. */
+    prerequisites?: readonly string[];
     startWeek: number | null;
     endWeek: number | null;
     critical: boolean;
@@ -134,13 +137,13 @@ export declare function isOverdue(item: PmItem, today: Date): boolean;
 declare function getGroupKey(item: PmItem, groupBy: GroupBy): string;
 /**
  * Compute the critical path: the longest chain of dependency edges across the
- * given items. Edges point from an item to each of its `dependencies[].id`
- * (i.e. "depends on" / "blocked-by"), so the chain is ordered prerequisite →
- * dependent. Cycles are guarded against. Returns the set of item ids that lie
+ * given items. Registry ordering and precedence normalize storage directions
+ * into item-to-prerequisite edges, so chains run prerequisite → dependent.
+ * Cycles are guarded against. Returns the set of item ids that lie
  * on the longest chain (ties resolved by the chain whose final node has the
  * latest deadline, then by lexical id for determinism).
  */
-declare function computeCriticalPath(items: PmItem[]): Set<string>;
+declare function computeCriticalPath(items: PmItem[], graph?: PrerequisiteGraph): Set<string>;
 /**
  * Outcome of the preflight data-sanity checks run before any chart is rendered.
  *
@@ -157,19 +160,20 @@ export interface DataSanityReport {
     warnings: string[];
 }
 /**
- * Find every dependency cycle reachable through `dependencies[].id` edges
- * (an edge points item → prerequisite). Returns one human-readable path string
+ * Find every cycle in the normalized registry ordering graph
+ * (an edge points item → prerequisite, regardless of storage direction).
+ * Returns one human-readable path string
  * per distinct cycle, e.g. `A "Login" → B "API" → A "Login"`. Dangling
  * dependencies (ids not present in the item set) are ignored — they are a soft
  * concern handled elsewhere, not a cycle. Exported for tests.
  */
-export declare function detectCycles(items: PmItem[]): string[];
+export declare function detectCycles(items: PmItem[], graph?: PrerequisiteGraph): string[];
 /**
  * Run the preflight data-sanity checks over the items that will be charted.
  * Pure + deterministic; exported for tests. The caller decides what to do with
  * `fatal` (block) vs `warnings` (surface but proceed).
  */
-export declare function dataSanityReport(items: PmItem[]): DataSanityReport;
+export declare function dataSanityReport(items: PmItem[], graph?: PrerequisiteGraph): DataSanityReport;
 interface ScheduleEntry {
     start: Date;
     end: Date;
@@ -182,7 +186,7 @@ interface ScheduleEntry {
  */
 declare function itemDurationDays(item: PmItem, defaultDays: number): number;
 /**
- * Forward-schedule items from `anchor`, honoring `blocked_by` dependencies:
+ * Forward-schedule items from `anchor`, honoring registry-defined prerequisites:
  * an item cannot start until every prerequisite it depends on has finished.
  * Items with a `deadline` but no scheduling pressure are pulled so they END on
  * their deadline (back-anchored) when that is later than the dependency-driven
@@ -193,7 +197,7 @@ declare function itemDurationDays(item: PmItem, defaultDays: number): number;
  * broken deterministically (a node already on the recursion stack contributes
  * no constraint, mirroring the critical-path cycle guard). Exported for tests.
  */
-declare function computeSchedule(items: PmItem[], anchor: Date, defaultDays: number): Map<string, ScheduleEntry>;
+declare function computeSchedule(items: PmItem[], anchor: Date, defaultDays: number, graph?: PrerequisiteGraph): Map<string, ScheduleEntry>;
 interface SlackEntry {
     /** Total slack in whole days: how long the item can slip without delaying
      * the project (or breaching a downstream deadline). 0 = critical. */
@@ -227,7 +231,7 @@ interface SlackEntry {
  *
  * Exported for tests.
  */
-declare function computeSlack(items: PmItem[], schedule: Map<string, ScheduleEntry>): Map<string, SlackEntry>;
+declare function computeSlack(items: PmItem[], schedule: Map<string, ScheduleEntry>, graph?: PrerequisiteGraph): Map<string, SlackEntry>;
 /**
  * Turn the fetched items into render-ready {@link GanttRow} entries.
  *
@@ -245,7 +249,7 @@ declare function computeSlack(items: PmItem[], schedule: Map<string, ScheduleEnt
  * @param windowStart - The Monday that opens the chart window.
  * @returns One row per item, in render order.
  */
-declare function buildRows(items: PmItem[], opts: GanttOptions, windowStart: Date): GanttRow[];
+declare function buildRows(items: PmItem[], opts: GanttOptions, windowStart: Date, graph?: PrerequisiteGraph): GanttRow[];
 /**
  * Render the chart as a fixed-width ASCII table for the terminal.
  *
@@ -279,6 +283,20 @@ declare function renderGantt(rows: GanttRow[], opts: GanttOptions, windowStart: 
  * @returns Valid Mermaid gantt source as a newline-joined string.
  */
 declare function renderMermaid(rows: GanttRow[], opts: GanttOptions, windowStart: Date): string;
+/** Item-to-prerequisite adjacency shared by every scheduling traversal. */
+export type PrerequisiteGraph = ReadonlyMap<string, readonly string[]>;
+/**
+ * Interpret stored relationships through the active SDK registry without
+ * rewriting items. Only ordering definitions contribute constraints; execution
+ * precedence reverses source-before-target rows. Equivalent inverse rows and
+ * provenance-distinct copies collapse to one prerequisite. Unknown kinds stay
+ * contextual, and an omitted kind retains the legacy blocked_by meaning.
+ *
+ * @param items - Complete item corpus whose relationships are being interpreted.
+ * @param registry - Built-in and active extension definitions, or an explicit registry.
+ * @returns Prerequisite ids in first-seen order for each item.
+ */
+export declare function buildPrerequisiteGraph(items: readonly PmItem[], registry?: RelationshipKindRegistry): PrerequisiteGraph;
 /**
  * Render rows as a CSV schedule:
  * id,title,start,end,duration_days,slack_days,deps,status.

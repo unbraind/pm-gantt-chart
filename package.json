@@ -46,7 +46,7 @@
     "coverage": "npm run build && npm run build:test && node scripts/coverage-gate.ts"
   },
   "peerDependencies": {
-    "@unbrained/pm-cli": ">=2026.8.20"
+    "@unbrained/pm-cli": ">=2026.10.6"
   },
   "devDependencies": {
     "@babel/eslint-parser": "8.0.6",
