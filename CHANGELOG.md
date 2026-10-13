@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Use registry ordering semantics for Gantt schedules and inverse-edge cycle detection ([pm-gantt-chart-github-072477cd0a70-135](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-135.toon))
+
+### Security
+
+- Replace the duplication tooling braces dependency once a compatible patched package is published ([pm-gantt-chart-e7rd](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-e7rd.toon))
+
 ## 2026.10.5 - 2026-10-05
 
 ### Other
