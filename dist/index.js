@@ -1,4 +1,5 @@
-import { certifyCompleteListResult, EXIT_CODE, inspectCompleteListResult } from "@unbrained/pm-cli/sdk";
+import { certifyCompleteListResult, EXIT_CODE, inspectCompleteListResult, PmClient } from "@unbrained/pm-cli/sdk";
+import { resolveWorkspaceRelationshipKindRegistry } from "@unbrained/pm-cli/sdk/graph";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -333,13 +334,13 @@ function getGroupKey(item, groupBy) {
 // ---------------------------------------------------------------------------
 /**
  * Compute the critical path: the longest chain of dependency edges across the
- * given items. Edges point from an item to each of its `dependencies[].id`
- * (i.e. "depends on" / "blocked-by"), so the chain is ordered prerequisite →
- * dependent. Cycles are guarded against. Returns the set of item ids that lie
+ * given items. Registry ordering and precedence normalize storage directions
+ * into item-to-prerequisite edges, so chains run prerequisite → dependent.
+ * Cycles are guarded against. Returns the set of item ids that lie
  * on the longest chain (ties resolved by the chain whose final node has the
  * latest deadline, then by lexical id for determinism).
  */
-function computeCriticalPath(items) {
+function computeCriticalPath(items, graph = buildPrerequisiteGraph(items)) {
     const byId = new Map();
     for (const it of items)
         byId.set(it.id, it);
@@ -367,21 +368,12 @@ function computeCriticalPath(items) {
             return cached;
         if (visiting.has(id))
             return { len: 0, path: [] }; // cycle guard
-        // All callers (the loop below and the recursive dep walk) guard on
-        // byId.has(dep.id) before calling longest, so byId.get(id) always finds
-        // the item; the former `if (!item)` guard was unreachable.
-        const item = byId.get(id);
         visiting.add(id);
         let best = { len: 1, path: [id] };
-        for (const dep of item.dependencies ?? []) {
-            // The critical path is an ordering claim, so it walks the same gating
-            // edges scheduling does. Traversing every kind made an annotation edge
-            // lengthen the longest chain and pull unrelated items onto it.
-            if (!isGatingDep(dep))
+        for (const depId of graph.get(id)) {
+            if (!byId.has(depId))
                 continue;
-            if (!byId.has(dep.id))
-                continue; // dangling/missing dependency
-            const sub = longest(dep.id);
+            const sub = longest(depId);
             if (sub.len + 1 > best.len) {
                 best = { len: sub.len + 1, path: [...sub.path, id] };
             }
@@ -433,13 +425,14 @@ function computeCriticalPath(items) {
  * certainly a data-entry error (e.g. minutes typed where hours were meant). */
 const MAX_SANE_ESTIMATE_MINUTES = 2000 * 60;
 /**
- * Find every dependency cycle reachable through `dependencies[].id` edges
- * (an edge points item → prerequisite). Returns one human-readable path string
+ * Find every cycle in the normalized registry ordering graph
+ * (an edge points item → prerequisite, regardless of storage direction).
+ * Returns one human-readable path string
  * per distinct cycle, e.g. `A "Login" → B "API" → A "Login"`. Dangling
  * dependencies (ids not present in the item set) are ignored — they are a soft
  * concern handled elsewhere, not a cycle. Exported for tests.
  */
-export function detectCycles(items) {
+export function detectCycles(items, graph = buildPrerequisiteGraph(items)) {
     const byId = new Map();
     for (const it of items)
         byId.set(it.id, it);
@@ -460,32 +453,24 @@ export function detectCycles(items) {
     function visit(id) {
         color.set(id, GRAY);
         stack.push(id);
-        const item = byId.get(id);
-        for (const dep of item?.dependencies ?? []) {
-            // Only gating edges can form a SCHEDULING cycle. Without this filter a
-            // single `related` pair — which pm records on both items, because the
-            // relationship is symmetric — is reported as a fatal dependency cycle,
-            // and the command refuses to run at all. On a real 664-item tracker that
-            // was four "cycles" and a hard failure, none of them orderings.
-            if (!isGatingDep(dep))
+        for (const depId of graph.get(id)) {
+            if (!byId.has(depId))
                 continue;
-            if (!byId.has(dep.id))
-                continue; // dangling dep is not a cycle
-            const c = color.get(dep.id);
+            const c = color.get(depId);
             if (c === GRAY) {
                 // Found a back-edge: extract the cycle from the recursion stack.
-                const start = stack.indexOf(dep.id);
+                const start = stack.indexOf(depId);
                 const cyclePath = stack.slice(start);
                 // De-dup cycles regardless of which node we entered from by keying on
                 // the sorted node-set.
                 const key = [...cyclePath].sort().join("|");
                 if (!seenCycleKeys.has(key)) {
                     seenCycleKeys.add(key);
-                    cycles.push([...cyclePath, dep.id].map(label).join(" → "));
+                    cycles.push([...cyclePath, depId].map(label).join(" → "));
                 }
             }
             else if (c === WHITE) {
-                visit(dep.id);
+                visit(depId);
             }
         }
         stack.pop();
@@ -502,11 +487,11 @@ export function detectCycles(items) {
  * Pure + deterministic; exported for tests. The caller decides what to do with
  * `fatal` (block) vs `warnings` (surface but proceed).
  */
-export function dataSanityReport(items) {
+export function dataSanityReport(items, graph = buildPrerequisiteGraph(items)) {
     const fatal = [];
     const warnings = [];
     // HARD-FAIL: dependency cycles.
-    for (const cycle of detectCycles(items)) {
+    for (const cycle of detectCycles(items, graph)) {
         fatal.push(`dependency cycle: ${cycle}`);
     }
     // WARN: deadline before the item's own start date.
@@ -541,8 +526,8 @@ export function dataSanityReport(items) {
  * non-fatal warning, so a throw there does NOT abort the command. Gating in the
  * handler with the package's CommandError is the clean way to truly fail fast.
  */
-function runDataSanityGate(items, where, json) {
-    const report = dataSanityReport(items);
+function runDataSanityGate(items, where, json, graph = buildPrerequisiteGraph(items)) {
+    const report = dataSanityReport(items, graph);
     if (report.fatal.length > 0) {
         throw new CommandError(`${where}: ${report.fatal.length} fatal data problem(s) make scheduling impossible:\n` +
             report.fatal.map((f) => `  • ${f}`).join("\n") +
@@ -584,7 +569,7 @@ function itemDurationDays(item, defaultDays) {
     return Math.max(1, defaultDays);
 }
 /**
- * Forward-schedule items from `anchor`, honoring `blocked_by` dependencies:
+ * Forward-schedule items from `anchor`, honoring registry-defined prerequisites:
  * an item cannot start until every prerequisite it depends on has finished.
  * Items with a `deadline` but no scheduling pressure are pulled so they END on
  * their deadline (back-anchored) when that is later than the dependency-driven
@@ -595,7 +580,7 @@ function itemDurationDays(item, defaultDays) {
  * broken deterministically (a node already on the recursion stack contributes
  * no constraint, mirroring the critical-path cycle guard). Exported for tests.
  */
-function computeSchedule(items, anchor, defaultDays) {
+function computeSchedule(items, anchor, defaultDays, graph = buildPrerequisiteGraph(items)) {
     const byId = new Map();
     for (const it of items)
         byId.set(it.id, it);
@@ -627,17 +612,10 @@ function computeSchedule(items, anchor, defaultDays) {
         visiting.add(id);
         // Earliest start = day after the latest dependency finishes.
         let start = new Date(anchor);
-        for (const dep of item.dependencies ?? []) {
-            // One predicate for every dependency traversal in this file. Local
-            // denylists drifted: this one and computeSlack's excluded three kinds
-            // while detectCycles excluded ten, so `related_to`, `parent`, `child` and
-            // `supersedes` were ignored by cycle detection and JSON export yet still
-            // ordered the work — one command interpreting the same graph two ways.
-            if (!isGatingDep(dep))
+        for (const depId of graph.get(id)) {
+            if (!byId.has(depId))
                 continue;
-            if (!byId.has(dep.id))
-                continue;
-            const depEntry = schedule(dep.id);
+            const depEntry = schedule(depId);
             if (depEntry)
                 start = maxDate(start, addDays(depEntry.end, 1));
         }
@@ -686,19 +664,19 @@ function computeSchedule(items, anchor, defaultDays) {
  *
  * Exported for tests.
  */
-function computeSlack(items, schedule) {
+function computeSlack(items, schedule, graph = buildPrerequisiteGraph(items)) {
     const byId = new Map();
     for (const it of items)
         byId.set(it.id, it);
     // Build successor adjacency: successors[depId] = [items depending on depId].
     const successors = new Map();
     for (const it of items) {
-        for (const dep of it.dependencies ?? []) {
-            if (!isGatingDep(dep) || !byId.has(dep.id))
+        for (const depId of graph.get(it.id)) {
+            if (!byId.has(depId))
                 continue;
-            if (!successors.has(dep.id))
-                successors.set(dep.id, []);
-            successors.get(dep.id).push(it.id);
+            if (!successors.has(depId))
+                successors.set(depId, []);
+            successors.get(depId).push(it.id);
         }
     }
     // Project latest finish = the latest forward-pass end across all items.
@@ -827,21 +805,21 @@ function statusOrderValue(status) {
  * @param windowStart - The Monday that opens the chart window.
  * @returns One row per item, in render order.
  */
-function buildRows(items, opts, windowStart) {
+function buildRows(items, opts, windowStart, graph = buildPrerequisiteGraph(items)) {
     // --critical-only implies critical-path computation even without --critical-path.
     const needCritical = opts.criticalPath || opts.criticalOnly;
-    const criticalIds = needCritical ? computeCriticalPath(items) : new Set();
+    const criticalIds = needCritical ? computeCriticalPath(items, graph) : new Set();
     // --critical-only clips the input to just the critical-path items.
     let working = items;
     if (opts.criticalOnly)
         working = items.filter((i) => criticalIds.has(i.id));
     // Dependency-aware scheduling overrides created_at/deadline-derived bars.
     const scheduleMap = opts.schedule
-        ? computeSchedule(working, windowStart, opts.defaultDuration)
+        ? computeSchedule(working, windowStart, opts.defaultDuration, graph)
         : null;
     // Backward pass: total slack/float + infeasible-deadline detection. Only
     // meaningful when we have a forward schedule to measure against.
-    const slackMap = scheduleMap ? computeSlack(working, scheduleMap) : null;
+    const slackMap = scheduleMap ? computeSlack(working, scheduleMap, graph) : null;
     const groupMap = new Map();
     for (const item of working) {
         const key = getGroupKey(item, opts.groupBy);
@@ -866,11 +844,12 @@ function buildRows(items, opts, windowStart) {
             let itemStart;
             let itemEnd;
             if (scheduleMap) {
+                // Both passes populate every working item; row lookups cannot be absent.
                 const entry = scheduleMap.get(item.id);
-                itemStart = entry ? entry.start : null;
+                itemStart = entry.start;
                 // computeWeekRange treats end as exclusive; the scheduler's end is the
                 // inclusive last work day, so add a day for the half-open range.
-                itemEnd = entry ? addDays(entry.end, 1) : null;
+                itemEnd = addDays(entry.end, 1);
             }
             else {
                 itemStart = item.created_at ? parseDate(item.created_at) : null;
@@ -881,16 +860,17 @@ function buildRows(items, opts, windowStart) {
             rows.push({
                 group,
                 item,
+                prerequisites: graph.get(item.id),
                 startWeek: range?.firstActive ?? null,
                 endWeek: range?.lastActive ?? null,
                 critical: criticalIds.has(item.id),
                 start: itemStart,
                 // expose the inclusive end for exporters (undo the +1 day from above)
                 end: scheduleMap
-                    ? (scheduleMap.get(item.id)?.end ?? null)
+                    ? scheduleMap.get(item.id).end
                     : itemEnd,
-                slackDays: slackMap ? (slackMap.get(item.id)?.slackDays ?? null) : null,
-                infeasible: slackMap ? (slackMap.get(item.id)?.infeasible ?? false) : false,
+                slackDays: slackMap ? slackMap.get(item.id).slackDays : null,
+                infeasible: slackMap ? slackMap.get(item.id).infeasible : false,
                 progress: itemProgress(item),
                 overdue: isOverdue(item, opts.today),
                 // Only classify the no-bar reason when there is no in-window bar.
@@ -1249,38 +1229,84 @@ function csvField(value) {
     }
     return value;
 }
-/** IDs of the dependencies that gate scheduling (blocking kinds only —
- *  informational links like related/relates_to/duplicate are excluded).
- *  Shared by the CSV and JSON exporters so both report the same edge set. */
 /**
- * Dependency kinds that annotate a relationship rather than order the work.
+ * Interpret stored relationships through the active SDK registry without
+ * rewriting items. Only ordering definitions contribute constraints; execution
+ * precedence reverses source-before-target rows. Equivalent inverse rows and
+ * provenance-distinct copies collapse to one prerequisite. Unknown kinds stay
+ * contextual, and an omitted kind retains the legacy blocked_by meaning.
  *
- * A gantt schedules on "this cannot start until that finishes". These kinds all
- * assert something else — association, provenance, hierarchy, or replacement —
- * so treating them as scheduling edges invents ordering that the tracker never
- * stated. `related` and `related_to` are the same concept under two spellings
- * that real trackers both emit, and both are SYMMETRIC: pm records the edge on
- * each item, so a single pair reads as a two-node cycle to any consumer that
- * does not exclude them.
+ * @param items - Complete item corpus whose relationships are being interpreted.
+ * @param registry - Built-in and active extension definitions, or an explicit registry.
+ * @returns Prerequisite ids in first-seen order for each item.
  */
-const NON_GATING_DEP_KINDS = new Set([
-    "related",
-    "related_to",
-    "relates_to",
-    "duplicate",
-    "duplicate_of",
-    "discovered_from",
-    "supersedes",
-    "verifies",
-    "parent",
-    "child",
-]);
-/** Whether a dependency orders the work, rather than merely annotating it. */
-function isGatingDep(dep) {
-    return !NON_GATING_DEP_KINDS.has((dep.kind ?? "blocked_by").toLowerCase());
+export function buildPrerequisiteGraph(items, registry = resolveWorkspaceRelationshipKindRegistry()) {
+    const prerequisites = new Map();
+    for (const item of items)
+        prerequisites.set(item.id, new Set());
+    for (const item of items) {
+        for (const dep of item.dependencies ?? []) {
+            const definition = registry.resolve(dep.kind ?? "blocked_by");
+            if (!definition?.ordering)
+                continue;
+            const sourceFirst = definition.precedence !== "target_before_source";
+            const dependent = sourceFirst ? dep.id : item.id;
+            const prerequisite = sourceFirst ? item.id : dep.id;
+            // Inverse rows targeting absent work cannot constrain a present item.
+            prerequisites.get(dependent)?.add(prerequisite);
+        }
+    }
+    return new Map([...prerequisites].map(([id, deps]) => [id, Object.freeze([...deps])]));
 }
-function gatingDepIds(item) {
-    return (item.dependencies ?? []).filter(isGatingDep).map((d) => d.id);
+/** Select custom ordering contracts; older hosts without a census use built-ins. */
+function customOrderingContracts(contracts, registry) {
+    return (contracts.relationship_kind_contracts ?? []).filter((definition) => definition.ordering && !registry.resolve(definition.canonical));
+}
+/**
+ * Combine built-in constraints with registered custom ordering from the
+ * workspace SDK client. Module copies and injected clients can omit active
+ * custom registrations, so resolve the workspace explicitly and use native
+ * one-hop predecessor queries for registered custom ordering kinds.
+ * Full queries remove neighbor limits; depth one deliberately selects direct
+ * prerequisites.
+ * No tracker or history mutation is requested.
+ */
+async function commandPrerequisiteGraph(items, pmRoot) {
+    const registry = resolveWorkspaceRelationshipKindRegistry();
+    const graph = buildPrerequisiteGraph(items, registry);
+    const client = new PmClient({ pmRoot });
+    const contracts = await client.run("contracts", { options: {
+            runtimeOnly: true, outputInclude: "full", outputBudget: "unbounded", outputLimit: "unbounded",
+        } });
+    const custom = customOrderingContracts(contracts, registry);
+    if (custom.length === 0)
+        return graph;
+    const kinds = custom.map((definition) => definition.canonical);
+    const spellings = new Set(custom.flatMap((definition) => [definition.canonical, ...definition.aliases]));
+    const combined = new Map(graph);
+    // The SDK accepts one root per traversal. Bound host work and retain corpus order.
+    for (let offset = 0; offset < items.length; offset += 4) {
+        const batch = items.slice(offset, offset + 4);
+        const results = await Promise.all(batch.map((item) => client.graph("predecessors", { id: item.id }, {
+            kind: kinds, maxDepth: 1, full: true,
+            outputInclude: "full", outputBudget: "unbounded", outputLimit: "unbounded",
+        })));
+        for (const [index, item] of batch.entries()) {
+            const deps = new Set([...graph.get(item.id), ...results[index].ids]);
+            // Native closure omits the root; a registered self-order still forms a cycle.
+            for (const dep of item.dependencies ?? []) {
+                if (dep.id === item.id && spellings.has(String(dep.kind).trim().toLowerCase().replaceAll("-", "_")))
+                    deps.add(item.id);
+            }
+            combined.set(item.id, Object.freeze([...deps]));
+        }
+    }
+    return combined;
+}
+/** Resolve exporter prerequisites for both built rows and caller-supplied rows. */
+function rowPrerequisites(rows) {
+    const graph = buildPrerequisiteGraph(rows.map((row) => row.item));
+    return new Map(rows.map((row) => [row.item.id, row.prerequisites ?? graph.get(row.item.id)]));
 }
 /**
  * Render rows as a CSV schedule:
@@ -1300,6 +1326,7 @@ function gatingDepIds(item) {
  * Exported for tests.
  */
 function renderCsv(rows, milestones = []) {
+    const prerequisites = rowPrerequisites(rows);
     const header = "id,title,start,end,duration_days,slack_days,deps,status,critical,progress_percent,overdue,off_window";
     const lines = [header];
     for (const row of rows) {
@@ -1312,7 +1339,7 @@ function renderCsv(rows, milestones = []) {
             duration = String(Math.max(1, days));
         }
         const slack = row.slackDays === null ? "" : String(row.slackDays);
-        const deps = gatingDepIds(item).join(" ");
+        const deps = prerequisites.get(item.id).join(" ");
         lines.push([
             csvField(item.id),
             csvField(item.title),
@@ -1357,6 +1384,7 @@ function renderCsv(rows, milestones = []) {
  *  flags, gating deps — without parsing a chart or CSV. Deterministic: no
  *  wall-clock is embedded, so identical input yields byte-identical output. */
 function renderJson(rows, opts, windowStart, milestones = []) {
+    const prerequisites = rowPrerequisites(rows);
     const summary = computeSummary(rows);
     const items = rows.map((row) => {
         const duration = rowDurationDays(row);
@@ -1377,7 +1405,7 @@ function renderJson(rows, opts, windowStart, milestones = []) {
             overdue: row.overdue,
             infeasible: row.infeasible,
             offWindow: row.offWindow,
-            deps: gatingDepIds(row.item),
+            deps: prerequisites.get(row.item.id),
         };
     });
     const payload = {
@@ -2480,8 +2508,9 @@ export default defineExtension({
                 // Preflight data-sanity gate: hard-fail on dependency cycles (scheduling
                 // impossible), warn on soft issues (deadline<start, absurd estimate).
                 // Runs over all status-filtered items so a cycle anywhere is caught.
-                runDataSanityGate(allItems, "gantt", ctx.global?.json);
-                const rows = buildRows(items, opts, opts.windowStart);
+                const graph = await commandPrerequisiteGraph(allItems, ctx.pm_root);
+                runDataSanityGate(allItems, "gantt", ctx.global?.json, graph);
+                const rows = buildRows(items, opts, opts.windowStart, graph);
                 if (rows.length === 0) {
                     // The only way to reach here is --critical-only with no qualifying
                     // chain (needs ≥2 linked items). Treat as a clean empty result.
@@ -2588,8 +2617,9 @@ export default defineExtension({
             }
             // Same preflight gate as the `gantt` command: a cycle would otherwise emit
             // a silently-wrong artifact. Warnings go to stderr (never the artifact).
-            runDataSanityGate(allItems, "gantt export", ctx.global?.json);
-            const rows = buildRows(items, opts, opts.windowStart);
+            const graph = await commandPrerequisiteGraph(allItems, ctx.pm_root);
+            runDataSanityGate(allItems, "gantt export", ctx.global?.json, graph);
+            const rows = buildRows(items, opts, opts.windowStart, graph);
             if (rows.length === 0) {
                 console.error("No matching pm items to export (e.g. --critical-only with no chain).");
                 return { exported: 0, format };
@@ -2659,5 +2689,5 @@ export default defineExtension({
 // runtime extension contract; the default export above is. Keeping them as
 // named exports lets test/*.test.ts import them without touching pm internals.
 // ---------------------------------------------------------------------------
-export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderJson, renderMermaid, renderGantt, renderHtml, renderSvg, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, defaultExtension, };
+export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderJson, renderMermaid, renderGantt, renderHtml, renderSvg, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, defaultExtension, customOrderingContracts, commandPrerequisiteGraph, };
 //# sourceMappingURL=index.js.map
