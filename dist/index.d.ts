@@ -1,5 +1,6 @@
 import type { ExtensionApi } from "@unbrained/pm-cli/sdk/authoring";
 import type { RelationshipKindRegistry } from "@unbrained/pm-cli/sdk";
+import type { ContractsResult } from "@unbrained/pm-cli/sdk/runtime";
 interface PmDependency {
     id: string;
     kind?: string;
@@ -297,6 +298,24 @@ export type PrerequisiteGraph = ReadonlyMap<string, readonly string[]>;
  * @returns Prerequisite ids in first-seen order for each item.
  */
 export declare function buildPrerequisiteGraph(items: readonly PmItem[], registry?: RelationshipKindRegistry): PrerequisiteGraph;
+/** Select custom ordering contracts; older hosts without a census use built-ins. */
+declare function customOrderingContracts(contracts: ContractsResult, registry: RelationshipKindRegistry): {
+    canonical: string;
+    aliases: string[];
+    inverse?: string;
+    ordering: boolean;
+    hierarchy: boolean;
+}[];
+/**
+ * Combine built-in constraints with registered custom ordering from the
+ * workspace SDK client. Module copies and injected clients can omit active
+ * custom registrations, so resolve the workspace explicitly and use native
+ * one-hop predecessor queries for registered custom ordering kinds.
+ * Full queries remove neighbor limits; depth one deliberately selects direct
+ * prerequisites.
+ * No tracker or history mutation is requested.
+ */
+declare function commandPrerequisiteGraph(items: PmItem[], pmRoot: string): Promise<PrerequisiteGraph>;
 /**
  * Render rows as a CSV schedule:
  * id,title,start,end,duration_days,slack_days,deps,status.
@@ -433,6 +452,6 @@ declare const _default: {
     activate(api: ExtensionApi): void;
 };
 export default _default;
-export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderJson, renderMermaid, renderGantt, renderHtml, renderSvg, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, defaultExtension, };
+export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderJson, renderMermaid, renderGantt, renderHtml, renderSvg, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, defaultExtension, customOrderingContracts, commandPrerequisiteGraph, };
 export type { PmItem, GanttOptions, GanttRow, GroupBy, ScheduleEntry, SlackEntry, GanttSummary, OffWindow, Milestone };
 //# sourceMappingURL=index.d.ts.map

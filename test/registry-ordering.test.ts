@@ -6,12 +6,22 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 import { createRelationshipKindRegistry, createExtensionCommandSdk, PmClient, type RelationshipKindDefinition } from "@unbrained/pm-cli/sdk";
+import type { ContractsResult } from "@unbrained/pm-cli/sdk";
 import { createExtensionTestHarness } from "@unbrained/pm-cli/sdk/testing";
 import extension, {
-  buildPrerequisiteGraph, buildRows, computeCriticalPath, computeSchedule,
+  buildPrerequisiteGraph, buildRows, computeCriticalPath, computeSchedule, customOrderingContracts, commandPrerequisiteGraph,
   computeSlack, detectCycles, renderCsv, renderJson, resolveGanttOptions,
   type PmItem,
 } from "../index.ts";
+
+/** Write one reusable schema extension for real host-discovery fixtures. */
+function writeOrderingFixture(parent: string): string {
+  const customRoot = join(parent, "ordering-fixture");
+  mkdirSync(customRoot, { recursive: true });
+  writeFileSync(join(customRoot, "manifest.json"), JSON.stringify({ name: "ordering-fixture", version: "1.0.0", entry: "./index.ts", capabilities: ["schema"] }));
+  writeFileSync(join(customRoot, "index.ts"), `import type { ExtensionApi } from "@unbrained/pm-cli/sdk/authoring";\n/** Register fixture semantics through the real extension host. */\nexport default { name: "ordering-fixture", version: "1.0.0", activate(api: ExtensionApi) { api.registerRelationshipKinds(${JSON.stringify(customKinds)}); } };\n`);
+  return customRoot;
+}
 
 const anchor = new Date("2026-10-12T00:00:00");
 const options = resolveGanttOptions({ from: "2026-10-12", schedule: true, "critical-path": true });
@@ -129,10 +139,7 @@ test("registry semantics: installed CLI honors custom registrations, preserves b
     const receipt = JSON.parse(packed.slice(packed.search(/^[[{]/m))) as { filename: string }[] | Record<string, { filename: string }>;
     const tarball = join(root, Object.values(receipt)[0]!.filename);
     execFileSync(process.execPath, [cli, "package", "install", tarball, "--project"], { cwd: root, env, encoding: "utf8" });
-    const customRoot = join(root, "ordering-fixture");
-    mkdirSync(customRoot, { recursive: true });
-    writeFileSync(join(customRoot, "manifest.json"), JSON.stringify({ name: "ordering-fixture", version: "1.0.0", entry: "./index.ts", capabilities: ["schema"] }));
-    writeFileSync(join(customRoot, "index.ts"), `import type { ExtensionApi } from "@unbrained/pm-cli/sdk/authoring";\n/** Register fixture semantics through the real extension host. */\nexport default { name: "ordering-fixture", version: "1.0.0", activate(api: ExtensionApi) { api.registerRelationshipKinds(${JSON.stringify(customKinds)}); } };\n`);
+    const customRoot = writeOrderingFixture(root);
     const customInstall = JSON.parse(execFileSync(process.execPath, [cli, "--json", "package", "install", customRoot, "--project"], { cwd: root, env, encoding: "utf8" })) as { details: { contributions: { relationship_kinds: string[] } } };
     assert.deepEqual(customInstall.details.contributions.relationship_kinds, customKinds.map((definition) => definition.kind).sort());
     await sdk.create({ id: "ga-a", title: "ga-a", type: "Task", estimatedMinutes: "480", createMode: "progressive" });
@@ -200,4 +207,59 @@ test("registry semantics: installed CLI honors custom registrations, preserves b
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("older host census omission falls back to built-in ordering on a real tracker", async (t) => {
+  const root = mkdtempSync(join(tmpdir(), "gantt-old-census-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const sdk = new PmClient({ cwd: root, pmRoot: join(root, ".agents", "pm"), author: "fixture" });
+  await sdk.init("old", { defaults: true, mergeFence: false, agentGuidance: "skip" });
+  await sdk.create({ id: "old-a", title: "Predecessor", createMode: "progressive" });
+  await sdk.create({ id: "old-b", title: "Successor", dep: ["id=old-a,kind=blocked_by"], createMode: "progressive" });
+  const contracts = await sdk.run("contracts", { options: { runtimeOnly: true, outputInclude: "full" } }) as ContractsResult;
+  const { relationship_kind_contracts: _census, ...olderContracts } = contracts;
+  const registry = createRelationshipKindRegistry();
+  assert.deepEqual(customOrderingContracts(olderContracts, registry), []);
+  assert.deepEqual(customOrderingContracts(contracts, registry), []);
+  const items = (await sdk.list({ outputInclude: "full" })).items as PmItem[];
+  assert.deepEqual(buildPrerequisiteGraph(items, registry).get("old-b"), ["old-a"]);
+});
+
+test("custom predecessor queries overlap within four calls on a real tracker", async (t) => {
+  const root = mkdtempSync(join(tmpdir(), "gantt-concurrency-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const pmRoot = join(root, ".agents", "pm");
+  const sdk = new PmClient({ cwd: root, pmRoot, author: "fixture" });
+  await sdk.init("batch", { defaults: true, mergeFence: false, agentGuidance: "skip" });
+  writeOrderingFixture(join(pmRoot, "extensions"));
+  for (let index = 0; index < 7; index += 1) await sdk.create({ id: `batch-${index}`, title: "Context", createMode: "progressive" });
+  await sdk.update("batch-0", { dep: ["id=batch-1,kind=blocked_by"] });
+  const taskPath = join(pmRoot, "tasks", "batch-0.toon");
+  const task = readFileSync(taskPath, "utf8");
+  writeFileSync(taskPath, task.replace("batch-1,blocked_by,", "batch-1,ships_before,"));
+  const items = (await sdk.list({ outputInclude: "full" })).items as PmItem[];
+  const before = snapshot(pmRoot);
+  const originalGraph = PmClient.prototype.graph;
+  const descriptor = Object.getOwnPropertyDescriptor(PmClient.prototype, "graph")!;
+  let active = 0;
+  let peak = 0;
+  let calls = 0;
+  // Observe real SDK traversals without changing requests or results.
+  Object.defineProperty(PmClient.prototype, "graph", { ...descriptor, value: async function (this: PmClient, ...args: Parameters<typeof originalGraph>) {
+    active += 1;
+    calls += 1;
+    peak = Math.max(peak, active);
+    try { return await originalGraph.apply(this, args); }
+    finally { active -= 1; }
+  } as typeof originalGraph });
+  try {
+    const graph = await commandPrerequisiteGraph(items, pmRoot);
+    assert.equal(calls, 7, "incoming custom constraints require all roots");
+    assert.equal(peak, 4, "real traversals overlap within the bound");
+    assert.equal(active, 0);
+    assert.deepEqual(graph.get("batch-1"), ["batch-0"]);
+    assert.deepEqual(graph.get("batch-0"), []);
+    assert.deepEqual([...graph.keys()], items.map((row) => row.id), "corpus order is retained");
+    assert.deepEqual(snapshot(pmRoot), before);
+  } finally { Object.defineProperty(PmClient.prototype, "graph", descriptor); }
 });

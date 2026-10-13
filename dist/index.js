@@ -1258,6 +1258,10 @@ export function buildPrerequisiteGraph(items, registry = resolveWorkspaceRelatio
     }
     return new Map([...prerequisites].map(([id, deps]) => [id, Object.freeze([...deps])]));
 }
+/** Select custom ordering contracts; older hosts without a census use built-ins. */
+function customOrderingContracts(contracts, registry) {
+    return (contracts.relationship_kind_contracts ?? []).filter((definition) => definition.ordering && !registry.resolve(definition.canonical));
+}
 /**
  * Combine built-in constraints with registered custom ordering from the
  * workspace SDK client. Module copies and injected clients can omit active
@@ -1274,24 +1278,28 @@ async function commandPrerequisiteGraph(items, pmRoot) {
     const contracts = await client.run("contracts", { options: {
             runtimeOnly: true, outputInclude: "full", outputBudget: "unbounded", outputLimit: "unbounded",
         } });
-    const custom = contracts.relationship_kind_contracts.filter((definition) => definition.ordering && !registry.resolve(definition.canonical));
+    const custom = customOrderingContracts(contracts, registry);
     if (custom.length === 0)
         return graph;
     const kinds = custom.map((definition) => definition.canonical);
     const spellings = new Set(custom.flatMap((definition) => [definition.canonical, ...definition.aliases]));
     const combined = new Map(graph);
-    for (const item of items) {
-        const result = await client.graph("predecessors", { id: item.id }, {
+    // The SDK accepts one root per traversal. Bound host work and retain corpus order.
+    for (let offset = 0; offset < items.length; offset += 4) {
+        const batch = items.slice(offset, offset + 4);
+        const results = await Promise.all(batch.map((item) => client.graph("predecessors", { id: item.id }, {
             kind: kinds, maxDepth: 1, full: true,
             outputInclude: "full", outputBudget: "unbounded", outputLimit: "unbounded",
-        });
-        const deps = new Set([...graph.get(item.id), ...result.ids]);
-        // Native closure omits the root; a registered self-order still forms a cycle.
-        for (const dep of item.dependencies ?? []) {
-            if (dep.id === item.id && spellings.has(String(dep.kind).trim().toLowerCase().replaceAll("-", "_")))
-                deps.add(item.id);
+        })));
+        for (const [index, item] of batch.entries()) {
+            const deps = new Set([...graph.get(item.id), ...results[index].ids]);
+            // Native closure omits the root; a registered self-order still forms a cycle.
+            for (const dep of item.dependencies ?? []) {
+                if (dep.id === item.id && spellings.has(String(dep.kind).trim().toLowerCase().replaceAll("-", "_")))
+                    deps.add(item.id);
+            }
+            combined.set(item.id, Object.freeze([...deps]));
         }
-        combined.set(item.id, Object.freeze([...deps]));
     }
     return combined;
 }
@@ -2681,5 +2689,5 @@ export default defineExtension({
 // runtime extension contract; the default export above is. Keeping them as
 // named exports lets test/*.test.ts import them without touching pm internals.
 // ---------------------------------------------------------------------------
-export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderJson, renderMermaid, renderGantt, renderHtml, renderSvg, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, defaultExtension, };
+export { computeSchedule, computeSlack, computeCriticalPath, computeSummary, itemDurationDays, renderCsv, renderJson, renderMermaid, renderGantt, renderHtml, renderSvg, infeasibleWarnings, buildRows, resolveGanttOptions, getGroupKey, defaultExtension, customOrderingContracts, commandPrerequisiteGraph, };
 //# sourceMappingURL=index.js.map
