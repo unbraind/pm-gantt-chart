@@ -2,12 +2,17 @@ id: pm-gantt-chart-maint1014
 title: Enable the gated GitHub issue sync and drop the braces chain
 description: Enable the SHA-pinned fail-closed issue sync caller and remove fast-glob by adopting published pm-ops 2026.10.14. Keep existing thresholds and verify isolated npm and Bun release gates. This combined maintenance chore implements the dependency remediation tracked by pm-gantt-chart-e7rd and leaves that issue open for verification.
 type: Chore
-status: in_progress
+status: closed
 priority: 1
 tags: []
 created_at: "2026-10-14T09:25:44.857Z"
-updated_at: "2026-10-14T09:56:01.295Z"
+updated_at: "2026-10-14T15:26:31.253Z"
+closed_at: "2026-10-14T15:26:31.242Z"
+completed_at: "2026-10-14T15:26:31.242Z"
 author: codex-agent
+resolution: Implemented and merged in #141 (afd0162).
+expected_result: The change described by this item is on main.
+actual_result: "Merged in #141 as afd0162; checks successful at head 5593b8d: CodeQL, codeql, test (22.18.0), test (26)."
 comments[4]{created_at,author,text}:
   "2026-10-14T09:25:51.819Z",codex-agent,"Plan: author this package own thin workflow caller at 17 1 * * *, pin the workflow SHA and pm-github package to 2026.10.13, remove fast-glob and any jscpd4 alias, and pin pm-ops 2026.10.14. Published changelog reviewed: stricter attestation rejects unresolved aliases/functions, prepare is read-only during pack, release completeness repair and Windows proof support changed. Canonical duplication now uses Node glob and jscpd 5; existing local launcher needs no edits. No workflow dispatch, bot requests, or merges."
   "2026-10-14T09:27:06.765Z",codex-agent,"Audit before: full 4 vulnerabilities (4 high), production 0. After: full 0, production 0; npm ls braces is empty. The caller runs at 17 1 * * * UTC. It validates access, previews the complete plan, imports with --gate, verifies repeat-import idempotency and privacy, then checks strict health before commit/push/PR. SHA pin matches published pm-github 2026.10.13. Actionlint skipped: binary missing and offline npx registry metadata unavailable. GitHub Actions PR-creation setting verified enabled. No direct fast-glob imports in authored scripts; no runtime function change or behavioural revert test applies."
@@ -24,4 +29,5 @@ tests[2]{command,scope,timeout_seconds,pm_context_mode,provenance{author,created
   "env -u PM_PATH -u PM_AUTHOR HOME=$(mktemp -d) GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 bun run release:check",project,3600,tracker,codex-agent,"2026-10-14T09:28:35.215Z",local_mutation,chore/gated-issue-sync-and-braces-free-gates
 docs[1]{path,scope}:
   CHANGELOG.md,project
+close_reason: "Delivered by #141 \"Enable the gated pm-github issue sync and remove the braces chain from the gates\" (merged as afd0162). Checks successful at the PR head 5593b8d: CodeQL, codeql, test (22.18.0), test (26)."
 body: ""
