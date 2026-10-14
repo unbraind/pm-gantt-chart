@@ -7,6 +7,10 @@
 - Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-81](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-81.toon))
 - Full git history retains personal identity and redacted host-path artifacts ([pm-gantt-chart-github-072477cd0a70-71](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-71.toon))
 
+### Other
+
+- Enable the gated GitHub issue sync and drop the braces chain ([pm-gantt-chart-maint1014](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-maint1014.toon))
+
 ## 2026.10.14 - 2026-10-14
 
 ### Fixed
