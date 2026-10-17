@@ -2008,12 +2008,17 @@ ${workloadRows}
   :focus-visible { outline:var(--pm-focus); outline-offset:var(--pm-focus-offset); }
   @media(prefers-reduced-motion:reduce) { * { animation:none; transition:none; } }
   @media(max-width:600px) {
-    table { width:100%!important; } thead { display:none; }
-    tbody { display:block; } tr { display:grid; grid-template-columns:repeat(${weeks},minmax(0,1fr)); margin-bottom:12px; border:1px solid var(--pm-rule); border-radius:var(--pm-radius); background:var(--pm-sheet); padding:8px; }
-    td { border:0!important; border-radius:0!important; padding:5px; }
-    td.group,td.item,td.st { grid-column:1/-1; width:auto; }
-    td.group:empty { display:none; } td.cell { width:auto; min-height:24px; }
-    .summary tr,.workload tr { display:flex; flex-wrap:wrap; } .summary th,.summary td,.workload td { flex:1; }
+    table[style] { display:block; width:100%!important; table-layout:auto; }
+    table[style] colgroup { display:none; }
+    table[style] thead,table[style] tbody { display:block; width:100%; }
+    table[style] tr { display:grid; width:100%; grid-template-columns:repeat(${weeks},minmax(0,1fr)); margin-bottom:12px; border:1px solid var(--pm-rule); border-radius:var(--pm-radius); background:var(--pm-sheet); padding:8px; }
+    table[style] thead tr { border:0; border-radius:0; background:none; padding:0; }
+    table[style] thead th:nth-child(-n+3) { display:none; }
+    table[style] th { min-width:0; padding:4px; font-size:.7rem; }
+    table[style] td { border:0!important; border-radius:0!important; padding:5px; }
+    table[style] td.group,table[style] td.item,table[style] td.st { grid-column:1/-1; width:auto; }
+    table[style] td.group:empty { display:none; }
+    table[style] td.cell { width:auto; min-height:24px; }
   }
 </style>
 </head>
