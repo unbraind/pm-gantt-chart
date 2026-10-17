@@ -1135,9 +1135,11 @@ function renderMermaid(rows, opts, windowStart) {
     const lines = [];
     const taskStyles = rows.map((row, index) => {
         const status = brandStatus(row.item.status);
-        return `#t${index}{fill:var(--pm-status-${status}-bg);stroke:var(--pm-status-${status}-border);stroke-width:${row.critical ? 3 : 1}px}#t${index}-text{fill:var(--pm-status-${status}-fg);${status === "canceled" ? "text-decoration:line-through;" : ""}}`;
+        return `[id="t${index}"],[id$="-t${index}"]{fill:var(--pm-status-${status}-bg);stroke:var(--pm-status-${status}-border);stroke-width:${row.critical ? 3 : 1}px}[id="t${index}-text"][id],[id$="-t${index}-text"][id]{fill:var(--pm-status-${status}-fg)!important;${status === "canceled" ? "text-decoration:line-through;" : ""}}`;
     }).join("\n");
     lines.push(mermaidBrand(brandCss + `
+    .section{fill:var(--pm-paper);opacity:1}
+    .exclude-range{fill:var(--pm-sheet)}
     text{fill:var(--pm-carbon)}
     .taskText,.taskTextOutsideRight,.taskTextOutsideLeft{fill:var(--pm-carbon)}
     .sectionTitle{fill:var(--pm-carbon);font-family:var(--pm-font-caption);font-stretch:75%;font-weight:600}
