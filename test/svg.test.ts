@@ -38,7 +38,7 @@ test("renderSvg produces a self-contained, well-formed SVG document", () => {
   assert.match(svg, /height="\d+"/, "carries a numeric height attribute");
   assert.match(svg, /viewBox="0 0 \d+ \d+"/, "carries a viewBox");
   // One bar rect per active week-cell exists.
-  assert.match(svg, /<rect .*fill="#2b7de9"/, "in_progress bar is the active blue");
+  assert.match(svg, /<rect .*fill="var\(--pm-status-in_progress-bg\)"/, "in_progress uses its own contract fill");
   assert.match(svg, /<text[^>]*>Build endpoint<\/text>/, "item title rendered");
 });
 
@@ -80,11 +80,11 @@ test("resolveGanttOptions rejects a non-numeric --width with a usage error", () 
   assert.throws(() => resolveGanttOptions({ from: FROM, width: "wide" }), /Invalid --width/);
 });
 
-test("renderSvg marks critical-path bars with the critical color under --critical-path", () => {
+test("renderSvg marks critical-path bars with a heavier outline under --critical-path", () => {
   const opts = resolveGanttOptions({ from: FROM, weeks: "12", "critical-path": true, schedule: true });
   const rows = buildRows(chainItems(), opts, opts.windowStart);
   const svg = renderSvg(rows, opts, opts.windowStart);
-  assert.match(svg, /fill="#e05c5c"/, "critical-path bars use the critical red");
+  assert.match(svg, /stroke-width="3"/, "critical-path bars retain status fills with a heavier outline");
   assert.match(svg, /\* Design API/, "critical items are prefixed with * in the label");
 });
 
@@ -112,13 +112,13 @@ test("renderSvg --show-progress overlays a fill sized to the completion ratio", 
 
   const rows = buildRows(chainItems(), optsAlias, optsAlias.windowStart);
   const svg = renderSvg(rows, optsAlias, optsAlias.windowStart);
-  assert.match(svg, /fill="rgba\(0,0,0,0\.35\)"/, "progress fill overlay present");
+  assert.match(svg, /fill="var\(--pm-carbon\)" opacity="\.2"/, "progress fill overlay present");
   assert.match(svg, /100%/, "closed item reports 100%");
   assert.match(svg, /50%/, "in_progress item reports 50%");
   assert.equal((svg.match(/>50%<\/text>/g) ?? []).length, 1, "multi-week progress label is emitted once");
 });
 
-test("renderSvg renders overdue bars in the overdue color and marker", () => {
+test("renderSvg renders overdue bars with a dashed edge and marker", () => {
   // Anchor far in the future so the off-window "before" hint path is NOT taken;
   // we want the overdue path. Use a window starting after today but the item's
   // dates are in the past -> off-window "before". To exercise the overdue color
@@ -135,7 +135,7 @@ test("renderSvg renders overdue bars in the overdue color and marker", () => {
   opts.today = new Date("2026-07-01T00:00:00");
   const rows = buildRows(items2, opts, opts.windowStart);
   const svg = renderSvg(rows, opts, opts.windowStart);
-  assert.match(svg, /fill="#c23b3b"/, "overdue bar uses the overdue red");
+  assert.match(svg, /stroke-dasharray="3 2"/, "overdue bar has a non-color dashed edge");
   assert.match(svg, /\u203c overdue/, "overdue marker text present");
 });
 
@@ -209,9 +209,9 @@ test("renderSvg draws the TODAY rule after body rows so backgrounds can't cover 
   const rows = buildRows(chainItems(), opts, opts.windowStart);
   const svg = renderSvg(rows, opts, opts.windowStart);
   const ruleAt = svg.indexOf("▼ today");
-  const lastBackground = svg.lastIndexOf('fill="#f4f4f4"');
+  const lastBackground = svg.lastIndexOf('fill="var(--pm-sheet)" stroke="var(--pm-rule)"');
   assert.ok(ruleAt >= 0, "TODAY rule present when today is in-window");
-  assert.ok(lastBackground >= 0, "alternating row backgrounds present");
+  assert.ok(lastBackground >= 0, "ruled item sheets present");
   assert.ok(ruleAt > lastBackground, "TODAY rule painted after (on top of) row backgrounds");
 });
 
