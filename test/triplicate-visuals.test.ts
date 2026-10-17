@@ -14,10 +14,10 @@ test('real tracker states retain labels, form strips, edges and deterministic Tr
   try {
     await sdk.init('visual', { defaults: true, mergeFence: false, agentGuidance: 'skip' });
     const states = ['open', 'in_progress', 'blocked', 'closed', 'canceled'] as const;
-    for (const [index, status] of states.entries()) await sdk.create({ id: `visual-${status.replaceAll("_", "-")}`, title: `Review <${status}> & output`, type: 'Task', priority: index % 4, status, closeReason: 'Synthetic review fixture', estimatedMinutes: '480', createMode: 'progressive' });
+    for (const [index, status] of states.entries()) await sdk.create({ id: `visual-${status.replaceAll("_", "-")}`, title: `Review <${status}> & output`, type: 'Task', priority: index % 4, status, closeReason: 'Synthetic review fixture', dep: status === 'blocked' ? ['id=visual-in-progress,kind=blocked_by'] : [], estimatedMinutes: '480', createMode: 'progressive' });
     const result = certifyCompleteListResult(await listAllComplete({}, { pmRoot, noExtensions: true }));
     assert.equal(result.items.length, 5);
-    const items: PmItem[] = result.items.map(item => ({ id:item.id,title:item.title,type:item.type,priority:item.priority,status:item.status as PmItem['status'],created_at:'2026-10-12T00:00:00.000Z',estimated_minutes:480 }));
+    const items: PmItem[] = result.items.map(item => ({ id:item.id,title:item.title,type:item.type,priority:item.priority,status:item.status as PmItem['status'],dependencies:item.dependencies,created_at:'2026-10-12T00:00:00.000Z',estimated_minutes:480 }));
     const opts = resolveGanttOptions({ from:'2026-10-12',weeks:'4',schedule:true,progress:true });
     opts.today = new Date('2026-10-17T00:00:00.000Z');
     const rows = buildRows(items,opts,opts.windowStart);
@@ -39,5 +39,10 @@ test('real tracker states retain labels, form strips, edges and deterministic Tr
     assert.match(html,/max-width:600px/u);
     assert.match(html,/:focus-visible/u);
     assert.match(html,/prefers-reduced-motion:reduce/u);
+    const criticalOpts = resolveGanttOptions({ from:'2026-10-12',weeks:'4',schedule:true,'critical-path':true });
+    const criticalRows = buildRows(items,criticalOpts,criticalOpts.windowStart);
+    assert.ok(criticalRows.some(row => row.critical), 'the real dependency chain must produce critical rows');
+    const criticalDiagram = JSON.parse(/^%%\{init: (.*)\}%%/u.exec(renderMermaid(criticalRows,criticalOpts,criticalOpts.windowStart))![1]) as {themeCSS:string};
+    assert.match(criticalDiagram.themeCSS,/stroke-width:3px/u, 'computed critical tasks keep their stronger outline');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

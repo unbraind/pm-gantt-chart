@@ -6,16 +6,17 @@ status: in_progress
 priority: 2
 tags: []
 created_at: "2026-10-17T09:27:52.639Z"
-updated_at: "2026-10-17T10:52:38.957Z"
+updated_at: "2026-10-17T11:04:29.755Z"
 assignee: codex-agent
 claim_principal: codex-agent
 author: codex-agent
-comments[5]{created_at,author,text}:
+comments[6]{created_at,author,text}:
   "2026-10-17T09:28:14.978Z",codex-agent,"Design: form-paper canvas and ruled top sheets; carbon text, Martian Mono ids and dates, explicit status labels and contract chip fills. Canary and rose only convey in_progress and blocked. Brand values are generated at build time from an exact devDependency; published runtime has no brand dependency or CDN fetches. Existing scheduling, graph edges and serialization stay intact."
   "2026-10-17T10:13:26.812Z",codex-agent,"Render review uses seven captured public brand-kit tracker items. Critical and overdue indicators preserve status fills. Mermaid initialization precedes the diagram header; native single-line task labels retain mono data. Behavioral revert proof independently restores only renderSvg, renderHtml, then renderMermaid in disposable source copies: each unchanged real-tracker regression fails 1/1; restoring the implementation passes 1/1. The immutable README banner points to pm-brand commit 5c80a2b707f3a00afe986e81e520843b86f3ee83. Full npm/Bun gates and final browser capture are pending."
   "2026-10-17T10:33:42.809Z",codex-agent,"The final 390 px browser review found CSS table columns constraining the mobile card body. The timeline table now becomes a full-width block, hides its desktop column definitions, and keeps all four week headings visible. At 390 px each item is 348 px wide with a maximum 70 px label height; light/dark at 1x/2x pass with no page overflow. Reverting only the mobile CSS to the prior Triplicate implementation makes the browser assertion fail. The 80 existing SVG/scheduler tests pass after the correction."
   "2026-10-17T10:51:01.844Z",codex-agent,"Render review caught Mermaid-prefixed task IDs and important native label styles bypassing state colors. Portable ID-suffix selectors now cover native and prefixed IDs, override native text styles, and theme excluded days and section paper. Real-tracker focused tests pass 5/5; independent renderer revert proofs remain 1/1 failures for SVG, HTML and Mermaid with 1/1 passes restored. Computed-color browser checks and full release gates are being rerun on this implementation."
   "2026-10-17T10:52:38.957Z",codex-agent,Created follow-up pm-gantt-chart-sdk-docs for installation prose that calls the 2026.10.6 consumer minimum the development SDK pin; the actual development dependency is 2026.10.13. This visual change leaves SDK and consumer minimum pins as-is.
+  "2026-10-17T11:04:27.434Z",codex-agent,"The first frozen full npm suite passed 249/249 tests but correctly failed the unchanged 100% branch gate at 99.88%. The missing Mermaid critical-outline branch is now covered by a real tracker dependency chain and its computed critical rows. Focused tests pass 5/5. In a scratch copy, reverting only the critical outline from 3px to 1px makes the new assertion fail 1/1. All 72 before/after PNGs are published on pr-screenshots; the 36 after cases pass at all widths, themes and scales with no overflow, animations, interactive actions or external requests. CI-isolated strict tracker health passes, with existing advisories retained."
 files[9]{path,scope}:
   brand-values.ts,project
   brand.ts,project
@@ -28,7 +29,8 @@ files[9]{path,scope}:
   test/triplicate-visuals.test.ts,project
 tests[1]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
   node --test test/brand-values.test.ts test/triplicate-visuals.test.ts,project,codex-agent,"2026-10-17T09:43:29.364Z",local_mutation,brand/triplicate-visuals
-docs[2]{path,scope}:
+docs[3]{path,scope}:
+  docs/triplicate-browser-checks.json,project
   docs/triplicate-visuals.md,project
   README.md,project
 body: ""
