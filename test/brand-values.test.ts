@@ -57,11 +57,15 @@ test('all actual text and status backgrounds meet WCAG AA in both themes; focus 
       const fg = brandValue(theme, `status-${state}-fg`);
       const bg = state === 'canceled' ? brandValue(theme, 'sheet') : brandValue(theme, `status-${state}-bg`);
       assert.ok(contrast(fg, bg) >= 4.5, `${theme} ${state}`); measured++;
+      for (const outside of ['paper', 'sheet'] as const) {
+        assert.ok(contrast(fg, brandValue(theme, outside)) >= 4.5, `${theme} ${state} outside label on ${outside}`);
+        measured++;
+      }
     }
     assert.ok(contrast(brandValue(theme, 'stamp'), brandValue(theme, 'paper')) >= 3);
     assert.ok(contrast(brandValue(theme, 'stamp'), brandValue(theme, 'sheet')) >= 3);
   }
-  assert.equal(measured, 24);
+  assert.equal(measured, 44);
 });
 
 
