@@ -1,0 +1,1328 @@
+{
+  "fixture": "test/fixtures/triplicate.json",
+  "fixtureSource": "https://github.com/unbraind/pm-brand/tree/7ad0970d96a20c24b8dbd9e0dcd1efeb8b4d5cc1/.agents/pm",
+  "beforeCommit": "cc4e5d4d1c0e390722f982ee80833d7e54deec4b",
+  "rendererCommit": "5524c6fd18fd44417a552f4a9da6c66015284564",
+  "rendererSha256": {
+    "index.ts": "75a56f6ff1f9576b02b5f994d55f38b672a4934db622d14c6768981c5ec278d9",
+    "brand.ts": "726a9ac6af5b79a602df697a47ea9a3eedf28819a0d0cf7b23fee1649b7e0770",
+    "brand-values.ts": "0b1644efba51a063dd48c2f45c2ddd8f301215aec5c69cb6a1b0738e15c42114"
+  },
+  "browser": "Chrome for Testing 151.0.7922.34",
+  "engines": {
+    "mermaid": "12.2.0"
+  },
+  "reviewedScales": [
+    1,
+    2
+  ],
+  "externalRequests": {
+    "before": 0,
+    "after": 0
+  },
+  "mermaidComputedColorAssertions": "Paper and Gantt task fill/text match resolved contract properties in every theme, viewport and scale.",
+  "cases": {
+    "before": [
+      {
+        "name": "gantt-html",
+        "width": 1440,
+        "theme": "light",
+        "scale": 1,
+        "scroll": true,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 944.140625,
+        "maxItemHeight": 39,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 1440,
+        "theme": "light",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 1440,
+        "maxItemHeight": 0,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 1440,
+        "theme": "light",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 1440,
+        "maxItemHeight": 0,
+        "paper": "rgb(255, 255, 255)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 1440,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": true,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 944.140625,
+        "maxItemHeight": 39,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 1440,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 1440,
+        "maxItemHeight": 0,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 1440,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 1440,
+        "maxItemHeight": 0,
+        "paper": "rgb(13, 17, 23)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 768,
+        "theme": "light",
+        "scale": 1,
+        "scroll": true,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 39,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 768,
+        "theme": "light",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 0,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 768,
+        "theme": "light",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 0,
+        "paper": "rgb(255, 255, 255)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 768,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": true,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 39,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 768,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 0,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 768,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 0,
+        "paper": "rgb(13, 17, 23)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 390,
+        "theme": "light",
+        "scale": 1,
+        "scroll": true,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 39,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 390,
+        "theme": "light",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 0,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 390,
+        "theme": "light",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 0,
+        "paper": "rgb(255, 255, 255)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 390,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": true,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 39,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 390,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 0,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 390,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 0,
+        "paper": "rgb(13, 17, 23)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 1440,
+        "theme": "light",
+        "scale": 2,
+        "scroll": true,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 944.140625,
+        "maxItemHeight": 39,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 1440,
+        "theme": "light",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 1440,
+        "maxItemHeight": 0,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 1440,
+        "theme": "light",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 1440,
+        "maxItemHeight": 0,
+        "paper": "rgb(255, 255, 255)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 1440,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": true,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 944.140625,
+        "maxItemHeight": 39,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 1440,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 1440,
+        "maxItemHeight": 0,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 1440,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 1440,
+        "maxItemHeight": 0,
+        "paper": "rgb(13, 17, 23)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 768,
+        "theme": "light",
+        "scale": 2,
+        "scroll": true,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 39,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 768,
+        "theme": "light",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 0,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 768,
+        "theme": "light",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 0,
+        "paper": "rgb(255, 255, 255)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 768,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": true,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 39,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 768,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 0,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 768,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 0,
+        "paper": "rgb(13, 17, 23)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 390,
+        "theme": "light",
+        "scale": 2,
+        "scroll": true,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 39,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 390,
+        "theme": "light",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 0,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 390,
+        "theme": "light",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 0,
+        "paper": "rgb(255, 255, 255)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 390,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": true,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 39,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 390,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 0,
+        "paper": "rgb(250, 250, 250)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 390,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 0,
+        "paper": "rgb(13, 17, 23)"
+      }
+    ],
+    "after": [
+      {
+        "name": "gantt-html",
+        "width": 1440,
+        "theme": "light",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 412.8125,
+        "maxItemHeight": 78,
+        "paper": "rgb(243, 245, 248)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 1440,
+        "theme": "light",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 1440,
+        "maxItemHeight": 0,
+        "paper": "rgb(243, 245, 248)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 1440,
+        "theme": "light",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 1440,
+        "maxItemHeight": 0,
+        "paper": "rgb(255, 255, 255)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 1440,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 412.8125,
+        "maxItemHeight": 78,
+        "paper": "rgb(15, 21, 40)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 1440,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 1440,
+        "maxItemHeight": 0,
+        "paper": "rgb(15, 21, 40)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 1440,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 1440,
+        "maxItemHeight": 0,
+        "paper": "rgb(13, 17, 23)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 768,
+        "theme": "light",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 216.59375,
+        "maxItemHeight": 93,
+        "paper": "rgb(243, 245, 248)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 768,
+        "theme": "light",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 0,
+        "paper": "rgb(243, 245, 248)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 768,
+        "theme": "light",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 0,
+        "paper": "rgb(255, 255, 255)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 768,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 216.59375,
+        "maxItemHeight": 93,
+        "paper": "rgb(15, 21, 40)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 768,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 0,
+        "paper": "rgb(15, 21, 40)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 768,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 0,
+        "paper": "rgb(13, 17, 23)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 390,
+        "theme": "light",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 348,
+        "maxItemHeight": 70,
+        "paper": "rgb(243, 245, 248)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 390,
+        "theme": "light",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 0,
+        "paper": "rgb(243, 245, 248)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 390,
+        "theme": "light",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 0,
+        "paper": "rgb(255, 255, 255)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 390,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 348,
+        "maxItemHeight": 70,
+        "paper": "rgb(15, 21, 40)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 390,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 0,
+        "paper": "rgb(15, 21, 40)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 390,
+        "theme": "dark",
+        "scale": 1,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 0,
+        "paper": "rgb(13, 17, 23)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 1440,
+        "theme": "light",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 412.8125,
+        "maxItemHeight": 78,
+        "paper": "rgb(243, 245, 248)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 1440,
+        "theme": "light",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 1440,
+        "maxItemHeight": 0,
+        "paper": "rgb(243, 245, 248)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 1440,
+        "theme": "light",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 1440,
+        "maxItemHeight": 0,
+        "paper": "rgb(255, 255, 255)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 1440,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 412.8125,
+        "maxItemHeight": 78,
+        "paper": "rgb(15, 21, 40)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 1440,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 1440,
+        "maxItemHeight": 0,
+        "paper": "rgb(15, 21, 40)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 1440,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 1440,
+        "maxItemHeight": 0,
+        "paper": "rgb(13, 17, 23)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 768,
+        "theme": "light",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 216.59375,
+        "maxItemHeight": 93,
+        "paper": "rgb(243, 245, 248)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 768,
+        "theme": "light",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 0,
+        "paper": "rgb(243, 245, 248)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 768,
+        "theme": "light",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 0,
+        "paper": "rgb(255, 255, 255)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 768,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 216.59375,
+        "maxItemHeight": 93,
+        "paper": "rgb(15, 21, 40)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 768,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 0,
+        "paper": "rgb(15, 21, 40)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 768,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 768,
+        "maxItemHeight": 0,
+        "paper": "rgb(13, 17, 23)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 390,
+        "theme": "light",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 348,
+        "maxItemHeight": 70,
+        "paper": "rgb(243, 245, 248)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 390,
+        "theme": "light",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 0,
+        "paper": "rgb(243, 245, 248)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 390,
+        "theme": "light",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 0,
+        "paper": "rgb(255, 255, 255)"
+      },
+      {
+        "name": "gantt-html",
+        "width": 390,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 348,
+        "maxItemHeight": 70,
+        "paper": "rgb(15, 21, 40)"
+      },
+      {
+        "name": "gantt-svg",
+        "width": 390,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 0,
+        "paper": "rgb(15, 21, 40)"
+      },
+      {
+        "name": "gantt-mermaid",
+        "width": 390,
+        "theme": "dark",
+        "scale": 2,
+        "scroll": false,
+        "actions": 0,
+        "animations": 0,
+        "minItemWidth": 390,
+        "maxItemHeight": 0,
+        "paper": "rgb(13, 17, 23)"
+      }
+    ]
+  },
+  "pngs": [
+    {
+      "path": "before/gantt-html-1440-dark.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "2f7f4b1379a55a5bef3cb26b059b1b1d04898e60706388b7e6b57785d8b6ff9f"
+    },
+    {
+      "path": "before/gantt-html-1440-dark@2x.png",
+      "width": 2880,
+      "height": 2000,
+      "sha256": "4d0e1c1feccf6ed53324872dc92479f3d1eda209ae5a3e15e02899657981218b"
+    },
+    {
+      "path": "before/gantt-html-1440-light.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "2f7f4b1379a55a5bef3cb26b059b1b1d04898e60706388b7e6b57785d8b6ff9f"
+    },
+    {
+      "path": "before/gantt-html-1440-light@2x.png",
+      "width": 2880,
+      "height": 2000,
+      "sha256": "4d0e1c1feccf6ed53324872dc92479f3d1eda209ae5a3e15e02899657981218b"
+    },
+    {
+      "path": "before/gantt-html-390-dark.png",
+      "width": 390,
+      "height": 1000,
+      "sha256": "21c0d33e3dda37c11f10b451435ac47bfa2c2511ce162e9550b03146d2caed55"
+    },
+    {
+      "path": "before/gantt-html-390-dark@2x.png",
+      "width": 780,
+      "height": 2000,
+      "sha256": "af49266c4bb6eaea053233f689361d9941eccb3fd65ff34a5f7d3746204ad12b"
+    },
+    {
+      "path": "before/gantt-html-390-light.png",
+      "width": 390,
+      "height": 1000,
+      "sha256": "21c0d33e3dda37c11f10b451435ac47bfa2c2511ce162e9550b03146d2caed55"
+    },
+    {
+      "path": "before/gantt-html-390-light@2x.png",
+      "width": 780,
+      "height": 2000,
+      "sha256": "af49266c4bb6eaea053233f689361d9941eccb3fd65ff34a5f7d3746204ad12b"
+    },
+    {
+      "path": "before/gantt-html-768-dark.png",
+      "width": 768,
+      "height": 1000,
+      "sha256": "6132cac507a943ce0b689a0713e7a2cf7285b5e1c7bc1207c0279c72166ec85c"
+    },
+    {
+      "path": "before/gantt-html-768-dark@2x.png",
+      "width": 1536,
+      "height": 2000,
+      "sha256": "b06f8df1a6a37d6451afcbdc9495efae976b023137eae0d7a6879c6437ef333c"
+    },
+    {
+      "path": "before/gantt-html-768-light.png",
+      "width": 768,
+      "height": 1000,
+      "sha256": "6132cac507a943ce0b689a0713e7a2cf7285b5e1c7bc1207c0279c72166ec85c"
+    },
+    {
+      "path": "before/gantt-html-768-light@2x.png",
+      "width": 1536,
+      "height": 2000,
+      "sha256": "b06f8df1a6a37d6451afcbdc9495efae976b023137eae0d7a6879c6437ef333c"
+    },
+    {
+      "path": "before/gantt-mermaid-1440-dark.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "ad87ac38762850cc32535d68059ff3b62513f36e26ae9db648664f86ccb8a190"
+    },
+    {
+      "path": "before/gantt-mermaid-1440-dark@2x.png",
+      "width": 2880,
+      "height": 2000,
+      "sha256": "776a6a19bd9186d80d9f65936281732d25b14ba6095f06d01460136f4ed74e9b"
+    },
+    {
+      "path": "before/gantt-mermaid-1440-light.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "5eca9f6ca5a20a9d2b00b5b94f649fc3ac2c65a33ec1721dc285e583937d0682"
+    },
+    {
+      "path": "before/gantt-mermaid-1440-light@2x.png",
+      "width": 2880,
+      "height": 2000,
+      "sha256": "aaedbc76c5d1c106e702e87e515a7bdeddb0781ef600a89e6bfdb3c484be0c19"
+    },
+    {
+      "path": "before/gantt-mermaid-390-dark.png",
+      "width": 390,
+      "height": 1000,
+      "sha256": "23a665b02cfba363a68fcd4d41528cf054a6278ae0f5c83d24f7ca50980ac2df"
+    },
+    {
+      "path": "before/gantt-mermaid-390-dark@2x.png",
+      "width": 780,
+      "height": 2000,
+      "sha256": "2f892e4e6ff3bcecc0b40cf8fe02e66998c43a03c31b1513faee2683b3150680"
+    },
+    {
+      "path": "before/gantt-mermaid-390-light.png",
+      "width": 390,
+      "height": 1000,
+      "sha256": "20924590cce0ebfd09fe69db1e7be36f25c7ad0990d2889696cd72231c788ccd"
+    },
+    {
+      "path": "before/gantt-mermaid-390-light@2x.png",
+      "width": 780,
+      "height": 2000,
+      "sha256": "bfc00a46fd452506973a736a41fbb1b22489365ddf1e535f474cf859603479dc"
+    },
+    {
+      "path": "before/gantt-mermaid-768-dark.png",
+      "width": 768,
+      "height": 1000,
+      "sha256": "c827f19d6eb468e59fcdf377d9366dc1bba6e13e553d1b2677481332855944a0"
+    },
+    {
+      "path": "before/gantt-mermaid-768-dark@2x.png",
+      "width": 1536,
+      "height": 2000,
+      "sha256": "701a8e69cda35853f59563b7d33a3800adbac0729a18f1337a8ce71b5fc349be"
+    },
+    {
+      "path": "before/gantt-mermaid-768-light.png",
+      "width": 768,
+      "height": 1000,
+      "sha256": "d5878f493a840995a1126083b131bfd01705736e0334bc91b1769372727300f2"
+    },
+    {
+      "path": "before/gantt-mermaid-768-light@2x.png",
+      "width": 1536,
+      "height": 2000,
+      "sha256": "f8da4aff12ca63cf393598d3d5ce3357f2066de59bbaa52fc690243249761298"
+    },
+    {
+      "path": "before/gantt-svg-1440-dark.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "5154092851f8ba77ed4f4ecb031a9f82fd27faa178f732d1501ef1d732c9f0f4"
+    },
+    {
+      "path": "before/gantt-svg-1440-dark@2x.png",
+      "width": 2880,
+      "height": 2000,
+      "sha256": "ee64320c009e08788332afd4c636145df34c33083675356fccc9e81f4e225a72"
+    },
+    {
+      "path": "before/gantt-svg-1440-light.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "6381c0bfab88dfdf41d6c8cde0b93a2a7da40fe3b5f661407484e4fcb9c4f1dd"
+    },
+    {
+      "path": "before/gantt-svg-1440-light@2x.png",
+      "width": 2880,
+      "height": 2000,
+      "sha256": "1d549b3345e3254b37719d0f6d2a00dc33504d7edf72d190619a1e53c6be728d"
+    },
+    {
+      "path": "before/gantt-svg-390-dark.png",
+      "width": 390,
+      "height": 1000,
+      "sha256": "4af3124e9c65241a8fb0d2ce9f390a7a5ab511877cc563a1e7c041b370e407b8"
+    },
+    {
+      "path": "before/gantt-svg-390-dark@2x.png",
+      "width": 780,
+      "height": 2000,
+      "sha256": "ce9b9631cc77009be34683dff0121fa3dfc8c4f183e2094112c84547aa23acbc"
+    },
+    {
+      "path": "before/gantt-svg-390-light.png",
+      "width": 390,
+      "height": 1000,
+      "sha256": "11e91b68e69a6993a518a7c2977701e56a79b4d8d23daa5cbaec12133c0efb79"
+    },
+    {
+      "path": "before/gantt-svg-390-light@2x.png",
+      "width": 780,
+      "height": 2000,
+      "sha256": "cd80bf247939ba9996d4edfeca74c7c002e0df1909db8beba39be4fb26d8a664"
+    },
+    {
+      "path": "before/gantt-svg-768-dark.png",
+      "width": 768,
+      "height": 1000,
+      "sha256": "53575da6c5987956925ccc244eb5a413d396e9df962d4782833838dc4111d5eb"
+    },
+    {
+      "path": "before/gantt-svg-768-dark@2x.png",
+      "width": 1536,
+      "height": 2000,
+      "sha256": "751174b19cf170615552317ebb08c1b89a20a2bf1ac422bab77abf1e48841d8c"
+    },
+    {
+      "path": "before/gantt-svg-768-light.png",
+      "width": 768,
+      "height": 1000,
+      "sha256": "8b5c6592e0b4841c2e36df8c03a6a048c3670dcac5e67177f2d4ff5e3d91b4a6"
+    },
+    {
+      "path": "before/gantt-svg-768-light@2x.png",
+      "width": 1536,
+      "height": 2000,
+      "sha256": "4f8e527b7f998409abe6b4b59185406b830b5f3ce5305216611bc099175c6d05"
+    },
+    {
+      "path": "after/gantt-html-1440-dark.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "4a7665d47ac87fd6af742ae88c2bf9d08390c3e0e71daef29a159902169faa49"
+    },
+    {
+      "path": "after/gantt-html-1440-dark@2x.png",
+      "width": 2880,
+      "height": 2000,
+      "sha256": "1e834c7688b54c680d4863792cd145d65e33df8dd0accbb6d099d874c6aeb81f"
+    },
+    {
+      "path": "after/gantt-html-1440-light.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "d43b39183cb50780f8bbe1c439ceda2d5cca9aa2004fd4b54e135ebece0366f8"
+    },
+    {
+      "path": "after/gantt-html-1440-light@2x.png",
+      "width": 2880,
+      "height": 2000,
+      "sha256": "f339fd3fc3cadc0fdcc484aab89bbc7af38bc1d999219d75d929f39e2e2941df"
+    },
+    {
+      "path": "after/gantt-html-390-dark.png",
+      "width": 390,
+      "height": 1516,
+      "sha256": "2264c3ce77e2ac923f88f58679818f962af820a51c74814aeb1cc56a3470eca6"
+    },
+    {
+      "path": "after/gantt-html-390-dark@2x.png",
+      "width": 780,
+      "height": 3034,
+      "sha256": "2c8f42515c0f69a0c62ed5b2bb2f9ac59d626b668163b2c9f2f4f3a5a04a65f4"
+    },
+    {
+      "path": "after/gantt-html-390-light.png",
+      "width": 390,
+      "height": 1516,
+      "sha256": "6d822bc3b5061f3fc80e5e17e9abd72dadcc58017285ef880f1267c5f4cbbf94"
+    },
+    {
+      "path": "after/gantt-html-390-light@2x.png",
+      "width": 780,
+      "height": 3034,
+      "sha256": "33e9d58e831b135318895954a1bc19ca9e293e11a1d25ce25e893ffc2bd909a9"
+    },
+    {
+      "path": "after/gantt-html-768-dark.png",
+      "width": 768,
+      "height": 1065,
+      "sha256": "fcdc4dcd8f4f84e3689154a0963677e87bec29f5ed32cca1c4de3103bb847f85"
+    },
+    {
+      "path": "after/gantt-html-768-dark@2x.png",
+      "width": 1536,
+      "height": 2130,
+      "sha256": "0455e1c1ed55308e7d47e9668c796aa2251c95645a748ec8c250059b0674c42d"
+    },
+    {
+      "path": "after/gantt-html-768-light.png",
+      "width": 768,
+      "height": 1065,
+      "sha256": "a1a14dcdc81ef3804b209da7be8a22bb2c80a91d3e0064c6eb766563bbf6f178"
+    },
+    {
+      "path": "after/gantt-html-768-light@2x.png",
+      "width": 1536,
+      "height": 2130,
+      "sha256": "49ce3a3495163d346ba091bcc87fe15220126a13c9578b61071fd8fb986407f2"
+    },
+    {
+      "path": "after/gantt-mermaid-1440-dark.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "c5be77ff493c40af3216c0d45d205cd001b57b511f1cc59180d6b4e03508a853"
+    },
+    {
+      "path": "after/gantt-mermaid-1440-dark@2x.png",
+      "width": 2880,
+      "height": 2000,
+      "sha256": "c9db61a5ff4d7a754bd52ecd9bdc3c71a610388ff6e9efa69c36c916106f91f5"
+    },
+    {
+      "path": "after/gantt-mermaid-1440-light.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "61b07389e6d937567a20ae971ad0feb7b993feeab5e7fafc4204df91749be444"
+    },
+    {
+      "path": "after/gantt-mermaid-1440-light@2x.png",
+      "width": 2880,
+      "height": 2000,
+      "sha256": "0065a03fa6f48fcbafe24219af10f1f5622c49b162244648b33c742f53d9e4f9"
+    },
+    {
+      "path": "after/gantt-mermaid-390-dark.png",
+      "width": 390,
+      "height": 1000,
+      "sha256": "640774b5bfdf5b60edf4fecb3b08aef261d45263af57fe0a15f8f2947887b9e3"
+    },
+    {
+      "path": "after/gantt-mermaid-390-dark@2x.png",
+      "width": 780,
+      "height": 2000,
+      "sha256": "4a0a69c394240117cf3bec0c83a49eea44353e5a77054140b0d803e4707fec55"
+    },
+    {
+      "path": "after/gantt-mermaid-390-light.png",
+      "width": 390,
+      "height": 1000,
+      "sha256": "3a652731e467d03d10d84648d7e487bcec13c3701bc7f87901a3fce03ba493fb"
+    },
+    {
+      "path": "after/gantt-mermaid-390-light@2x.png",
+      "width": 780,
+      "height": 2000,
+      "sha256": "f831de31b2e4f0500cf68e17b0198e236a8082b5c137663a69ce8da6c64bf602"
+    },
+    {
+      "path": "after/gantt-mermaid-768-dark.png",
+      "width": 768,
+      "height": 1000,
+      "sha256": "371aaad68edc79f5e9aa33ccf5dc6608851cae4f89b86e123ba5bf233a3a7b0d"
+    },
+    {
+      "path": "after/gantt-mermaid-768-dark@2x.png",
+      "width": 1536,
+      "height": 2000,
+      "sha256": "9cf243da05e9d50adad1a7231ed2892e9f0e3f8e44877c4ca76d3a785d217e9e"
+    },
+    {
+      "path": "after/gantt-mermaid-768-light.png",
+      "width": 768,
+      "height": 1000,
+      "sha256": "e91f22f797ac2042ae09a2439cd781bdbbb95a3569293f3257417df0ef1611bb"
+    },
+    {
+      "path": "after/gantt-mermaid-768-light@2x.png",
+      "width": 1536,
+      "height": 2000,
+      "sha256": "da5de28c4201881c9938c4ea3f86113c67f2a4f60dcfa472c1c90da8b903fe8c"
+    },
+    {
+      "path": "after/gantt-svg-1440-dark.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "825454fe4ec57e857b00933364c95f0ac8e1c6129612b5c7eb0ea8bcea785bb6"
+    },
+    {
+      "path": "after/gantt-svg-1440-dark@2x.png",
+      "width": 2880,
+      "height": 2000,
+      "sha256": "90e7f928d913a611ea78d774d03c69971378cc219b81623be04b3c9a8a9f22b9"
+    },
+    {
+      "path": "after/gantt-svg-1440-light.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "114a89c73e01155dba1d3da0c002d75cf4d0fde92871a596d284ae4a7f59744c"
+    },
+    {
+      "path": "after/gantt-svg-1440-light@2x.png",
+      "width": 2880,
+      "height": 2000,
+      "sha256": "adf6b7e5e2dada31a20e15b6ca4a15b3560b0f6ed3f6b20bd1c49a0caa5050e5"
+    },
+    {
+      "path": "after/gantt-svg-390-dark.png",
+      "width": 390,
+      "height": 1000,
+      "sha256": "66d8f0e6fcd34bd34fb983e052eb80942773cc2a4260da8aa65aaae678e5747f"
+    },
+    {
+      "path": "after/gantt-svg-390-dark@2x.png",
+      "width": 780,
+      "height": 2000,
+      "sha256": "68949343fb802fcf70f683442ee6808b4678c007bc64646ca762025f4092578c"
+    },
+    {
+      "path": "after/gantt-svg-390-light.png",
+      "width": 390,
+      "height": 1000,
+      "sha256": "07cbd5c056d7f9668340bc50e85d28fd526bcba95b4334ec08f234a594f748e9"
+    },
+    {
+      "path": "after/gantt-svg-390-light@2x.png",
+      "width": 780,
+      "height": 2000,
+      "sha256": "5696705c1d966b8a6fc6a52a8f7eacc99302b194051bd7648006a6a032f38fea"
+    },
+    {
+      "path": "after/gantt-svg-768-dark.png",
+      "width": 768,
+      "height": 1000,
+      "sha256": "9f5ec98b510a130aab1ed1ed5fb1bcf766ae63948e962e8c5ebbb7c134cd16b5"
+    },
+    {
+      "path": "after/gantt-svg-768-dark@2x.png",
+      "width": 1536,
+      "height": 2000,
+      "sha256": "db63d8a62edfc5b3c501757c5ae1c7f847bcffe9df093f2239c14fa7668b03c2"
+    },
+    {
+      "path": "after/gantt-svg-768-light.png",
+      "width": 768,
+      "height": 1000,
+      "sha256": "46e2f4d671d8023e5a780666acbf854845925b880198c74a25021548f3dd11ed"
+    },
+    {
+      "path": "after/gantt-svg-768-light@2x.png",
+      "width": 1536,
+      "height": 2000,
+      "sha256": "9103767ece5a026c5f4f4e93ce5a571ac7196b61735e335cf0cf25989d4edc52"
+    }
+  ]
+}
