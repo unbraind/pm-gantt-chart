@@ -61,3 +61,10 @@ ASCII remains a portable monochrome chart with explicit status glyphs; CSV and
 JSON retain their existing schedule-data contract. Mermaid hosts must retain the
 initialization directive and allow its scoped theme CSS; use SVG when a host strips
 custom Mermaid styles.
+
+The Git devDependency is locked by its exact commit. Its npm lock entry omits the
+optional prepared-archive integrity field: Bun 1.4.3 imports that hash while
+fetching a different Git archive and rejects it. Registry package integrity
+values remain intact. A clean-cache installation reproduces the failure with
+the original Git entry and succeeds with commit-based identity. npm's Git fetcher
+also [ignores archive integrity for Git dependencies](https://github.com/npm/pacote/blob/main/lib/git.js).
