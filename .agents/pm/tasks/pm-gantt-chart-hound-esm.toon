@@ -2,13 +2,22 @@ id: pm-gantt-chart-hound-esm
 title: Align Hound parsing with the declared JavaScript target
 description: Hound reports 45 findings on the generated ESM in PR #152 because its parser assumes ES5. The package targets modern Node and canonical ESLint passes. Configure the external Hound parser or generated-output handling in a separate change; retain canonical lint and coverage gates.
 type: Task
-status: open
+status: in_progress
 priority: 2
 tags: []
 created_at: "2026-10-17T11:40:05.388Z"
-updated_at: "2026-10-17T11:40:07.131Z"
+updated_at: "2026-10-17T12:39:40.811Z"
 author: codex-agent
 acceptance_criteria: Hound parses the emitted JavaScript target without false syntax errors; existing package lint and release gates remain unchanged.
-files[1]{path,scope}:
+comments[2]{created_at,author,text}:
+  "2026-10-17T12:20:07.761Z",codex-agent,Verified all 19 Hound threads target generated ESM in dist. Match the sibling pm-graph .jshintignore exclusions for dist and node_modules; source ESLint and TypeScript checks remain active. No source syntax change is needed.
+  "2026-10-17T12:39:38.205Z",codex-agent,"Round 1 verification: .jshintignore is byte-identical to the sibling pm-graph policy and excludes only dist and node_modules. Canonical source ESLint passes. npm run release:check and bun run release:check each pass 249/249 tests, zero failures/skips, 100% lines/branches/functions for all three gated runtime sources, zero duplication, production audit, and all three packed acceptance scenarios. No runtime source or generated output changed. After the configuration push, reply and resolve only the 19 Hound parser-mode threads."
+files[3]{path,scope}:
+  .jshintignore,project
+  scripts/lint.ts,project
   tsconfig.json,project
+tests[1]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
+  npm run lint,project,codex-agent,"2026-10-17T12:20:13.874Z",local_mutation,brand/triplicate-visuals
+docs[1]{path,scope}:
+  README.md,project
 body: ""
