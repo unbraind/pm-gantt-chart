@@ -1,3 +1,4 @@
+import { brandCss, brandStatus, brandStatuses, mermaidBrand } from "./brand.js";
 import { certifyCompleteListResult, EXIT_CODE, inspectCompleteListResult, PmClient } from "@unbrained/pm-cli/sdk";
 import { resolveWorkspaceRelationshipKindRegistry } from "@unbrained/pm-cli/sdk/graph";
 import { writeFileSync } from "node:fs";
@@ -976,10 +977,7 @@ function renderGantt(rows, opts, windowStart) {
     lines.push(`${"".padEnd(COL_GROUP)}  ${"".padEnd(COL_ITEM)}  ${"".padEnd(COL_ST)}  ${weekDateCols}`);
     // TODAY marker line — parity with the mermaid `%% today:` marker. Drops a
     // caret in the week column that contains `today`, when it falls in-window.
-    const windowEnd = addWeeks(windowStart, weeks);
-    const todayWeek = opts.today >= windowStart && opts.today < windowEnd
-        ? Math.floor((opts.today.getTime() - windowStart.getTime()) / (7 * DAY_MS))
-        : -1;
+    const todayWeek = todayColumn(opts, windowStart);
     if (todayWeek >= 0 && todayWeek < weeks) {
         const markerCells = weekLabels.map((_, w) => (w === todayWeek ? "▼TODAY" : "").padEnd(WEEK_COL));
         pushMarkerLine(lines, markerCells);
@@ -1135,6 +1133,20 @@ function mermaidStatusTag(status) {
  */
 function renderMermaid(rows, opts, windowStart) {
     const lines = [];
+    const taskStyles = rows.map((row, index) => {
+        const status = brandStatus(row.item.status);
+        return `[id="t${index}"],[id$="-t${index}"]{fill:var(--pm-status-${status}-bg);stroke:var(--pm-status-${status}-border);stroke-width:${row.critical ? 3 : 1}px}[id="t${index}-text"][id],[id$="-t${index}-text"][id]{fill:var(--pm-status-${status}-fg)!important;${status === "canceled" ? "text-decoration:line-through;" : ""}}`;
+    }).join("\n");
+    lines.push(mermaidBrand(brandCss + `
+    .section{fill:var(--pm-paper);opacity:1}
+    .exclude-range{fill:var(--pm-sheet)}
+    text{fill:var(--pm-carbon)}
+    .taskText,.taskTextOutsideRight,.taskTextOutsideLeft{fill:var(--pm-carbon)}
+    .sectionTitle{fill:var(--pm-carbon);font-family:var(--pm-font-caption);font-stretch:75%;font-weight:600}
+    .titleText{fill:var(--pm-carbon);font-family:var(--pm-font-display);font-stretch:125%;font-weight:800}
+    .grid .tick text{font-family:var(--pm-font-mono);fill:var(--pm-graphite)!important}
+    .today{stroke:var(--pm-stamp)!important}
+  ` + taskStyles));
     lines.push("gantt");
     lines.push("    dateFormat  YYYY-MM-DD");
     lines.push(`    title       pm gantt (${opts.weeks} weeks from ${isoDay(windowStart)})`);
@@ -1189,7 +1201,7 @@ function renderMermaid(rows, opts, windowStart) {
         // is lost while the diagram stays valid.
         const critTag = row.critical || row.overdue ? "crit, " : "";
         const tag = critTag + mermaidStatusTag(item.status);
-        const name = mermaidSafe(`${item.title} [${item.id}]`);
+        const name = mermaidSafe(`${item.title} [${item.id}] (${item.status})`);
         // `tag, id, startISO, endISO`
         lines.push(`    ${name} :${tag}${taskId}, ${isoDay(start)}, ${isoDay(end)}`);
         if (opts.progress) {
@@ -1488,6 +1500,11 @@ function computeSummary(rows) {
         .sort((a, b) => b.days - a.days || a.group.localeCompare(b.group));
     return { projectStart, projectEnd, spanDays, criticalPathLength, totalTaskDays, workload };
 }
+/** Return the week containing today, or -1 when the date falls outside the chart window. */
+function todayColumn(opts, windowStart) {
+    return opts.today >= windowStart && opts.today < addWeeks(windowStart, opts.weeks)
+        ? Math.floor((opts.today.getTime() - windowStart.getTime()) / (7 * DAY_MS)) : -1;
+}
 /**
  * Render the chart as a standalone, styled HTML document.
  *
@@ -1510,10 +1527,7 @@ function renderHtml(rows, opts, windowStart) {
     // TODAY column: highlight the week column containing opts.today (parity with
     // the ASCII ▼TODAY row and the Mermaid `%% today:` comment). -1 when today
     // falls outside the chart window, in which case no column is highlighted.
-    const windowEndHtml = addWeeks(windowStart, weeks);
-    const todayWeek = opts.today >= windowStart && opts.today < windowEndHtml
-        ? Math.floor((opts.today.getTime() - windowStart.getTime()) / (7 * DAY_MS))
-        : -1;
+    const todayWeek = todayColumn(opts, windowStart);
     const headCols = weekLabels
         .map((l, i) => {
         const todayCls = i === todayWeek ? " today-col" : "";
@@ -1574,8 +1588,8 @@ function renderHtml(rows, opts, windowStart) {
         const due = itemDueDate(item);
         bodyRows.push(`<tr class="status-${htmlEscape(item.status)}${row.overdue ? " is-overdue" : ""}">` +
             groupCell +
-            `<td class="item">${title}<br><span class="meta">${htmlEscape(item.id)}${due ? ' · due <span class="due">' + htmlEscape(isoDay(parseDate(due))) + "</span>" : ""}</span></td>` +
-            `<td class="st" title="${htmlEscape(item.status)}">${htmlEscape(item.status)}</td>` +
+            `<td class="item"><span class="strip">${htmlEscape(item.id)} · ${htmlEscape(item.type ?? "Task")} · P${htmlEscape(String(item.priority ?? 2))}</span><br>${title}<br><span class="meta">${htmlEscape(item.id)}${due ? ' · due <span class="due">' + htmlEscape(isoDay(parseDate(due))) + "</span>" : ""}</span></td>` +
+            `<td class="st" title="${htmlEscape(item.status)}"><span class="status-chip">${htmlEscape(item.status)}</span></td>` +
             cells.join("") +
             `</tr>`);
     }
@@ -1615,50 +1629,66 @@ ${workloadRows}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${htmlEscape(title)}</title>
 <style>
-  :root { color-scheme: light dark; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 1.5rem; background: #fafafa; color: #1a1a1a; }
-  h1 { font-size: 1.2rem; margin: 0 0 1rem; }
-  table { border-collapse: collapse; font-size: 0.8rem; width: 100%; }
-  th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; }
-  th { background: #f0f0f0; font-weight: 600; vertical-align: bottom; }
-  .wk { font-weight: 400; color: #888; font-size: 0.7rem; }
-  td.group { font-weight: 600; white-space: nowrap; }
-  td.item { white-space: nowrap; }
-  .meta { color: #888; font-size: 0.7rem; }
-  td.st { text-transform: capitalize; white-space: nowrap; }
-  td.cell { width: 28px; min-width: 28px; padding: 0; position: relative; }
-  td.bar.planned  { background: #b3d4fc; }
-  td.bar.active   { background: #2b7de9; }
-  td.bar.critical { background: #e05c5c; }
-  td.cell.undated { background: repeating-linear-gradient(45deg,#eee,#eee 4px,#f7f7f7 4px,#f7f7f7 8px); }
-  /* off-window directional hint: dates fall before / after the chart window */
-  td.cell.offwindow { text-align: center; color: #b07000; font-weight: 700; }
-  .offwindow-hint { font-size: 0.95rem; }
-  /* overdue bars: red striped overlay + a warning marker on the row label */
-  td.bar.overdue { background: repeating-linear-gradient(45deg,#e05c5c,#e05c5c 5px,#c23b3b 5px,#c23b3b 10px); }
-  tr.is-overdue td.item .due { color: #c23b3b; font-weight: 700; }
-  .overdue-mark { color: #c23b3b; font-weight: 700; font-size: 0.72rem; }
-  /* --progress fill overlay: a darker band sized to the completion ratio */
-  td.bar .fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(0,0,0,0.35); }
-  .pct { color: #2b7de9; font-size: 0.72rem; font-weight: 600; }
-  /* TODAY column highlight (parity with ASCII ▼TODAY / Mermaid %% today:) */
-  th.today-col, td.today-col { box-shadow: inset 2px 0 0 #d33, inset -2px 0 0 #d33; }
-  td.cell.today-col { background-image: linear-gradient(rgba(221,51,51,0.10),rgba(221,51,51,0.10)); }
-  .today-mark { color: #d33; font-weight: 700; font-size: 0.66rem; }
-  .crit-mark { color: #e05c5c; }
-  .legend { margin-top: 1rem; font-size: 0.78rem; color: #555; }
-  .legend span { display: inline-block; margin-right: 1rem; }
-  .swatch { display: inline-block; width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; border: 1px solid #ccc; }
-  tr.status-closed td.item { text-decoration: line-through; color: #999; }
-  h2 { font-size: 1rem; margin: 1.4rem 0 0.5rem; }
-  table.summary, table.workload { width: auto; min-width: 18rem; }
-  table.summary th, table.workload th { text-align: left; }
-  table.summary td, table.workload td { white-space: nowrap; }
+  ${brandCss}
+  * { box-sizing: border-box; }
+  body { font-family: var(--pm-font-body); margin: clamp(12px, 3vw, 32px); background: var(--pm-paper); color: var(--pm-carbon); }
+  h1 { font-family: var(--pm-font-display); font-stretch:125%; font-weight:800; font-size:clamp(1.2rem, 3vw, 2.3rem); margin:0 0 1.5rem; }
+  table { border-collapse:separate; border-spacing:0 6px; font-size:.82rem; max-width:100%; table-layout:fixed; }
+  th, td { padding:8px; text-align:left; overflow-wrap:anywhere; }
+  th { font-family:var(--pm-font-caption); font-stretch:75%; font-weight:600; text-transform:uppercase; letter-spacing:.09em; color:var(--pm-graphite); vertical-align:bottom; }
+  td { background:var(--pm-sheet); border-top:1px solid var(--pm-rule); border-bottom:1px solid var(--pm-rule); }
+  td:first-child { border-left:1px solid var(--pm-rule); border-radius:var(--pm-radius) 0 0 var(--pm-radius); }
+  td:last-child { border-right:1px solid var(--pm-rule); border-radius:0 var(--pm-radius) var(--pm-radius) 0; }
+  .wk,.meta,.strip,.due,.pct,.summary td,.workload td,h1 time { font-family:var(--pm-font-mono); }
+  .wk,.meta { color:var(--pm-graphite); font-size:.72rem; }
+  .strip { font-size:.7rem; color:var(--pm-graphite); }
+  td.group { font-weight:600; }
+  td.item { width:30%; }
+  .status-chip { display:inline-block; border:1px solid var(--pm-status-open-border); background:var(--pm-status-open-bg); color:var(--pm-status-open-fg); border-radius:var(--pm-radius-sm); padding:3px 5px; font-size:.7rem; }
+  ${brandStatuses.map(status => `.status-${status} .status-chip { color:var(--pm-status-${status}-fg);background:var(--pm-status-${status}-bg);border-color:var(--pm-status-${status}-border); }`).join("\n  ")}
+  .status-canceled .status-chip { text-decoration:line-through; }
+  td.cell { width:28px; min-width:0; padding:0; position:relative; }
+  td.bar { background:var(--pm-sheet); box-shadow:inset 0 0 0 1px var(--pm-carbon); }
+  tr.status-in_progress td.bar { background:var(--pm-canary-wash); box-shadow:inset 0 0 0 1px var(--pm-canary); }
+  tr.status-blocked td.bar { background:var(--pm-rose-wash); box-shadow:inset 0 0 0 1px var(--pm-rose); }
+  tr.status-closed td.bar { box-shadow:inset 0 0 0 1px var(--pm-stamp); }
+  tr.status-canceled td.bar { background:var(--pm-paper); box-shadow:inset 0 0 0 1px var(--pm-rule); }
+  td.bar.critical { outline:2px solid var(--pm-carbon); outline-offset:-3px; }
+  td.bar.overdue { border-bottom:3px dashed var(--pm-graphite); }
+  td.cell.undated { background:repeating-linear-gradient(45deg,var(--pm-paper),var(--pm-paper) 4px,var(--pm-sheet) 4px,var(--pm-sheet) 8px); }
+  td.cell.offwindow { text-align:center; color:var(--pm-carbon); font-weight:700; }
+  .offwindow-hint { font-size:.95rem; }
+  tr.is-overdue .due { font-weight:700; }
+  .overdue-mark,.crit-mark,.pct,.today-mark { color:var(--pm-carbon); font-weight:600; }
+  .overdue-mark { font-size:.72rem; }
+  td.bar .fill { position:absolute; left:0; top:50%; bottom:0; background:var(--pm-carbon); opacity:.2; }
+  th.today-col,td.today-col { border-left:2px solid var(--pm-stamp); }
+  .today-mark { font-family:var(--pm-font-mono); font-size:.66rem; }
+  .legend { margin-top:1rem; font-size:.78rem; color:var(--pm-graphite); display:flex; gap:12px; flex-wrap:wrap; }
+  .legend span { display:inline-block; }
+  h2 { font-family:var(--pm-font-caption); font-stretch:75%; text-transform:uppercase; letter-spacing:.09em; font-size:1rem; margin:1.4rem 0 .5rem; }
+  table.summary,table.workload { width:100%; }
+  :focus-visible { outline:var(--pm-focus); outline-offset:var(--pm-focus-offset); }
+  @media(prefers-reduced-motion:reduce) { * { animation:none; transition:none; } }
+  @media(max-width:600px) {
+    table[style] { display:block; width:100%!important; table-layout:auto; }
+    table[style] colgroup { display:none; }
+    table[style] thead,table[style] tbody { display:block; width:100%; }
+    table[style] tr { display:grid; width:100%; grid-template-columns:repeat(${weeks},minmax(0,1fr)); margin-bottom:12px; border:1px solid var(--pm-rule); border-radius:var(--pm-radius); background:var(--pm-sheet); padding:8px; }
+    table[style] thead tr { border:0; border-radius:0; background:none; padding:0; }
+    table[style] thead th:nth-child(-n+3) { display:none; }
+    table[style] th { min-width:0; padding:4px; font-size:.7rem; }
+    table[style] td { border:0!important; border-radius:0!important; padding:5px; }
+    table[style] td.group,table[style] td.item,table[style] td.st { grid-column:1/-1; width:auto; }
+    table[style] td.group:empty { display:none; }
+    table[style] td.cell { width:auto; min-height:24px; }
+  }
 </style>
 </head>
 <body>
-<h1>${htmlEscape(title)}</h1>
+<h1>pm gantt — ${weeks} weeks from <time datetime="${isoDay(windowStart)}">${isoDay(windowStart)}</time></h1>
 <table style="width:${opts.width}px">
+<colgroup><col style="width:9%"><col style="width:30%"><col style="width:12%">${weekLabels.map(() => `<col style="width:${49 / weeks}%">`).join("")}</colgroup>
 <thead>
 <tr><th>Group</th><th>Item</th><th>Status</th>${headCols}</tr>
 </thead>
@@ -1674,14 +1704,12 @@ ${summaryRows.join("\n")}
 </table>
 ${workloadBlock}
 <div class="legend">
-  <span><i class="swatch" style="background:#2b7de9"></i>in_progress / blocked</span>
-  <span><i class="swatch" style="background:#b3d4fc"></i>open / planned</span>
-  ${opts.criticalPath ? '<span><i class="swatch" style="background:#e05c5c"></i>critical path (★)</span>' : ""}
-  <span><i class="swatch" style="background:#eee"></i>undated</span>
-  <span><i class="swatch" style="background:repeating-linear-gradient(45deg,#e05c5c,#e05c5c 5px,#c23b3b 5px,#c23b3b 10px)"></i>overdue (deadline passed)</span>
-  <span style="color:#b07000;font-weight:700">← / →</span> off-window (earlier / later)
-  ${opts.progress ? '<span><i class="swatch" style="background:rgba(0,0,0,0.35)"></i>% complete fill</span>' : ""}
-  ${todayWeek >= 0 ? '<span style="color:#d33;font-weight:700">▼ today</span> current week' : ""}
+  ${brandStatuses.map(status => `<span class="status-${status}"><span class="status-chip">${status}</span></span>`).join("\n  ")}
+  ${opts.criticalPath ? '<span>★ critical path</span>' : ""}
+  <span>Hatched cells: undated</span><span>Dashed edge: overdue (deadline passed)</span>
+  <span>← / → off-window (earlier / later)</span>
+  ${opts.progress ? '<span>Lower band: % complete fill</span>' : ""}
+  ${todayWeek >= 0 ? '<span>▼ today · current week</span>' : ""}
 </div>
 </body>
 </html>`;
@@ -1723,157 +1751,110 @@ function svgEscape(s) {
 function renderSvg(rows, opts, windowStart) {
     const weeks = opts.weeks;
     const weekLabels = buildWeekLabels(windowStart, weeks);
-    // Layout constants (px). The left gutter holds the group + item + status
-    // labels; the chart area fills the remaining width. --width is the requested
-    // canvas width, but long timelines expand it enough to retain a readable
-    // 24px minimum per week instead of drawing beyond the viewBox.
     const requestedW = Math.max(320, Math.round(opts.width));
     const PAD = 16;
-    const GROUP_W = 120;
-    const ITEM_W = 190;
-    const STATUS_W = 56;
+    const GROUP_W = 110;
+    const ITEM_W = 300;
+    const STATUS_W = 110;
     const GUTTER = GROUP_W + ITEM_W + STATUS_W;
     const W = Math.max(requestedW, PAD + GUTTER + PAD + weeks * 24);
-    const chartW = W - PAD - GUTTER - PAD;
-    const colW = chartW / weeks;
-    const rowH = 26;
-    const headerH = 86; // title + week labels + today/milestone marker rows
-    const legendH = 64;
-    const H = PAD + headerH + rows.length * rowH + PAD + legendH;
+    const colW = (W - PAD - GUTTER - PAD) / weeks;
+    const rowH = 52;
     const chartX = PAD + GUTTER;
-    const chartY = PAD + headerH;
-    const today = opts.today;
-    const windowEnd = addWeeks(windowStart, weeks);
-    const todayWeek = today >= windowStart && today < windowEnd
-        ? Math.floor((today.getTime() - windowStart.getTime()) / (7 * DAY_MS))
-        : -1;
-    // Bar color by status / critical / overdue.
-    const barColor = (row) => {
-        if (row.overdue)
-            return "#c23b3b";
-        if (row.critical)
-            return "#e05c5c";
-        if (row.item.status === "in_progress" || row.item.status === "blocked")
-            return "#2b7de9";
-        return "#b3d4fc";
-    };
-    const parts = [];
-    parts.push(`<?xml version="1.0" encoding="UTF-8"?>`);
-    parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">`);
-    parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="#fafafa"/>`);
-    // Title
-    parts.push(`<text x="${PAD}" y="${PAD + 16}" font-size="13" font-weight="600" fill="#1a1a1a">` +
-        `pm gantt \u2014 ${weeks} weeks from ${isoDay(windowStart)}` +
-        (opts.criticalPath ? " \u2022 critical path marked" : "") +
-        `</text>`);
-    // Header: column labels (W1..Wn) with week dates.
-    parts.push(`<text x="${PAD}" y="${PAD + 40}" font-size="10" font-weight="600" fill="#555">GROUP</text>`);
-    parts.push(`<text x="${PAD + GROUP_W}" y="${PAD + 40}" font-size="10" font-weight="600" fill="#555">ITEM</text>`);
-    parts.push(`<text x="${PAD + GROUP_W + ITEM_W}" y="${PAD + 40}" font-size="10" font-weight="600" fill="#555">STATUS</text>`);
+    const chartY = PAD + 100;
+    const legendH = 88;
+    const H = chartY + rows.length * rowH + PAD + legendH;
+    const todayWeek = todayColumn(opts, windowStart);
+    const parts = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="pm-gantt-title" style="max-width:100%;height:auto">`,
+        `<title id="pm-gantt-title">pm gantt — ${weeks} weeks from ${isoDay(windowStart)}</title>`,
+        `<style>${brandCss}
+      text{font-family:var(--pm-font-body);fill:var(--pm-carbon)}
+      .data{font-family:var(--pm-font-mono)} .caption{font-family:var(--pm-font-caption);font-stretch:75%;font-weight:600;letter-spacing:.09em}
+      .secondary{fill:var(--pm-graphite)} .chip{rx:var(--pm-radius-sm)}
+      .status-canceled .status-label{text-decoration:line-through}
+      @media(prefers-reduced-motion:reduce){*{animation:none;transition:none}}
+    </style>`,
+        `<rect width="${W}" height="${H}" fill="var(--pm-paper)"/>`,
+        `<text x="${PAD}" y="38" font-size="22" font-weight="800" style="font-family:var(--pm-font-display);font-stretch:125%">pm gantt — ${weeks} weeks from <tspan class="data">${isoDay(windowStart)}</tspan>${opts.criticalPath ? " • critical path marked" : ""}</text>`,
+    ];
+    for (const [offset, label] of [[0, 'GROUP'], [GROUP_W, 'ITEM'], [GROUP_W + ITEM_W, 'STATUS']]) {
+        parts.push(`<text class="caption secondary" x="${PAD + offset}" y="72" font-size="10">${label}</text>`);
+    }
     for (let w = 0; w < weeks; w++) {
         const x = chartX + w * colW;
-        const cls = w === todayWeek ? " fill=\"#d33\" font-weight=\"700\"" : " fill=\"#888\"";
-        parts.push(`<text x="${x + 2}" y="${PAD + 40}" font-size="9"${cls}>W${w + 1}</text>`);
-        parts.push(`<text x="${x + 2}" y="${PAD + 52}" font-size="8" fill="#aaa">${svgEscape(weekLabels[w])}</text>`);
+        parts.push(`<text class="data" x="${x + 2}" y="72" font-size="10">W${w + 1}</text>`);
+        parts.push(`<text class="data secondary" x="${x + 2}" y="88" font-size="9">${svgEscape(weekLabels[w])}</text>`);
     }
-    // Milestone diamonds (in-window only).
     for (const m of opts.milestones) {
         const mw = milestoneWeek(m.date, windowStart, weeks);
         if (mw < 0)
             continue;
         const mx = chartX + mw * colW + colW / 2;
-        const my = chartY - 18;
-        parts.push(`<polygon points="${mx},${my - 5} ${mx + 5},${my} ${mx},${my + 5} ${mx - 5},${my}" fill="#d4a017" stroke="#8a6d00"/>`);
-        parts.push(`<text x="${mx + 7}" y="${my + 3}" font-size="8" font-weight="600" fill="#8a6d00">${svgEscape(m.name)}</text>`);
+        const my = chartY - 14;
+        parts.push(`<polygon points="${mx},${my - 5} ${mx + 5},${my} ${mx},${my + 5} ${mx - 5},${my}" fill="var(--pm-sheet)" stroke="var(--pm-carbon)"/>`);
+        parts.push(`<text class="data" x="${mx + 7}" y="${my + 3}" font-size="9">${svgEscape(m.name)}</text>`);
     }
-    // Header separator.
-    parts.push(`<line x1="${PAD}" y1="${chartY}" x2="${W - PAD}" y2="${chartY}" stroke="#ddd"/>`);
-    // Body rows.
-    let lastGroup = "";
+    let lastGroup = '';
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const y = chartY + i * rowH;
-        // Alternating row background for legibility.
-        if (i % 2 === 1) {
-            parts.push(`<rect x="${PAD}" y="${y}" width="${W - PAD * 2}" height="${rowH}" fill="#f4f4f4"/>`);
-        }
-        const showGroup = row.group !== lastGroup;
+        const status = brandStatus(row.item.status);
+        parts.push(`<g class="status-${status}" data-item="${svgEscape(row.item.id)}">`);
+        parts.push(`<title>${svgEscape(row.item.title)} · ${svgEscape(row.item.status)}</title>`);
+        parts.push(`<rect x="${PAD}" y="${y}" width="${W - PAD * 2}" height="${rowH - 4}" rx="6" fill="var(--pm-sheet)" stroke="var(--pm-rule)"/>`);
+        if (row.group !== lastGroup)
+            parts.push(`<text x="${PAD + 6}" y="${y + 29}" font-size="11">${svgEscape(row.group)}</text>`);
         lastGroup = row.group;
-        if (showGroup) {
-            parts.push(`<text x="${PAD + 2}" y="${y + 16}" font-size="10" font-weight="600" fill="#333">${svgEscape(row.group)}</text>`);
-        }
-        const titlePrefix = row.critical ? "* " : "";
-        parts.push(`<text x="${PAD + GROUP_W + 2}" y="${y + 16}" font-size="10" fill="#1a1a1a">${svgEscape(titlePrefix + row.item.title)}</text>`);
-        parts.push(`<text x="${PAD + GROUP_W + 2}" y="${y + 16 + 11}" font-size="8" fill="#aaa">${svgEscape(row.item.id)}</text>`);
-        parts.push(`<text x="${PAD + GROUP_W + ITEM_W + 4}" y="${y + 16}" font-size="9" fill="#555">${svgEscape(row.item.status)}</text>`);
-        // Bars / off-window hints per week column.
+        const ix = PAD + GROUP_W + 6;
+        parts.push(`<clipPath id="pm-item-${i}"><rect x="${ix}" y="${y}" width="${ITEM_W - 12}" height="${rowH}"/></clipPath>`);
+        parts.push(`<g clip-path="url(#pm-item-${i})"><text class="data secondary" x="${ix}" y="${y + 13}" font-size="8">${svgEscape(row.item.id)} · ${svgEscape(row.item.type ?? 'Task')} · P${svgEscape(String(row.item.priority ?? 2))}</text>`);
+        parts.push(`<text x="${ix}" y="${y + 31}" font-size="11">${svgEscape((row.critical ? '* ' : '') + row.item.title)}</text></g>`);
+        const sx = PAD + GROUP_W + ITEM_W + 4;
+        parts.push(`<rect class="chip" x="${sx}" y="${y + 18}" width="98" height="20" rx="3" fill="var(--pm-status-${status}-bg)" stroke="var(--pm-status-${status}-border)"/>`);
+        parts.push(`<text class="status-label data" x="${sx + 5}" y="${y + 31}" font-size="9" style="fill:var(--pm-status-${status}-fg)">${svgEscape(row.item.status)}</text>`);
         for (let w = 0; w < weeks; w++) {
             const cx = chartX + w * colW;
             if (row.startWeek === null) {
-                if (row.offWindow === "before" && w === 0) {
-                    parts.push(`<text x="${cx + colW / 2}" y="${y + 17}" font-size="12" font-weight="700" fill="#b07000" text-anchor="middle">\u2190</text>`);
-                }
-                else if (row.offWindow === "after" && w === weeks - 1) {
-                    parts.push(`<text x="${cx + colW / 2}" y="${y + 17}" font-size="12" font-weight="700" fill="#b07000" text-anchor="middle">\u2192</text>`);
-                }
+                if (row.offWindow === 'before' && w === 0)
+                    parts.push(`<text x="${cx + colW / 2}" y="${y + 31}" font-size="12" text-anchor="middle">←</text>`);
+                else if (row.offWindow === 'after' && w === weeks - 1)
+                    parts.push(`<text x="${cx + colW / 2}" y="${y + 31}" font-size="12" text-anchor="middle">→</text>`);
                 continue;
             }
-            if (w >= row.startWeek && w <= (row.endWeek)) {
-                const fill = barColor(row);
-                const bx = cx + 1;
-                const by = y + 5;
-                const bw = Math.max(1, colW - 2);
-                const bh = rowH - 10;
-                parts.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="2" fill="${fill}"/>`);
-                // --progress fill overlay sized to completion ratio.
+            if (w >= row.startWeek && w <= row.endWeek) {
+                const bw = Math.max(1, colW - 4);
+                const by = y + 24;
+                parts.push(`<rect x="${cx + 2}" y="${by}" width="${bw}" height="16" rx="3" fill="var(--pm-status-${status}-bg)" stroke="var(--pm-status-${status}-border)" stroke-width="${row.critical ? 3 : 1}"${row.overdue ? ' stroke-dasharray="3 2"' : ''}/>`);
                 if (opts.progress) {
                     const fw = Math.max(0, Math.min(bw, (row.progress / 100) * bw));
-                    if (fw > 0) {
-                        parts.push(`<rect x="${bx}" y="${by}" width="${fw}" height="${bh}" rx="2" fill="rgba(0,0,0,0.35)"/>`);
-                    }
+                    if (fw > 0)
+                        parts.push(`<rect x="${cx + 2}" y="${by + 8}" width="${fw}" height="8" fill="var(--pm-carbon)" opacity=".2"/>`);
                 }
             }
         }
-        // Emit one progress label per task, after all of its week cells, so a
-        // multi-week bar cannot produce duplicated/overlapping percentage text.
         if (opts.progress && row.startWeek !== null) {
-            const lastWeek = Math.min(weeks - 1, row.endWeek);
-            const px = chartX + (lastWeek + 1) * colW - 3;
-            parts.push(`<text x="${px}" y="${y + 16}" font-size="8" font-weight="600" fill="#2b7de9" text-anchor="end">${row.progress}%</text>`);
+            const px = chartX + (Math.min(weeks - 1, row.endWeek) + 1) * colW - 3;
+            parts.push(`<text class="data" x="${px}" y="${y + 17}" font-size="9" text-anchor="end">${row.progress}%</text>`);
         }
-        // Overdue marker after the chart area.
-        if (row.overdue) {
-            parts.push(`<text x="${W - PAD - 2}" y="${y + 16}" font-size="8" font-weight="700" fill="#c23b3b" text-anchor="end">\u203c overdue</text>`);
-        }
+        if (row.overdue)
+            parts.push(`<text x="${W - PAD - 6}" y="${y + 46}" font-size="9" font-weight="700" text-anchor="end">‼ overdue</text>`);
+        parts.push('</g>');
     }
-    // Draw TODAY after row backgrounds and bars so the rule remains visible
-    // across every row rather than being painted over by later SVG elements.
     if (todayWeek >= 0) {
         const tx = chartX + todayWeek * colW + colW / 2;
-        parts.push(`<line x1="${tx}" y1="${chartY - 6}" x2="${tx}" y2="${chartY + rows.length * rowH}" stroke="#d33" stroke-width="1" stroke-dasharray="3 3"/>`);
-        parts.push(`<text x="${tx + 2}" y="${chartY - 8}" font-size="8" font-weight="700" fill="#d33">\u25bc today</text>`);
+        parts.push(`<line x1="${tx}" y1="${chartY - 6}" x2="${tx}" y2="${chartY + rows.length * rowH}" stroke="var(--pm-stamp)" stroke-width="1" stroke-dasharray="3 3"/>`);
+        parts.push(`<text class="data" x="${tx + 2}" y="${chartY - 8}" font-size="9">▼ today</text>`);
     }
-    // Bottom separator + legend.
     const legendY = chartY + rows.length * rowH + PAD;
-    parts.push(`<line x1="${PAD}" y1="${legendY}" x2="${W - PAD}" y2="${legendY}" stroke="#ddd"/>`);
-    const swatches = [
-        { color: "#2b7de9", label: "in_progress / blocked" },
-        { color: "#b3d4fc", label: "open / planned" },
-    ];
-    if (opts.criticalPath)
-        swatches.push({ color: "#e05c5c", label: "critical path" });
-    if (rows.some((r) => r.overdue))
-        swatches.push({ color: "#c23b3b", label: "overdue" });
-    if (opts.progress)
-        swatches.push({ color: "rgba(0,0,0,0.35)", label: "% complete" });
-    let lx = PAD;
-    for (const sw of swatches) {
-        parts.push(`<rect x="${lx}" y="${legendY + 8}" width="12" height="12" rx="2" fill="${sw.color}"/>`);
-        parts.push(`<text x="${lx + 16}" y="${legendY + 18}" font-size="9" fill="#555">${svgEscape(sw.label)}</text>`);
-        lx += 16 + sw.label.length * 5 + 16;
-    }
-    parts.push(`</svg>`);
-    return parts.join("\n");
+    brandStatuses.forEach((status, index) => {
+        const lx = PAD + index * 125;
+        parts.push(`<g class="status-${status}"><rect x="${lx}" y="${legendY}" width="116" height="22" rx="3" fill="var(--pm-status-${status}-bg)" stroke="var(--pm-status-${status}-border)"/><text class="status-label data" x="${lx + 5}" y="${legendY + 15}" font-size="9" style="fill:var(--pm-status-${status}-fg)">${status}</text></g>`);
+    });
+    parts.push(`<text class="secondary" x="${PAD}" y="${legendY + 46}" font-size="10">${opts.criticalPath ? '* critical path · ' : ''}Dashed edge: overdue${opts.progress ? ' · Lower band: % complete' : ''} · ← / → off-window</text>`);
+    parts.push('</svg>');
+    return parts.join('\n');
 }
 // ---------------------------------------------------------------------------
 // Shared option parsing + data fetch
