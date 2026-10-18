@@ -13,7 +13,7 @@ Every item sheet opens with actual id, type and priority data. Paper, ruled shee
 borders and carbon ink use contract values. Status labels have distinct borders
 and fills: outlined open, canary-wash in_progress, rose-wash blocked, stamp closed,
 and struck graphite canceled. Draft/custom states stay neutral. Canary and rose
-are used only for the two working states. There is no merge animation.
+are used only for the two working states. Exports are static records for any agent, task or workflow.
 
 Archivo, Public Sans and Martian Mono lead the appropriate font stacks. Portable
 exports request no font URLs: renderers use installed fonts or the declared
@@ -29,7 +29,9 @@ creation date and hierarchy are retained; no hosted data is used.
 
 ```sh
 node test/render-triplicate.ts REVIEW_OUTPUT
-node test/revert-triplicate.ts origin/main
+node test/revert-triplicate.ts
+node test/revert-triplicate.ts --labels
+node test/revert-triplicate.ts --glyphs
 node --test test/brand-values.test.ts test/triplicate-visuals.test.ts
 npm run release:check
 bun run release:check
@@ -68,3 +70,14 @@ fetching a different Git archive and rejects it. Registry package integrity
 values remain intact. A clean-cache installation reproduces the failure with
 the original Git entry and succeeds with commit-based identity. npm's Git fetcher
 also [ignores archive integrity for Git dependencies](https://github.com/npm/pacote/blob/main/lib/git.js).
+
+Native Inkscape 1.4 acceptance for issue #153 remains pending. The resvg
+record proves a separate rasterizer check and does not satisfy that criterion.
+SVG headings and item labels fit complete words with an ellipsis; accessible
+SVG titles retain the full text, including critical-path context.
+
+The raster regression loads the small licensed DejaVu Sans subset in
+`test/fixtures/readability.ttf` with system-font discovery disabled. It compares
+the item-title pixels with the same chart after removing visible text, so
+non-text shapes cannot satisfy the glyph assertion. This is test data only;
+exports continue to use the contract font stacks.

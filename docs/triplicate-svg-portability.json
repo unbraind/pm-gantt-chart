@@ -1,6 +1,6 @@
 {
   "fixture": "test/fixtures/triplicate.json",
-  "renderer": "resvg 2.6.2; local fonts only",
+  "renderer": "resvg 2.6.2; checked-in DejaVu Sans test subset; system fonts disabled",
   "raster_regression": "standalone SVG retains literal paper, ink and status paints in a non-browser rasterizer",
   "browser_cases": [
     {
@@ -150,5 +150,11 @@
   ],
   "network": {
     "externalRequests": 0
-  }
+  },
+  "inkscape_1_4": {
+    "status": "pending",
+    "issue": 153,
+    "reason": "Native Inkscape unavailable; resvg is separate evidence."
+  },
+  "rendered_text": "Item-title region differs from identical raster with visible text removed; more than 40 glyph pixels required."
 }

@@ -2075,6 +2075,15 @@ function svgEscape(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
+/** Fit complete words to a conservative em budget; full text remains in SVG titles. */
+function svgLabel(text: string, width: number, em: number): string {
+  const limit = Math.floor(width / em);
+  if (Array.from(text).length <= limit) return text;
+  const prefix = Array.from(text).slice(0, limit - 1).join('');
+  const boundary = text.slice(prefix.length).startsWith(' ') ? prefix.length : prefix.lastIndexOf(' ');
+  return (boundary < 0 ? '' : prefix.slice(0, boundary).trimEnd()) + '…';
+}
+
 /**
  * Render the chart as a self-contained, scalable SVG document.
  *
@@ -2108,10 +2117,11 @@ function renderSvg(rows: GanttRow[], opts: GanttOptions, windowStart: Date): str
   const legendH = 88;
   const H = chartY + rows.length * rowH + PAD + legendH;
   const todayWeek = todayColumn(opts, windowStart);
+  const heading = `pm gantt — ${weeks} weeks from ${isoDay(windowStart)}${opts.criticalPath ? ' • critical path marked' : ''}`;
   const parts = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="pm-gantt-title" style="max-width:100%;height:auto">`,
-    `<title id="pm-gantt-title">pm gantt — ${weeks} weeks from ${isoDay(windowStart)}</title>`,
+    `<title id="pm-gantt-title">${svgEscape(heading)}</title>`,
     `<style>${brandCss}
       text{font-family:var(--pm-font-body);fill:var(--pm-carbon)}
       .data{font-family:var(--pm-font-mono)} .caption{font-family:var(--pm-font-caption);font-stretch:75%;font-weight:600;letter-spacing:.09em}
@@ -2120,7 +2130,7 @@ function renderSvg(rows: GanttRow[], opts: GanttOptions, windowStart: Date): str
       @media(prefers-reduced-motion:reduce){*{animation:none;transition:none}}
     </style>`,
     `<rect width="${W}" height="${H}" fill="var(--pm-paper)"/>`,
-    `<text x="${PAD}" y="38" font-size="22" font-weight="800" style="font-family:var(--pm-font-display);font-stretch:125%">pm gantt — ${weeks} weeks from <tspan class="data">${isoDay(windowStart)}</tspan>${opts.criticalPath ? " • critical path marked" : ""}</text>`,
+    `<text x="${PAD}" y="38" font-size="22" font-weight="800" style="font-family:var(--pm-font-display);font-stretch:125%">${svgEscape(svgLabel(heading, W - PAD * 2, 22 * 1.25)).replace(isoDay(windowStart), `<tspan class="data">${isoDay(windowStart)}</tspan>`)}</text>`,
   ];
   for (const [offset, label] of [[0, 'GROUP'], [GROUP_W, 'ITEM'], [GROUP_W + ITEM_W, 'STATUS']] as const) {
     parts.push(`<text class="caption secondary" x="${PAD + offset}" y="72" font-size="10">${label}</text>`);
@@ -2151,7 +2161,7 @@ function renderSvg(rows: GanttRow[], opts: GanttOptions, windowStart: Date): str
     const ix = PAD + GROUP_W + 6;
     parts.push(`<clipPath id="pm-item-${i}"><rect x="${ix}" y="${y}" width="${ITEM_W - 12}" height="${rowH}"/></clipPath>`);
     parts.push(`<g clip-path="url(#pm-item-${i})"><text class="data secondary" x="${ix}" y="${y + 13}" font-size="8">${svgEscape(row.item.id)} · ${svgEscape(row.item.type ?? 'Task')} · P${svgEscape(String(row.item.priority ?? 2))}</text>`);
-    parts.push(`<text x="${ix}" y="${y + 31}" font-size="11">${svgEscape((row.critical ? '* ' : '') + row.item.title)}</text></g>`);
+    parts.push(`<text x="${ix}" y="${y + 31}" font-size="11">${svgEscape(svgLabel((row.critical ? '* ' : '') + row.item.title, ITEM_W - 12, 11))}</text></g>`);
     const sx = PAD + GROUP_W + ITEM_W + 4;
     parts.push(`<rect class="chip" x="${sx}" y="${y + 18}" width="98" height="20" rx="3" fill="var(--pm-status-${status}-bg)" stroke="var(--pm-status-${status}-border)"/>`);
     parts.push(`<text class="status-label data" x="${sx + 5}" y="${y + 31}" font-size="9" style="fill:var(--pm-status-${status}-fg)">${svgEscape(row.item.status)}</text>`);

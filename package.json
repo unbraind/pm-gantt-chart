@@ -58,7 +58,7 @@
     "@unbrained/pm-cli": "2026.10.13",
     "eslint": "10.12.0",
     "jscpd": "5.4.1",
-    "pm-brand": "github:unbraind/pm-brand#7ad0970d96a20c24b8dbd9e0dcd1efeb8b4d5cc1",
+    "pm-brand": "github:unbraind/pm-brand#98cbe45976b3111f09143c2a29ede906cb553c2a",
     "pm-changelog": "2026.10.13",
     "pm-ops": "2026.10.14",
     "typescript": "7.0.2",

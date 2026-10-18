@@ -6,9 +6,9 @@ status: in_progress
 priority: 2
 tags: []
 created_at: "2026-10-17T09:27:52.639Z"
-updated_at: "2026-10-18T03:50:57.315Z"
+updated_at: "2026-10-18T05:12:48.493Z"
 author: codex-agent
-comments[19]{created_at,author,text}:
+comments[22]{created_at,author,text}:
   "2026-10-17T09:28:14.978Z",codex-agent,"Design: form-paper canvas and ruled top sheets; carbon text, Martian Mono ids and dates, explicit status labels and contract chip fills. Canary and rose only convey in_progress and blocked. Brand values are generated at build time from an exact devDependency; published runtime has no brand dependency or CDN fetches. Existing scheduling, graph edges and serialization stay intact."
   "2026-10-17T10:13:26.812Z",codex-agent,"Render review uses seven captured public brand-kit tracker items. Critical and overdue indicators preserve status fills. Mermaid initialization precedes the diagram header; native single-line task labels retain mono data. Behavioral revert proof independently restores only renderSvg, renderHtml, then renderMermaid in disposable source copies: each unchanged real-tracker regression fails 1/1; restoring the implementation passes 1/1. The immutable README banner points to pm-brand commit 5c80a2b707f3a00afe986e81e520843b86f3ee83. Full npm/Bun gates and final browser capture are pending."
   "2026-10-17T10:33:42.809Z",codex-agent,"The final 390 px browser review found CSS table columns constraining the mobile card body. The timeline table now becomes a full-width block, hides its desktop column definitions, and keeps all four week headings visible. At 390 px each item is 348 px wide with a maximum 70 px label height; light/dark at 1x/2x pass with no page overflow. Reverting only the mobile CSS to the prior Triplicate implementation makes the browser assertion fail. The 80 existing SVG/scheduler tests pass after the correction."
@@ -28,23 +28,30 @@ comments[19]{created_at,author,text}:
   "2026-10-18T03:44:05.314Z",codex-agent,Final targeted validation passes 22/22 SVG and Triplicate tests with zero failures/skips. The final portable harness catches the old renderSvg function (1/1 failure) and the restored implementation passes 1/1. Build/typecheck and 0% duplication pass. Push the prepared source and generated artifacts for exact-head CI; full local npm/Bun validation remains in progress under bounded parallelism.
   "2026-10-18T03:49:11.666Z",codex-agent,"Exact-head CI run 39094703019 at d86b87d2405e0ea428178114ed06bdf0b1d76c92 passes Node 22.18 and Node 26. Node 26 npm run release:check and bun run release:check each pass 250/250 tests, zero failures/cancellations/skips/TODOs, and 100% lines/branches/functions at unchanged thresholds. The packed npm/Bun/minimum-host acceptance, tracked project health, fresh-build parity, audit and changelog checks pass. The 22/22 focused tests and final function-only SVG revert are independently recorded. Item stays in progress; release ownership for orchestrator verification."
   "2026-10-18T03:50:57.315Z",codex-agent,"Correction to the preceding CI receipt: the verified full head for run 39094703019 is d86b87d2d9c41f7be1015c33fc8168e4c2adbb41. The previous full SHA string was a transcription error; the test counts and successful CI result are unchanged. This appended correction preserves the existing tracker history. The run URL independently records the verified head."
-files[11]{path,scope}:
+  "2026-10-18T04:52:29.811Z",codex-agent,"Round 3: address all four current review findings and the item-title clipping reported in screenshot review. Preserve full accessible titles, pin the behavioral baseline, verify rendered glyph pixels, and explicitly retain pending Inkscape acceptance. Re-pin the brand kit to current main; release gates and refreshed screenshots precede push."
+  "2026-10-18T05:06:15.095Z",codex-agent,"All three focused visual tests pass. The SVG and HTML and Mermaid normal-mode reverts still fail independently against the pinned pre-change revision. The label-only round-2 renderer revert fails the new complete-word/full-title test, then the restored renderer passes. Glyph pixels are compared against a text-free raster using a checked-in licensed DejaVu subset with system-font loading disabled. README and package description already use general pm-cli renderer wording; repository merge-driver documentation is technical mechanics, not brand copy."
+  "2026-10-18T05:12:26.036Z",codex-agent,"Round 3 evidence is complete: three focused visual tests pass; the normal renderer-only reverts fail independently against the fixed pre-change baseline, and label-only plus glyph-removal mutations each fail one unchanged regression then pass restored. Linked label and glyph proof commands pass. Twelve refreshed SVG screenshots cover all three widths, both themes and both pixel ratios with no overflow, motion, actions or external requests. Native Inkscape 1.4 remains pending; resvg is explicitly separate evidence. The exact brand pin is main commit 98cbe45976b3111f09143c2a29ede906cb553c2a, installed with Bun after a local npm Git-preparation stall. Both release gates are running; thresholds are unchanged."
+files[13]{path,scope}:
   brand-values.ts,project
   brand.ts,project
   index.ts,project
   package.json,project
   scripts/brand-values.ts,project
   test/brand-values.test.ts,project
+  test/fixtures/readability-LICENSE.txt,project
+  test/fixtures/readability.ttf,project
   test/fixtures/triplicate.json,project
   test/render-triplicate.ts,project
   test/revert-triplicate.ts,project
   test/svg.test.ts,project
   test/triplicate-visuals.test.ts,project
-tests[4]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
+tests[6]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
   node --test test/brand-values.test.ts test/triplicate-visuals.test.ts,project,codex-agent,"2026-10-17T09:43:29.364Z",local_mutation,brand/triplicate-visuals
   "env HOME=$(mktemp -d) GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 npm run release:check",project,codex-agent,"2026-10-17T11:29:10.545Z",local_mutation,brand/triplicate-visuals
   "env HOME=$(mktemp -d) GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 bun run release:check",project,codex-agent,"2026-10-17T11:29:12.950Z",local_mutation,brand/triplicate-visuals
   node test/revert-triplicate.ts --portable,project,codex-agent,"2026-10-18T03:10:07.689Z",local_mutation,brand/triplicate-visuals
+  node test/revert-triplicate.ts --labels,project,codex-agent,"2026-10-18T05:05:28.556Z",local_mutation,brand/triplicate-visuals
+  node test/revert-triplicate.ts --glyphs,project,codex-agent,"2026-10-18T05:05:52.503Z",local_mutation,brand/triplicate-visuals
 docs[5]{path,scope}:
   docs/triplicate-browser-checks.json,project
   docs/triplicate-svg-portability.json,project

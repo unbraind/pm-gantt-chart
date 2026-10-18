@@ -6,6 +6,7 @@ import { brandValue } from '../brand.ts';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { PmClient, listAllComplete, certifyCompleteListResult } from '@unbrained/pm-cli/sdk';
 import { buildRows,resolveGanttOptions,renderSvg,renderHtml,renderMermaid,type PmItem } from '../index.ts';
 
@@ -59,8 +60,19 @@ test('standalone SVG retains literal paper, ink and status paints in a non-brows
   }));
   const svg = renderSvg(buildRows(items, opts, opts.windowStart), opts, opts.windowStart);
   assert.ok(svg.includes('Review open var(--pm-paper)'), 'token-like user text stays literal');
-  const image = new Resvg(svg, { font: { loadSystemFonts: true, defaultFontFamily: 'DejaVu Sans' } }).render();
+  const image = new Resvg(svg, { font: { loadSystemFonts: false, fontFiles: [fileURLToPath(new URL('./fixtures/readability.ttf', import.meta.url))], defaultFontFamily: 'DejaVu Sans' } }).render();
   const pixels = image.pixels;
+  const blank = new Resvg(svg.replace(/<text\b[\s\S]*?<\/text>/gu, ''), {
+    font: { loadSystemFonts: false, fontFiles: [fileURLToPath(new URL('./fixtures/readability.ttf', import.meta.url))], defaultFontFamily: 'DejaVu Sans' },
+  }).render();
+  const blankPixels = blank.pixels;
+  let glyphPixels = 0;
+  // This first item-title region contains only glyphs over a flat sheet fill.
+  for (let y = 136; y < 149; y++) for (let x = 132; x < 410; x++) {
+    const offset = (y * image.width + x) * 4;
+    if (!pixels.subarray(offset, offset + 4).equals(blankPixels.subarray(offset, offset + 4))) glyphPixels++;
+  }
+  assert.ok(glyphPixels > 40, `item title must rasterize visible glyphs, found ${glyphPixels} changed pixels`);
   const colors = new Set<string>();
   for (let offset = 0; offset < pixels.length; offset += 4) {
     if (pixels[offset + 3] === 255) colors.add('#' + pixels.subarray(offset, offset + 3).toString('hex').toUpperCase());
@@ -75,4 +87,18 @@ test('standalone SVG retains literal paper, ink and status paints in a non-brows
   }
   assert.ok(colors.size > 5, 'the standalone chart must contain visible paper, text and status fills');
   assert.doesNotMatch(svg, /(?:fill|stroke)[=:]\s*["']?var\(/u);
+});
+
+
+test('SVG labels ellipsize complete words and preserve full accessible titles', () => {
+  const title = 'Approve contract changes for low-contrast status borders';
+  for (const [text, expected] of [[title, 'Approve contract changes…'], ['WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW', '…'], ['Short title', 'Short title'], ['Approve  contract changes for review', 'Approve  contract changes…']] as const) {
+    const opts = resolveGanttOptions({ from: '2026-10-12', weeks: '1', width: '320', 'critical-path': true });
+    const item: PmItem = { id: 'label-1', title: text, type: 'Task', status: 'open', created_at: '2026-10-12T00:00:00Z' };
+    const svg = renderSvg(buildRows([item], opts, opts.windowStart), opts, opts.windowStart);
+    assert.ok(svg.includes(`<title>${text} · open</title>`));
+    assert.ok(svg.includes(`font-size="11">${expected}</text>`), expected);
+    assert.match(svg, /<title id="pm-gantt-title">pm gantt — 1 weeks from 2026-10-12 • critical path marked<\/title>/u);
+    assert.match(svg, /font-stretch:125%">pm gantt — 1 weeks…<\/text>/u);
+  }
 });
