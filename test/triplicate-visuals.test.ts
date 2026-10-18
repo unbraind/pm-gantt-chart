@@ -102,3 +102,15 @@ test('SVG labels ellipsize complete words and preserve full accessible titles', 
     assert.match(svg, /font-stretch:125%">pm gantt — 1 weeks…<\/text>/u);
   }
 });
+
+
+test('all five status legend chips fit inside narrow short-window SVG canvases', () => {
+  for (const width of ['320', '600', '1440']) for (const weeks of ['1', '2', '3', '4']) {
+    const opts = resolveGanttOptions({ from: '2026-10-12', width, weeks });
+    const svg = renderSvg([], opts, opts.windowStart);
+    const canvas = Number(/viewBox="0 0 (\d+) /u.exec(svg)![1]);
+    const chips = [...svg.matchAll(/<g class="status-[^"]+"><rect x="(\d+)" y="\d+" width="(\d+)" height="22"/gu)];
+    assert.equal(chips.length, 5);
+    for (const chip of chips) assert.ok(Number(chip[1]) + Number(chip[2]) + 16 <= canvas, `legend fits width ${width}, weeks ${weeks}`);
+  }
+});

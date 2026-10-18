@@ -1,7 +1,7 @@
 /** Verify baked values against the exact brand dependency and measure every rendered text pairing. */
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { tokens } from 'pm-brand';
@@ -39,7 +39,9 @@ test('the build gate fails on a changed baked value and regenerates deterministi
     assert.throws(() => generateBrandValues(root, true), /Stale brand values/u);
     main([root]); main([root, '--check']);
     assert.equal(readFileSync(target, 'utf8'), original);
-    main([]); main(['--check']);
+    const committed = statSync('brand-values.ts', { bigint: true });
+    main(['--check']);
+    assert.equal(statSync('brand-values.ts', { bigint: true }).mtimeNs, committed.mtimeNs, 'default-root check must not rewrite shared runtime source');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

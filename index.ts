@@ -2109,7 +2109,9 @@ function renderSvg(rows: GanttRow[], opts: GanttOptions, windowStart: Date): str
   const ITEM_W = 300;
   const STATUS_W = 110;
   const GUTTER = GROUP_W + ITEM_W + STATUS_W;
-  const W = Math.max(requestedW, PAD + GUTTER + PAD + weeks * 24);
+  const LEGEND_STEP = 125;
+  const LEGEND_CHIP_W = 116;
+  const W = Math.max(requestedW, PAD + GUTTER + PAD + weeks * 24, PAD * 2 + (brandStatuses.length - 1) * LEGEND_STEP + LEGEND_CHIP_W);
   const colW = (W - PAD - GUTTER - PAD) / weeks;
   const rowH = 52;
   const chartX = PAD + GUTTER;
@@ -2196,8 +2198,8 @@ function renderSvg(rows: GanttRow[], opts: GanttOptions, windowStart: Date): str
   }
   const legendY = chartY + rows.length * rowH + PAD;
   brandStatuses.forEach((status, index) => {
-    const lx = PAD + index * 125;
-    parts.push(`<g class="status-${status}"><rect x="${lx}" y="${legendY}" width="116" height="22" rx="3" fill="var(--pm-status-${status}-bg)" stroke="var(--pm-status-${status}-border)"/><text class="status-label data" x="${lx + 5}" y="${legendY + 15}" font-size="9" style="fill:var(--pm-status-${status}-fg)">${status}</text></g>`);
+    const lx = PAD + index * LEGEND_STEP;
+    parts.push(`<g class="status-${status}"><rect x="${lx}" y="${legendY}" width="${LEGEND_CHIP_W}" height="22" rx="3" fill="var(--pm-status-${status}-bg)" stroke="var(--pm-status-${status}-border)"/><text class="status-label data" x="${lx + 5}" y="${legendY + 15}" font-size="9" style="fill:var(--pm-status-${status}-fg)">${status}</text></g>`);
   });
   parts.push(`<text class="secondary" x="${PAD}" y="${legendY + 46}" font-size="10">${opts.criticalPath ? '* critical path · ' : ''}Dashed edge: overdue${opts.progress ? ' · Lower band: % complete' : ''} · ← / → off-window</text>`);
   parts.push('</svg>');
