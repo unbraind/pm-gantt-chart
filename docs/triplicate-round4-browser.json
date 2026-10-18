@@ -1,0 +1,113 @@
+{
+  "fixture": "synthetic five-status minimum-width, one-week chart",
+  "checks": [
+    {
+      "phase": "before",
+      "width": 1440,
+      "theme": "light",
+      "scroll": false,
+      "actions": 0,
+      "animations": 0,
+      "externalRequests": 0
+    },
+    {
+      "phase": "before",
+      "width": 1440,
+      "theme": "dark",
+      "scroll": false,
+      "actions": 0,
+      "animations": 0,
+      "externalRequests": 0
+    },
+    {
+      "phase": "before",
+      "width": 768,
+      "theme": "light",
+      "scroll": false,
+      "actions": 0,
+      "animations": 0,
+      "externalRequests": 0
+    },
+    {
+      "phase": "before",
+      "width": 768,
+      "theme": "dark",
+      "scroll": false,
+      "actions": 0,
+      "animations": 0,
+      "externalRequests": 0
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "theme": "light",
+      "scroll": false,
+      "actions": 0,
+      "animations": 0,
+      "externalRequests": 0
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "theme": "dark",
+      "scroll": false,
+      "actions": 0,
+      "animations": 0,
+      "externalRequests": 0
+    },
+    {
+      "phase": "after",
+      "width": 1440,
+      "theme": "light",
+      "scroll": false,
+      "actions": 0,
+      "animations": 0,
+      "externalRequests": 0
+    },
+    {
+      "phase": "after",
+      "width": 1440,
+      "theme": "dark",
+      "scroll": false,
+      "actions": 0,
+      "animations": 0,
+      "externalRequests": 0
+    },
+    {
+      "phase": "after",
+      "width": 768,
+      "theme": "light",
+      "scroll": false,
+      "actions": 0,
+      "animations": 0,
+      "externalRequests": 0
+    },
+    {
+      "phase": "after",
+      "width": 768,
+      "theme": "dark",
+      "scroll": false,
+      "actions": 0,
+      "animations": 0,
+      "externalRequests": 0
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "theme": "light",
+      "scroll": false,
+      "actions": 0,
+      "animations": 0,
+      "externalRequests": 0
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "theme": "dark",
+      "scroll": false,
+      "actions": 0,
+      "animations": 0,
+      "externalRequests": 0
+    }
+  ]
+}

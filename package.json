@@ -1,7 +1,7 @@
 {
   "name": "pm-gantt-chart",
   "version": "2026.10.18",
-  "description": "ASCII Gantt chart renderer + multi-format exporter for pm-cli",
+  "description": "Gantt chart renderer for pm-cli with ASCII, SVG, HTML and Mermaid exports, dependency-aware scheduling and Triplicate styling.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/unbraind/pm-gantt-chart.git"
@@ -20,7 +20,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "npm run brand:build && tsc",
     "build:test": "tsc -p tsconfig.test.json",
     "test": "npm run build && npm run build:test && node --test test/*.test.ts",
     "prepublishOnly": "npm run release:check",
@@ -37,13 +37,15 @@
     "changelog": "pm-changelog --pm-root .agents/pm --pm-arg=--output-budget --pm-arg=unbounded --pm-arg=--output-limit --pm-arg=unbounded --mode prepend --output CHANGELOG.md --release-version-from-package --date-from-version --since-previous-tag --until-release-tag --item-url-base https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm --respect-item-release --pm-bin ./node_modules/.bin/pm",
     "changelog:full": "pm-changelog --pm-root .agents/pm --pm-arg=--output-budget --pm-arg=unbounded --pm-arg=--output-limit --pm-arg=unbounded --mode replace --output CHANGELOG.md --all-release-tags --release-version-from-package --date-from-version --item-url-base https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm --respect-item-release --pm-bin ./node_modules/.bin/pm",
     "changelog:check": "pm-changelog --pm-root .agents/pm --pm-arg=--output-budget --pm-arg=unbounded --pm-arg=--output-limit --pm-arg=unbounded --mode replace --output CHANGELOG.md --all-release-tags --release-version-from-package --date-from-version --item-url-base https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm --respect-item-release --pm-bin ./node_modules/.bin/pm --check",
-    "release:check": "npm run check && npm run lint && npm run duplication && npm run verify:release-workflow && npm run docstring && npm run coverage && npm run audit:prod && npm run pack:dry-run && npm run accept:packed && npm run changelog:check && npm run verify:release-changelog-date && npm run verify:release-publish-attestation",
+    "release:check": "npm run brand:check && npm run check && npm run lint && npm run duplication && npm run verify:release-workflow && npm run docstring && npm run coverage && npm run audit:prod && npm run pack:dry-run && npm run accept:packed && npm run changelog:check && npm run verify:release-changelog-date && npm run verify:release-publish-attestation",
     "release:notes": "pm-changelog --pm-root .agents/pm --pm-arg=--output-budget --pm-arg=unbounded --pm-arg=--output-limit --pm-arg=unbounded --stdout --since-previous-tag --until-release-tag --release-version-from-package --date-from-version --item-url-base https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm --respect-item-release --pm-bin ./node_modules/.bin/pm --github-step-summary",
     "lint": "node scripts/lint.ts",
     "duplication": "node scripts/duplication-gate.ts",
     "prepare": "node scripts/prepare-merge-driver.ts",
     "merge:install": "pm merge install",
-    "coverage": "npm run build && npm run build:test && node scripts/coverage-gate.ts"
+    "coverage": "npm run build && npm run build:test && node scripts/coverage-gate.ts",
+    "brand:build": "node scripts/brand-values.ts",
+    "brand:check": "node scripts/brand-values.ts --check"
   },
   "peerDependencies": {
     "@unbrained/pm-cli": ">=2026.10.6"
@@ -51,10 +53,12 @@
   "devDependencies": {
     "@babel/eslint-parser": "8.0.7",
     "@babel/plugin-syntax-typescript": "8.0.3",
+    "@resvg/resvg-js": "2.6.2",
     "@types/node": "26.6.5",
     "@unbrained/pm-cli": "2026.10.13",
     "eslint": "10.12.0",
     "jscpd": "5.4.1",
+    "pm-brand": "github:unbraind/pm-brand#505f386aaa68c0947b9380eae9cfe74dc48e47c7",
     "pm-changelog": "2026.10.13",
     "pm-ops": "2026.10.14",
     "typescript": "7.0.2",

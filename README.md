@@ -1,6 +1,11 @@
 # pm-gantt-chart
 
-Gantt chart renderer and multi-format exporter for [pm-cli](https://github.com/unbraind/pm-cli).
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/unbraind/pm-brand/5c80a2b707f3a00afe986e81e520843b86f3ee83/banners/pm-gantt-chart-dark.svg">
+  <img src="https://raw.githubusercontent.com/unbraind/pm-brand/5c80a2b707f3a00afe986e81e520843b86f3ee83/banners/pm-gantt-chart.svg" alt="pm-gantt-chart · Triplicate">
+</picture>
+
+Gantt chart renderer for [pm-cli](https://github.com/unbraind/pm-cli) with ASCII, SVG, HTML and Mermaid exports, dependency-aware scheduling and Triplicate styling.
 
 Renders your pm items as a week-by-week timeline in the terminal — grouped by milestone, sprint, release, assignee, status, type, or tag — and exports the same chart to **Mermaid `gantt`**, **standalone HTML**, **ASCII**, a **CSV schedule**, or **structured JSON**. Can compute and highlight the **critical path** (longest dependency chain), and run **dependency-aware scheduling** that derives each item's start/end from its blocked-by chain plus estimates.
 
@@ -313,3 +318,12 @@ itself lists each affected stream in its output; `pm history --verify <id>` spot
 content, so `reconcile` only re-greens the hash chain (no data loss) — see the authoritative
 [pm-cli merge-safety guide](https://github.com/unbraind/pm-cli/blob/main/docs/MERGE_SAFETY.md). The
 older blunt `pm history-repair --all` remains available as a lower-level primitive.
+
+
+## Triplicate visual identity
+
+Visual exports use build-time values from the exact `pm-brand` development pin:
+form paper, carbon ink, ruled item sheets and explicit status fills. Portable font
+stacks put Archivo, Public Sans and Martian Mono first and fetch no external fonts.
+[Design, themes, token parity and reproducible review renders](docs/triplicate-visuals.md).
+The README banner embeds pm-brand's committed output at an immutable SHA.

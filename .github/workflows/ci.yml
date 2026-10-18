@@ -70,6 +70,9 @@ jobs:
           # clone-local merge driver config declared by .gitattributes is absent.
           ./node_modules/.bin/pm health --strict-exit --require-merge-drivers
 
+      - name: Verify baked brand values before building
+        run: npm run brand:check
+
       - name: Type check
         run: npm run check
 
@@ -101,6 +104,8 @@ jobs:
         run: npm run docstring
 
       - name: Test with coverage gate
+        # Node 26 runs this complete suite in both full release gates below.
+        if: matrix.node-version != 26
         run: npm run coverage
 
       - name: Production dependency audit
@@ -124,3 +129,10 @@ jobs:
 
       - name: Verify Bun can install the package graph
         run: bun install --no-save
+
+      - name: Verify full npm and Bun release gates
+        if: matrix.node-version == 26
+        shell: bash
+        run: |
+          npm run release:check
+          bun run release:check

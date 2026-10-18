@@ -1,0 +1,12 @@
+id: pm-gantt-chart-sdk-docs
+title: Align installation documentation with the pinned development SDK
+description: "README Installation says development and CI exact-pin 2026.10.6, while package.json pins the development SDK to 2026.10.13. The consumer minimum remains independently valid. Update the documentation in a separate change without raising the minimum supported consumer version or changing dependency pins."
+type: Task
+status: open
+priority: 2
+tags: []
+created_at: "2026-10-17T10:52:10.752Z"
+updated_at: "2026-10-17T10:52:10.752Z"
+author: codex-agent
+acceptance_criteria: Installation prose matches the current development SDK pin and separately states the tested minimum consumer version.
+body: ""
