@@ -1,4 +1,4 @@
-import { brandCss, brandStatus, brandStatuses, mermaidBrand } from "./brand.js";
+import { brandCss, brandStatus, brandStatuses, brandValue, mermaidBrand } from "./brand.js";
 import { certifyCompleteListResult, EXIT_CODE, inspectCompleteListResult, PmClient } from "@unbrained/pm-cli/sdk";
 import { resolveWorkspaceRelationshipKindRegistry } from "@unbrained/pm-cli/sdk/graph";
 import { writeFileSync } from "node:fs";
@@ -1854,7 +1854,18 @@ function renderSvg(rows, opts, windowStart) {
     });
     parts.push(`<text class="secondary" x="${PAD}" y="${legendY + 46}" font-size="10">${opts.criticalPath ? '* critical path · ' : ''}Dashed edge: overdue${opts.progress ? ' · Lower band: % complete' : ''} · ← / → off-window</text>`);
     parts.push('</svg>');
-    return parts.join('\n');
+    const paintTokens = new Set();
+    const literal = parts.join('\n').replace(brandCss, '').replace(/style="fill:(var\(--pm-[\w-]+\))"/gu, 'fill="$1"')
+        .replace(/(fill|stroke)="var\(--pm-([\w-]+)\)"/gu, (_match, attribute, token) => {
+        const name = token;
+        paintTokens.add(name);
+        return `${attribute}="${brandValue('light', name)}" data-pm-${attribute}="${name}"`;
+    }).replace(/<style>[\s\S]*?<\/style>|style="[^"]*"/gu, css => css.replace(/var\(--pm-([\w-]+)\)/gu, (_match, token) => brandValue('light', token).replaceAll('"', "'")));
+    /** Generate literal theme overrides while retaining presentation attributes for desktop renderers. */
+    const paintRules = (theme, scope) => `${scope} text{fill:${brandValue(theme, 'carbon')}}${scope} .secondary{fill:${brandValue(theme, 'graphite')}}` +
+        [...paintTokens].flatMap(name => ['fill', 'stroke'].map(attribute => `${scope} [data-pm-${attribute}="${name}"]{${attribute}:${brandValue(theme, name)}}`)).join('');
+    const paints = `<style>${brandCss}${paintRules('light', ':root')}@media(prefers-color-scheme:dark){${paintRules('dark', ':root:not([data-theme="light"])')}}${paintRules('dark', ':root[data-theme="dark"]')}</style>`;
+    return literal.replace('</svg>', paints + '</svg>');
 }
 // ---------------------------------------------------------------------------
 // Shared option parsing + data fetch

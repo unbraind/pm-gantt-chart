@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { brandValue } from "../brand.ts";
 
 import type { PmItem } from "../index.ts";
 import { chainItems, pastDatedItem, futureDatedItem, inProgressDatedItem } from "./chain-items.ts";
@@ -38,7 +39,7 @@ test("renderSvg produces a self-contained, well-formed SVG document", () => {
   assert.match(svg, /height="\d+"/, "carries a numeric height attribute");
   assert.match(svg, /viewBox="0 0 \d+ \d+"/, "carries a viewBox");
   // One bar rect per active week-cell exists.
-  assert.match(svg, /<rect .*fill="var\(--pm-status-in_progress-bg\)"/, "in_progress uses its own contract fill");
+  assert.match(svg, new RegExp(`<rect .*fill="${brandValue("light", "status-in_progress-bg")}"`, "u"), "in_progress uses its own literal contract fill");
   assert.match(svg, /<text[^>]*>Build endpoint<\/text>/, "item title rendered");
 });
 
@@ -112,7 +113,7 @@ test("renderSvg --show-progress overlays a fill sized to the completion ratio", 
 
   const rows = buildRows(chainItems(), optsAlias, optsAlias.windowStart);
   const svg = renderSvg(rows, optsAlias, optsAlias.windowStart);
-  assert.match(svg, /fill="var\(--pm-carbon\)" opacity="\.2"/, "progress fill overlay present");
+  assert.match(svg, new RegExp(`fill="${brandValue("light", "carbon")}"[^>]*opacity="\\.2"`, "u"), "progress fill overlay present");
   assert.match(svg, /100%/, "closed item reports 100%");
   assert.match(svg, /50%/, "in_progress item reports 50%");
   assert.equal((svg.match(/>50%<\/text>/g) ?? []).length, 1, "multi-week progress label is emitted once");
@@ -209,7 +210,7 @@ test("renderSvg draws the TODAY rule after body rows so backgrounds can't cover 
   const rows = buildRows(chainItems(), opts, opts.windowStart);
   const svg = renderSvg(rows, opts, opts.windowStart);
   const ruleAt = svg.indexOf("▼ today");
-  const lastBackground = svg.lastIndexOf('fill="var(--pm-sheet)" stroke="var(--pm-rule)"');
+  const lastBackground = svg.lastIndexOf(`data-pm-fill="sheet" stroke="${brandValue("light", "rule")}"`);
   assert.ok(ruleAt >= 0, "TODAY rule present when today is in-window");
   assert.ok(lastBackground >= 0, "ruled item sheets present");
   assert.ok(ruleAt > lastBackground, "TODAY rule painted after (on top of) row backgrounds");

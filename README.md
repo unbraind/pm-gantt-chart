@@ -5,7 +5,7 @@
   <img src="https://raw.githubusercontent.com/unbraind/pm-brand/5c80a2b707f3a00afe986e81e520843b86f3ee83/banners/pm-gantt-chart.svg" alt="pm-gantt-chart · Triplicate">
 </picture>
 
-Gantt chart renderer and multi-format exporter for [pm-cli](https://github.com/unbraind/pm-cli).
+Gantt chart renderer for [pm-cli](https://github.com/unbraind/pm-cli) with ASCII, SVG, HTML and Mermaid exports, dependency-aware scheduling and Triplicate styling.
 
 Renders your pm items as a week-by-week timeline in the terminal — grouped by milestone, sprint, release, assignee, status, type, or tag — and exports the same chart to **Mermaid `gantt`**, **standalone HTML**, **ASCII**, a **CSV schedule**, or **structured JSON**. Can compute and highlight the **critical path** (longest dependency chain), and run **dependency-aware scheduling** that derives each item's start/end from its blocked-by chain plus estimates.
 

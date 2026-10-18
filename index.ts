@@ -6,7 +6,8 @@ import type {
   ImportExportContext,
   ImportExportRegistrationOptions,
 } from "@unbrained/pm-cli/sdk/authoring";
-import { brandCss, brandStatus, brandStatuses, mermaidBrand } from "./brand.ts";
+import type { brandValues } from './brand-values.ts';
+import { brandCss, brandStatus, brandStatuses, brandValue, mermaidBrand, type BrandTheme } from "./brand.ts";
 import { certifyCompleteListResult, EXIT_CODE, inspectCompleteListResult, PmClient } from "@unbrained/pm-cli/sdk";
 import type { RelationshipKindRegistry } from "@unbrained/pm-cli/sdk";
 import type { ContractsResult } from "@unbrained/pm-cli/sdk/runtime";
@@ -2190,7 +2191,21 @@ function renderSvg(rows: GanttRow[], opts: GanttOptions, windowStart: Date): str
   });
   parts.push(`<text class="secondary" x="${PAD}" y="${legendY + 46}" font-size="10">${opts.criticalPath ? '* critical path · ' : ''}Dashed edge: overdue${opts.progress ? ' · Lower band: % complete' : ''} · ← / → off-window</text>`);
   parts.push('</svg>');
-  return parts.join('\n');
+  const paintTokens = new Set<keyof typeof brandValues.light>();
+  const literal = parts.join('\n').replace(brandCss, '').replace(/style="fill:(var\(--pm-[\w-]+\))"/gu, 'fill="$1"')
+    .replace(/(fill|stroke)="var\(--pm-([\w-]+)\)"/gu, (_match, attribute: string, token: string) => {
+      const name = token as keyof typeof brandValues.light;
+      paintTokens.add(name);
+      return `${attribute}="${brandValue('light', name)}" data-pm-${attribute}="${name}"`;
+    }).replace(/<style>[\s\S]*?<\/style>|style="[^"]*"/gu, css =>
+      css.replace(/var\(--pm-([\w-]+)\)/gu, (_match, token: string) => brandValue('light', token as keyof typeof brandValues.light).replaceAll('"', "'")));
+  /** Generate literal theme overrides while retaining presentation attributes for desktop renderers. */
+  const paintRules = (theme: BrandTheme, scope: string): string =>
+    `${scope} text{fill:${brandValue(theme, 'carbon')}}${scope} .secondary{fill:${brandValue(theme, 'graphite')}}` +
+    [...paintTokens].flatMap(name => ['fill', 'stroke'].map(attribute =>
+      `${scope} [data-pm-${attribute}="${name}"]{${attribute}:${brandValue(theme, name)}}`)).join('');
+  const paints = `<style>${brandCss}${paintRules('light', ':root')}@media(prefers-color-scheme:dark){${paintRules('dark', ':root:not([data-theme="light"])')}}${paintRules('dark', ':root[data-theme="dark"]')}</style>`;
+  return literal.replace('</svg>', paints + '</svg>');
 }
 
 // ---------------------------------------------------------------------------
