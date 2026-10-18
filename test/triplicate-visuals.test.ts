@@ -114,3 +114,32 @@ test('all five status legend chips fit inside narrow short-window SVG canvases',
     for (const chip of chips) assert.ok(Number(chip[1]) + Number(chip[2]) + 16 <= canvas, `legend fits width ${width}, weeks ${weeks}`);
   }
 });
+
+test('SVG text inherits literal carbon ink when stylesheets are ignored', () => {
+  const opts = resolveGanttOptions({ from: '2026-10-12', weeks: '1' });
+  const item: PmItem = { id: 'ink-1', title: 'Review fallback ink', type: 'Task', status: 'open', created_at: '2026-10-12T00:00:00Z' };
+  const svg = renderSvg(buildRows([item], opts, opts.windowStart), opts, opts.windowStart);
+  const unstyled = svg.replace(/<style>[\s\S]*?<\/style>/gu, '');
+  const image = new Resvg(unstyled, {
+    font: { loadSystemFonts: false, fontFiles: [fileURLToPath(new URL('./fixtures/readability.ttf', import.meta.url))], defaultFontFamily: 'DejaVu Sans' },
+  }).render();
+  const pixels = image.pixels;
+  let carbonPixels = 0;
+  for (let y = 136; y < 149; y++) for (let x = 132; x < 410; x++) {
+    const offset = (y * image.width + x) * 4;
+    if ('#' + pixels.subarray(offset, offset + 3).toString('hex').toUpperCase() === brandValue('light', 'carbon')) carbonPixels++;
+  }
+  assert.ok(carbonPixels > 10, `unstyled item text must inherit carbon ink, found ${carbonPixels} pixels`);
+  assert.ok(svg.includes(`:root:not([data-theme="light"]) text{fill:${brandValue('dark', 'carbon')}}`), 'browser dark-theme text still overrides the fallback');
+});
+
+test('SVG row titles retain critical path context without changing ordinary titles', () => {
+  const opts = resolveGanttOptions({ from: '2026-10-12', weeks: '1', 'critical-path': true });
+  const items: PmItem[] = ['critical', 'ordinary'].map(id => ({ id, title: `Review <${id}> & context`, type: 'Task', status: 'open', created_at: '2026-10-12T00:00:00Z' }));
+  const rows = buildRows(items, opts, opts.windowStart);
+  rows[0].critical = true;
+  rows[1].critical = false;
+  const svg = renderSvg(rows, opts, opts.windowStart);
+  assert.match(svg, /data-item="critical">\s*<title>Review &lt;critical&gt; &amp; context · open · critical path<\/title>/u);
+  assert.match(svg, /data-item="ordinary">\s*<title>Review &lt;ordinary&gt; &amp; context · open<\/title>/u);
+});

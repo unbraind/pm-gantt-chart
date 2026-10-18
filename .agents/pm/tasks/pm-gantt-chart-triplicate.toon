@@ -6,9 +6,11 @@ status: in_progress
 priority: 2
 tags: []
 created_at: "2026-10-17T09:27:52.639Z"
-updated_at: "2026-10-18T07:08:34.763Z"
+updated_at: "2026-10-18T11:30:40.026Z"
+assignee: codex-agent
+claim_principal: codex-agent
 author: codex-agent
-comments[28]{created_at,author,text}:
+comments[31]{created_at,author,text}:
   "2026-10-17T09:28:14.978Z",codex-agent,"Design: form-paper canvas and ruled top sheets; carbon text, Martian Mono ids and dates, explicit status labels and contract chip fills. Canary and rose only convey in_progress and blocked. Brand values are generated at build time from an exact devDependency; published runtime has no brand dependency or CDN fetches. Existing scheduling, graph edges and serialization stay intact."
   "2026-10-17T10:13:26.812Z",codex-agent,"Render review uses seven captured public brand-kit tracker items. Critical and overdue indicators preserve status fills. Mermaid initialization precedes the diagram header; native single-line task labels retain mono data. Behavioral revert proof independently restores only renderSvg, renderHtml, then renderMermaid in disposable source copies: each unchanged real-tracker regression fails 1/1; restoring the implementation passes 1/1. The immutable README banner points to pm-brand commit 5c80a2b707f3a00afe986e81e520843b86f3ee83. Full npm/Bun gates and final browser capture are pending."
   "2026-10-17T10:33:42.809Z",codex-agent,"The final 390 px browser review found CSS table columns constraining the mobile card body. The timeline table now becomes a full-width block, hides its desktop column definitions, and keeps all four week headings visible. At 390 px each item is 348 px wide with a maximum 70 px label height; light/dark at 1x/2x pass with no page overflow. Reverting only the mobile CSS to the prior Triplicate implementation makes the browser assertion fail. The 80 existing SVG/scheduler tests pass after the correction."
@@ -37,9 +39,13 @@ comments[28]{created_at,author,text}:
   "2026-10-18T06:45:43.521Z",codex-agent,"Round 4 browser evidence published on pr-screenshots at 45c9b6f: twelve synthetic minimum-width one-week before/after captures, origin/main versus proposed renderer, cover 1440/768/390 and light/dark. All have zero horizontal scroll, external requests, animation and interactive actions. This surface has no keyboard actions. Existing 44 AA text-pair and four focus contrast checks remain green. PM linked mutation proof passed; project policy disables automatic test-result storage, so receipts are recorded in comments."
   "2026-10-18T06:50:12.964Z",codex-agent,"Issue 153 function-only portable renderer proof rerun on round 4: reverting only renderSvg to the CSS-variable paint implementation fails the unchanged non-browser raster regression 1/1; restored implementation passes 1/1. Native Inkscape 1.4 acceptance remains pending and is not replaced by the resvg result."
   "2026-10-18T07:08:31.079Z",codex-agent,"Final round-4 local gates: isolated Node 26 npm run release:check and bun run release:check both PASS, each 252/252 tests with zero failures/cancellations/skips/TODOs; 100% lines, branches and functions across all three intended runtime source files at unchanged thresholds. Zero duplication and production vulnerabilities; docstrings, brand parity, release workflow/date/attestation checks pass. All three packed scenarios pass: npm current and Bun current on the pinned development host plus npm minimum peer host. New legend and shared-write reverts each fail 1/1 and pass 1/1 restored; portable issue-153 renderer revert fails 1/1 and passes restored. Linked pm proof passes, existing result-storage policy stays disabled. Twelve narrow before/after screenshots are published. Fresh-clone strict health and exact-head CI follow the final commit. Native Inkscape 1.4 remains pending. Brand pin is current main 98cbe45976b3111f09143c2a29ede906cb553c2a and release stays held."
-files[14]{path,scope}:
+  "2026-10-18T11:27:47.827Z",codex-agent,"Review round 5: inspected every unresolved review thread, newest CodeRabbit body and open issue #153. Will merge current main with installed pm merge drivers, preserve both sides, reconcile only durable receipts, add independent literal-ink and critical-title regressions, refresh the exact brand pin and prove both isolated release gates plus fresh-clone health."
+  "2026-10-18T11:29:05.182Z",codex-agent,"Merged main release metadata and synced issue #153 without discarding the restyle description. No clone-local or durable merge receipts were created; reconcile dry-run reports pending_before=0, drifted_streams=0 and missing_history_references=0. Both new regressions fail on the pre-fix renderer: stylesheet-free item text has zero carbon pixels; critical row title omits its context. Existing history is unchanged."
+  "2026-10-18T11:30:35.695Z",codex-agent,"Independent behavioral revert proof: node test/revert-review.ts removes only the root fill, then only the critical row-title suffix. Each unchanged regression fails 1/1 reverted and passes 1/1 restored. The previous legend extent and shared-source proofs also pass independently (four revert pairs total). Focused token/visual suite passes 10/10; contract contrast checks cover 44 text/background pairs in both themes. Refreshed exact pm-brand main pin to 505f386aaa68c0947b9380eae9cfe74dc48e47c7 without changing the pinned pm SDK. Initial npm ci required ignoring user npm configuration because its allow-scripts setting breaks Git dependency preparation; clean configuration installation succeeded."
+files[15]{path,scope}:
   brand-values.ts,project
   brand.ts,project
+  docs/triplicate-round5-browser.json,project
   index.ts,project
   package.json,project
   scripts/brand-values.ts,project
@@ -60,9 +66,10 @@ tests[7]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
   node test/revert-triplicate.ts --labels,project,codex-agent,"2026-10-18T05:05:28.556Z",local_mutation,brand/triplicate-visuals
   node test/revert-triplicate.ts --glyphs,project,codex-agent,"2026-10-18T05:05:52.503Z",local_mutation,brand/triplicate-visuals
   node test/revert-review.ts,project,codex-agent,"2026-10-18T06:40:12.015Z",local_mutation,brand/triplicate-visuals
-docs[6]{path,scope}:
+docs[7]{path,scope}:
   docs/triplicate-browser-checks.json,project
   docs/triplicate-round4-browser.json,project
+  docs/triplicate-round5-browser.json,project
   docs/triplicate-svg-portability.json,project
   docs/triplicate-visuals.md,project
   "https://github.com/unbraind/pm-gantt-chart/actions/runs/39094703019",project

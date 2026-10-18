@@ -2122,7 +2122,7 @@ function renderSvg(rows: GanttRow[], opts: GanttOptions, windowStart: Date): str
   const heading = `pm gantt — ${weeks} weeks from ${isoDay(windowStart)}${opts.criticalPath ? ' • critical path marked' : ''}`;
   const parts = [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="pm-gantt-title" style="max-width:100%;height:auto">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" fill="var(--pm-carbon)" role="img" aria-labelledby="pm-gantt-title" style="max-width:100%;height:auto">`,
     `<title id="pm-gantt-title">${svgEscape(heading)}</title>`,
     `<style>${brandCss}
       text{font-family:var(--pm-font-body);fill:var(--pm-carbon)}
@@ -2156,7 +2156,7 @@ function renderSvg(rows: GanttRow[], opts: GanttOptions, windowStart: Date): str
     const y = chartY + i * rowH;
     const status = brandStatus(row.item.status);
     parts.push(`<g class="status-${status}" data-item="${svgEscape(row.item.id)}">`);
-    parts.push(`<title>${svgEscape(row.item.title)} · ${svgEscape(row.item.status)}</title>`);
+    parts.push(`<title>${svgEscape(row.item.title)} · ${svgEscape(row.item.status)}${row.critical ? ' · critical path' : ''}</title>`);
     parts.push(`<rect x="${PAD}" y="${y}" width="${W - PAD * 2}" height="${rowH - 4}" rx="6" fill="var(--pm-sheet)" stroke="var(--pm-rule)"/>`);
     if (row.group !== lastGroup) parts.push(`<text x="${PAD + 6}" y="${y + 29}" font-size="11">${svgEscape(row.group)}</text>`);
     lastGroup = row.group;
@@ -2897,7 +2897,7 @@ const GANTT_EXPORT_OPTIONS = {
 
 export default defineExtension({
   name: "pm-gantt-chart",
-  version: "2026.10.17",
+  version: "2026.10.18",
 
   activate(api: ExtensionApi) {
     api.registerCommand({

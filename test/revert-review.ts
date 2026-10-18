@@ -1,4 +1,4 @@
-/** Prove the legend and shared-source regressions with independent disposable behavioral reverts. */
+/** Prove the SVG paint, title, legend and shared-source regressions with independent disposable behavioral reverts. */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -11,6 +11,8 @@ try {
   for (const path of ['index.ts', 'brand.ts', 'brand-values.ts', 'package.json']) cpSync(path, join(root, path));
   symlinkSync(resolve('node_modules'), join(root, 'node_modules'), 'dir');
   for (const [name, path, from, to, pattern, test] of [
+    ['literal text ink', 'index.ts', 'fill="var(--pm-carbon)" role="img"', 'role="img"', 'SVG text inherits', 'test/triplicate-visuals.test.ts'],
+    ['critical row title', 'index.ts', "${row.critical ? ' · critical path' : ''}</title>", '</title>', 'SVG row titles', 'test/triplicate-visuals.test.ts'],
     ['legend extent', 'index.ts', ', PAD * 2 + (brandStatuses.length - 1) * LEGEND_STEP + LEGEND_CHIP_W', '', 'all five status legend', 'test/triplicate-visuals.test.ts'],
     ['shared source write', 'test/brand-values.test.ts', "    main(['--check']);", "    main([]); main(['--check']);", 'the build gate fails', 'test/brand-values.test.ts'],
   ]) {

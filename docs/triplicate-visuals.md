@@ -81,3 +81,19 @@ The raster regression loads the small licensed DejaVu Sans subset in
 the item-title pixels with the same chart after removing visible text, so
 non-text shapes cannot satisfy the glyph assertion. This is test data only;
 exports continue to use the contract font stacks.
+
+## Review round 5
+
+Standalone SVG roots declare literal light-theme carbon fill, so ordinary text
+inherits readable contract ink when a desktop consumer discards stylesheets.
+Literal browser theme rules still override that fallback. A deterministic
+stylesheet-free resvg test measures solid carbon pixels in the item-title region.
+Critical row titles retain the full item title and status and append “critical
+path”; non-critical row titles keep their previous text.
+
+`node test/revert-review.ts` independently removes only the root fill or only
+the critical-title suffix. Each unchanged regression fails 1/1 reverted and
+passes 1/1 restored, alongside the prior legend and shared-source proofs.
+`docs/triplicate-round5-browser.json` records both themes and all three review
+widths for SVG and HTML, captured from current main before the change and the
+updated renderer after it. Static exports have no interactive actions.
