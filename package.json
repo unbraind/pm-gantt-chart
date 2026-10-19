@@ -56,7 +56,7 @@
     "@resvg/resvg-js": "2.6.2",
     "@types/node": "26.6.5",
     "@unbrained/pm-cli": "2026.10.13",
-    "eslint": "10.12.0",
+    "eslint": "10.13.0",
     "jscpd": "5.4.1",
     "pm-brand": "github:unbraind/pm-brand#505f386aaa68c0947b9380eae9cfe74dc48e47c7",
     "pm-changelog": "2026.10.13",
