@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Standalone SVG becomes solid black in Inkscape after CSS-variable paints in \#152 ([pm-gantt-chart-github-072477cd0a70-153](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-153.toon))
+
 ## 2026.10.15 - 2026-10-15
 
 ### Fixed
