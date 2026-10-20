@@ -1,6 +1,6 @@
 {
   "name": "pm-gantt-chart",
-  "version": "2026.10.19",
+  "version": "2026.10.20",
   "description": "Gantt chart renderer for pm-cli with ASCII, SVG, HTML and Mermaid exports, dependency-aware scheduling and Triplicate styling.",
   "repository": {
     "type": "git",
