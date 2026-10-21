@@ -2,16 +2,22 @@ id: pm-gantt-chart-722n
 title: Repin the gated pm-github issue sync caller to pm-github 2026.10.15
 description: "pm-gantt-chart merged the rollout (#141) while the caller still pinned pm-github 2026.10.13 (a0880e9). The 2026.10.15 reusable workflow (tag commit 3015930) regenerates the caller's changelog, dispatches the caller's required CI on the sync branch so bot PRs no longer park at action_required, and restricts the sync commit to an allowlist; it needs 'actions: write'. The repin keeps the caller's own file and changes only the pinned ref, the pm-github-version input and the permission."
 type: Chore
-status: in_progress
+status: closed
 priority: 2
 tags[2]: changed,github-sync
 created_at: "2026-10-15T12:31:56.070Z"
-updated_at: "2026-10-15T12:32:00.988Z"
-assignee: claude-hub
-claim_principal: claude-hub
+updated_at: "2026-10-21T19:28:37.889Z"
+closed_at: "2026-10-21T19:28:36.069Z"
+completed_at: "2026-10-21T19:28:36.069Z"
 author: claude-hub
 acceptance_criteria: "The caller pins unbraind/pm-github@3015930b351a3d9c1c03ee4a26f8404025287df7 with pm-github-version 2026.10.15 and actions: write; ci.yml keeps workflow_dispatch; CI is green on the PR"
 parent: pm-gantt-chart-maint1014
+resolution: Delivered by the audit-linked mainline implementation.
+expected_result: Repin the gated pm-github issue sync caller to pm-github 2026.10.15.
+actual_result: "Re-verified unchanged main 80717afb81f1: delivery a61eb3953e2c, d19cca2d2a2b remains in main ancestry; .github/workflows/pm-github-sync.yml remain present."
+comments[1]{created_at,author,text}:
+  "2026-10-21T19:28:26.835Z",codex-agent,"Tracker reconciliation authorized for the audited verdict FIXED-STALE. Re-verified unchanged main 80717afb81f1: delivery a61eb3953e2c, d19cca2d2a2b remains in main ancestry; .github/workflows/pm-github-sync.yml remain present. Repin the gated pm-github issue sync caller to pm-github 2026.10.15. [PR #146](https://github.com/unbraind/pm-gantt-chart/pull/146) (a61eb39) delivered the requested 2026.10.15 pin; [PR #149](https://github.com/unbraind/pm-gantt-chart/pull/149) subsequently advances it to 2026.10.16. Scope: tracker state only; no new runtime certification or deployment claim."
 files[1]{path,scope}:
   .github/workflows/pm-github-sync.yml,project
+close_reason: "Re-verified unchanged main 80717afb81f1: delivery a61eb3953e2c, d19cca2d2a2b remains in main ancestry; .github/workflows/pm-github-sync.yml remain present. Audit delivery: Repin the gated pm-github issue sync caller to pm-github 2026.10.15. [PR #146](https://github.com/unbraind/pm-gantt-chart/pull/146) (a61eb39) delivered the requested 2026.10.15 pin; [PR #149](https://github.com/unbraind/pm-gantt-chart/pull/149) subsequently advances it to 2026.10.16."
 body: ""
