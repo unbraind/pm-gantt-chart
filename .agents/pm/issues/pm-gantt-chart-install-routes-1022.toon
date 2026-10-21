@@ -1,0 +1,23 @@
+id: pm-gantt-chart-install-routes-1022
+title: Replace non-installable README source shorthand with registry activation
+description: Registry audit found owner/repository shorthand resolves as a missing local path. Document pinned npm project activation with npx and bunx and guard the README command. Keep the separate SDK prose alignment task out of this fix.
+type: Issue
+status: in_progress
+priority: 2
+tags: []
+created_at: "2026-10-21T23:25:57.362Z"
+updated_at: "2026-10-21T23:36:48.197Z"
+author: codex-agent
+comments[5]{created_at,author,text}:
+  "2026-10-21T23:26:04.441Z",codex-agent,Replace only the consumer source route; preserve dependency pins and separate SDK documentation task. Verify in fresh plain trackers using both runners and prove the documentation regression fails with the original README.
+  "2026-10-21T23:26:53.699Z",codex-agent,"Targeted documentation suite: 5 passed, 0 failed. Typecheck and lint passed. Revert proof: restoring only the original README makes the new README regression exit 1; restoring the corrected README passes. Fresh npx and bunx registry acceptance is being recorded separately."
+  "2026-10-21T23:29:14.334Z",codex-agent,"Fresh plain-directory README verification with CLI 2026.10.21: npx init exit 0; npx registry install exit 0; bunx init exit 0; bunx registry install exit 0. Each runner used its own empty project and home/config directories, with no Git repository. An initial prefer-offline metadata lookup returned ETARGET; online metadata refresh made the identical pinned route pass."
+  "2026-10-21T23:33:05.211Z",codex-agent,"Full npm gate has passed 255/255 tests with zero skipped and 100% measured lines, branches and functions at unchanged thresholds; packed acceptance passed npm-current, bun-current and npm-minimum. Remaining verification steps and the full Bun gate are pending. Focused docs and PM-linked tests passed 5/5; README-only revert failed as required."
+  "2026-10-21T23:36:45.827Z",codex-agent,"Final local validation: npm run release:check exit 0 and bun run release:check exit 0, each 255 passed / 0 failed / 0 skipped at unchanged 100% coverage thresholds. Each gate passed all three packed consumer scenarios. README npx and bunx init/install commands all exit 0 in fresh plain trackers; original README revert fails. Ready for PR CI verification; item remains in_progress and will be released for orchestrator review."
+files[1]{path,scope}:
+  test/smoke.test.ts,project
+tests[1]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
+  node --test test/smoke.test.ts,project,codex-agent,"2026-10-21T23:26:43.966Z",local_mutation,fix/install-routes-1022
+docs[1]{path,scope}:
+  README.md,project
+body: ""

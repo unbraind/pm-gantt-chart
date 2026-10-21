@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 
 import { createExtensionTestHarness, type ExtensionTestHarness } from "@unbrained/pm-cli/sdk/testing";
 
@@ -118,4 +119,14 @@ test("preflight override is scoped to pm-gantt-chart's owned command paths", asy
   });
   assert.equal(res.overridden, true, "override was applied for the owned command");
   assert.deepEqual(res.warnings, [], "no warnings from empty delta");
+});
+
+test("README installs the pinned registry package in project scope", () => {
+  const installation = readFileSync(new URL("../README.md", import.meta.url), "utf8")
+    .split("## Installation\n")[1]?.split("\n## ")[0];
+  assert.ok(installation, "installation instructions must be present");
+  assert.match(installation, /npx -y @unbrained\/pm-cli@2026\.10\.21 init --defaults --agent-guidance skip/);
+  assert.match(installation, /npx -y @unbrained\/pm-cli@2026\.10\.21 install npm:pm-gantt-chart@2026\.10\.20 --project/);
+  assert.doesNotMatch(installation, /pm install (?:github\.com\/)?unbraind\//);
+  assert.match(installation, /bunx/);
 });
