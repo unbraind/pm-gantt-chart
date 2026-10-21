@@ -164,8 +164,10 @@ Under `--schedule`, a **backward pass** (classic CPM) computes each item's *late
 
 `pm gantt repair` evaluates explicit changes for a fixed deadline. It returns the
 fewest moves that make **every retained active item** feasible under the existing
-forward/backward scheduler, including each item's own deadline. Closed/canceled
-prerequisites count as satisfied. It never writes items, estimates, deadlines,
+forward/backward scheduler, including each item's own deadline. Repair feasibility
+uses earliest starts rather than the chart's just-in-time deadline placement:
+waiting until a later deadline must not create a need for extra capacity.
+Closed/canceled prerequisites count as satisfied. It never writes items, estimates, deadlines,
 dependencies, or plan decisions.
 
 ```sh

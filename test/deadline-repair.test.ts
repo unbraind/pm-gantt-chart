@@ -31,7 +31,7 @@ function verify(items: PmItem[], options: DeadlineRepairOptions) {
     });
     const graph = buildPrerequisiteGraph(retained);
     assert.ok(retained.every((item) => graph.get(item.id)!.every((id) => !deferred.includes(id))));
-    const computed = computeSchedule(retained, new Date(`${options.from}T00:00:00`), options.defaultDuration ?? 5, graph);
+    const computed = computeSchedule(retained.map((item) => ({ ...item, deadline: undefined, due_date: undefined })), new Date(`${options.from}T00:00:00`), options.defaultDuration ?? 5, graph);
     assert.ok([...computed.values()].every((entry) => entry.end.toISOString().slice(0, 10) <= options.deadline));
     assert.ok([...computeSlack(retained, computed, graph).values()].every((entry) => !entry.infeasible));
     assert.ok(proposal.moves.every((move) => !options.forbiddenIds?.includes(move.itemId)));
@@ -114,6 +114,39 @@ test("minimal repairs: inclusive horizon respects timestamp days and year overfl
   assert.equal(result.baseline.finish, "10000-01-01");
   assert.equal(result.minimalChanges, 1);
   assert.equal(result.proposals[0].finish, "9999-12-31");
+});
+
+test("minimal repairs: post-horizon canonical, legacy and timestamp deadlines need no changes", () => {
+  for (const due of [{ deadline: "2026-12-01" }, { due_date: "2026-12-01" }, { deadline: "2026-12-01T23:00:00" }]) {
+    const result = verify([{ ...task("a", 1), ...due }], scenario);
+    assert.equal(result.minimalChanges, 0);
+    assert.deepEqual(result.baseline, { finish: "2026-10-21", infeasibleIds: [] });
+  }
+});
+
+test("minimal repairs: deadline placement cannot delay feasible prerequisites or dependents", () => {
+  for (const deadline of ["2026-12-01", scenario.deadline]) {
+    for (const id of ["a", "b"]) {
+      const items = [task("a", 1), task("b", 1, ["a"])].map((item) => item.id === id ? { ...item, deadline } : item);
+      const result = verify(items, scenario);
+      assert.equal(result.minimalChanges, 0);
+      assert.deepEqual(result.baseline, { finish: scenario.deadline, infeasibleIds: [] });
+    }
+  }
+  const earlier = [{ ...task("a", 1), deadline: "2026-10-21" }, { ...task("b", 1, ["a"]), deadline: "2026-12-01" }];
+  assert.equal(verify(earlier, scenario).minimalChanges, 0);
+  refusal(proposeDeadlineRepairs(earlier.map((item) => item.id === "b" ? { ...item, deadline: "2026-10-21" } : item), scenario), "no_allowed_repair");
+});
+
+test("minimal repairs: late deadlines still allow capacity repairs and preserve earlier limits", () => {
+  const items = [{ ...task("a", 2), deadline: "2026-12-01" }, { ...task("b", 1, ["a"]), due_date: "2026-12-01" }];
+  const options = { ...scenario, capacityShifts: [{ itemId: "a", minutesPerDay: 960 }] };
+  const result = verify(items, options);
+  assert.equal(result.minimalChanges, 1);
+  assert.deepEqual(result.baseline.infeasibleIds, ["b"]);
+  assert.deepEqual(result.proposals[0].affectedIds, ["a", "b"]);
+  assert.equal(result.proposals[0].finish, scenario.deadline);
+  refusal(proposeDeadlineRepairs(items.map((item) => item.id === "a" ? { ...item, deadline: "2026-10-20" } : item), options), "no_allowed_repair");
 });
 
 test("minimal repairs: no-op offers and exhausted budgets never certify partial search", () => {

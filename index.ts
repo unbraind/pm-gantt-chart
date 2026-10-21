@@ -1058,9 +1058,16 @@ function repairDate(value: string): Date | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && date && isoDay(date) === value ? date : null;
 }
 
-/** Evaluate a complete hypothetical schedule with the existing forward/backward passes. */
+/**
+ * Evaluate earliest possible completion, then enforce unchanged real deadlines.
+ * Deadline back-anchoring is a chart placement preference, not a feasibility
+ * constraint: waiting until a prerequisite's deadline can needlessly delay its
+ * dependents. Strip both due-date aliases only for the forward pass; the
+ * backward pass retains every original deadline. Inputs remain untouched.
+ */
 function repairSchedule(items: PmItem[], anchor: Date, horizon: Date, duration: number, graph: PrerequisiteGraph) {
-  const schedule = computeSchedule(items, anchor, duration, graph);
+  const earliest = items.map((item) => ({ ...item, deadline: undefined, due_date: undefined }));
+  const schedule = computeSchedule(earliest, anchor, duration, graph);
   const slack = computeSlack(items, schedule, graph);
   let finish: Date | null = null;
   const horizonEnd = addDays(horizon, 1);
