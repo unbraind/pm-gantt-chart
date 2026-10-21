@@ -1062,15 +1062,15 @@ function repairDate(value: string): Date | null {
 function repairSchedule(items: PmItem[], anchor: Date, horizon: Date, duration: number, graph: PrerequisiteGraph) {
   const schedule = computeSchedule(items, anchor, duration, graph);
   const slack = computeSlack(items, schedule, graph);
-  let finish: string | null = null;
+  let finish: Date | null = null;
+  const horizonEnd = addDays(horizon, 1);
   const infeasibleIds: string[] = [];
   for (const item of items) {
     const end = schedule.get(item.id)!.end;
-    const day = isoDay(end);
-    if (finish === null || day > finish) finish = day;
-    if (day > isoDay(horizon) || slack.get(item.id)!.infeasible) infeasibleIds.push(item.id);
+    if (finish === null || end > finish) finish = end;
+    if (end >= horizonEnd || slack.get(item.id)!.infeasible) infeasibleIds.push(item.id);
   }
-  return { schedule, finish, infeasibleIds };
+  return { schedule, finish: finish === null ? null : isoDay(finish), infeasibleIds };
 }
 
 /**

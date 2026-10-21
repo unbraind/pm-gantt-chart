@@ -104,6 +104,18 @@ test("minimal repairs: a feasible or empty baseline needs no changes; completed 
   assert.equal(verify(items, scenario).proposals.length, 0);
 });
 
+test("minimal repairs: inclusive horizon respects timestamp days and year overflow", () => {
+  const timestamp = { ...task("a", 1), deadline: "2026-10-22T23:00:00" };
+  assert.equal(verify([timestamp], scenario).minimalChanges, 0);
+  const items = [task("a", 3)];
+  const options = { from: "9999-12-30", deadline: "9999-12-31", capacityShifts: [{ itemId: "a", minutesPerDay: 960 }] };
+  const result = proposeDeadlineRepairs(items, options);
+  assert.ok(result.ok);
+  assert.equal(result.baseline.finish, "10000-01-01");
+  assert.equal(result.minimalChanges, 1);
+  assert.equal(result.proposals[0].finish, "9999-12-31");
+});
+
 test("minimal repairs: no-op offers and exhausted budgets never certify partial search", () => {
   refusal(proposeDeadlineRepairs([task("a", 3), task("b", 3)], { ...scenario, capacityShifts: [{ itemId: "a", minutesPerDay: 481 }] }), "no_allowed_repair");
   refusal(proposeDeadlineRepairs([task("a", 1), task("b", 3)], { ...scenario, capacityShifts: [{ itemId: "a", minutesPerDay: 960 }] }), "no_allowed_repair");

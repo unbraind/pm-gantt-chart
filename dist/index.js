@@ -778,16 +778,16 @@ function repairSchedule(items, anchor, horizon, duration, graph) {
     const schedule = computeSchedule(items, anchor, duration, graph);
     const slack = computeSlack(items, schedule, graph);
     let finish = null;
+    const horizonEnd = addDays(horizon, 1);
     const infeasibleIds = [];
     for (const item of items) {
         const end = schedule.get(item.id).end;
-        const day = isoDay(end);
-        if (finish === null || day > finish)
-            finish = day;
-        if (day > isoDay(horizon) || slack.get(item.id).infeasible)
+        if (finish === null || end > finish)
+            finish = end;
+        if (end >= horizonEnd || slack.get(item.id).infeasible)
             infeasibleIds.push(item.id);
     }
-    return { schedule, finish, infeasibleIds };
+    return { schedule, finish: finish === null ? null : isoDay(finish), infeasibleIds };
 }
 /**
  * Enumerate the smallest feasible sets of explicitly allowed moves. Minimality
