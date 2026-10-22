@@ -16,12 +16,11 @@
 
 ### Security
 
-- Replace the duplication tooling braces dependency once a compatible patched package is published ([pm-gantt-chart-e7rd](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-e7rd.toon))
+- Removed the vulnerable braces chain from duplication tooling ([pm-gantt-chart-e7rd](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-e7rd.toon))
 
 ### Other
 
 - Enable GitHub CodeQL code scanning ([pm-gantt-chart-tpgu](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-tpgu.toon))
-- Certify pm-gantt-chart on PM CLI/SDK 2026.10.4 and consolidate pending dependency updates ([pm-gantt-chart-mdm1](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-mdm1.toon))
 - Render package visuals with build-time Triplicate tokens ([pm-gantt-chart-triplicate](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-triplicate.toon))
 
 ## 2026.10.19 - 2026-10-19

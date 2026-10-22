@@ -1,25 +1,30 @@
 id: pm-gantt-chart-e7rd
-title: Replace the duplication tooling braces dependency once a compatible patched package is published
-description: "Full npm audit has 4 high dev-only advisories from required pm-ops -> fast-glob 3.3.3 -> micromatch -> braces 3.0.3 (GHSA-vfj7-8cjw-p6xm). npm view braces version confirms 3.0.3 is latest and affected. Removing fast-glob already broke exact-head duplication CI; downgrading pm-ops violates the certification pin. Production npm audit is clean. Preserve the duplication gate and wait for an upstream compatible fix, then rerun clean npm ci, both audit scopes and the full gate."
+title: Removed the vulnerable braces chain from duplication tooling
+description: "The 2026.10.4 full audit reported four high dev-only findings through pm-ops -> fast-glob -> micromatch -> braces; production audit was clean. PR #141 replaced that chain by adopting published canonical pm-ops tooling and removing fast-glob, preserving the duplication and coverage thresholds. The earlier contingency about waiting for a patched braces package is superseded by the delivered dependency replacement."
 type: Issue
 status: closed
 priority: 1
 tags[2]: dependencies,security
 created_at: "2026-10-04T10:58:41.747Z"
-updated_at: "2026-10-21T19:26:30.498Z"
+updated_at: "2026-10-22T11:13:00.716Z"
 closed_at: "2026-10-21T19:26:29.262Z"
 completed_at: "2026-10-21T19:26:29.262Z"
 author: codex-sol
 acceptance_criteria: Clean full npm audit and production audit with CLI/ops 2026.10.4 or newer and unchanged duplication/coverage gates
-resolution: Delivered by the audit-linked mainline implementation.
-expected_result: Replace the duplication tooling braces dependency once a compatible patched package is published.
-actual_result: "Re-verified unchanged main 80717afb81f1: delivery afd01629ede3 remains in main ancestry; .github/workflows/pm-github-sync.yml, test/prepare-merge-driver.test.ts remain present."
-comments[2]{created_at,author,text}:
-  "2026-10-13T22:23:18.127Z",claude-hub,"Reopened: this item was linked in the merged PR body as an open follow-up or risk, not as delivered work. The automated close-out closed it in error; it remains open."
-  "2026-10-21T19:26:17.690Z",codex-agent,"Tracker reconciliation authorized for the audited verdict FIXED-STALE. Re-verified unchanged main 80717afb81f1: delivery afd01629ede3 remains in main ancestry; .github/workflows/pm-github-sync.yml, test/prepare-merge-driver.test.ts remain present. Replace the duplication tooling braces dependency once a compatible patched package is published. [PR #141](https://github.com/unbraind/pm-gantt-chart/pull/141) (afd0162) removes the vulnerable braces toolchain chain through the published canonical tooling update; the older unavailable-patch contingency is superseded by the delivered replacement. Scope: tracker state only; no new runtime certification or deployment claim."
+resolution: PR #141 (afd01629ede3) delivered the canonical duplication-tooling update and removed the vulnerable dependency chain.
+expected_result: Remove the vulnerable duplication-tooling dependency chain while preserving the configured coverage and zero-duplication gates.
+actual_result: "Main 80717afb81f1 contains PR #141 delivery afd01629ede3. Its package-lock.json resolves PM CLI 2026.10.15 and pm-ops 2026.10.16 and contains no fast-glob, micromatch or braces package entries. Linked remediation item pm-gantt-chart-maint1014 records full audit 0, production audit 0, npm ls braces empty, npm and Bun each passing 244/244 tests and both full release gates passing at unchanged thresholds. Fresh review npm ci and full/production npm audits each report zero vulnerabilities. These dependency receipts do not establish the separate dated 2026.10.4 certification."
+comments[2]:
+  - created_at: "2026-10-13T22:23:18.127Z"
+    author: claude-hub
+    text: "Reopened: this item was linked in the merged PR body as an open follow-up or risk, not as delivered work. The automated close-out closed it in error; it remains open."
+  - created_at: "2026-10-21T19:26:17.690Z"
+    author: codex-agent
+    text: "Tracker reconciliation evidence: main 80717afb81f1 contains PR #141 (afd01629ede3), which removed the vulnerable braces dependency chain through the canonical duplication-tooling update. The linked pm-gantt-chart-maint1014 receipt reports full audit 0, production audit 0, npm ls braces empty and npm/Bun gates each passing 244/244 at unchanged thresholds. Current resolved PM CLI 2026.10.15 and pm-ops 2026.10.16 contain no fast-glob, micromatch or braces entries; fresh full and production audits are clean. The earlier waiting-for-a-patch contingency is superseded. Scope: tracker evidence only; no new runtime certification or deployment claim."
+    edited_at: "2026-10-22T11:13:00.716Z"
 files[3]{path,scope}:
   package-lock.json,project
   package.json,project
   scripts/duplication-gate.ts,project
-close_reason: "Re-verified unchanged main 80717afb81f1: delivery afd01629ede3 remains in main ancestry; .github/workflows/pm-github-sync.yml, test/prepare-merge-driver.test.ts remain present. Audit delivery: Replace the duplication tooling braces dependency once a compatible patched package is published. [PR #141](https://github.com/unbraind/pm-gantt-chart/pull/141) (afd0162) removes the vulnerable braces toolchain chain through the published canonical tooling update; the older unavailable-patch contingency is superseded by the delivered replacement."
+close_reason: "PR #141 (afd01629ede3), retained in main 80717afb81f1, removed the vulnerable braces chain through the canonical duplication-tooling update. The remediation records clean full/production audits and unchanged npm/Bun gates; current lockfile and fresh audits confirm removal. The unavailable-patch contingency is superseded; separate certification acceptance is not asserted."
 body: ""
