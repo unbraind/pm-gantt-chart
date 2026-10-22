@@ -33,15 +33,28 @@ Legend: ██ in_progress/blocked  ░░ open/planned  ▓▓ critical-path (*
 Requires pm CLI `2026.10.6` or newer. Development and CI exact-pin 2026.10.6;
 the consumer floor is independently exercised by packed npm acceptance.
 
-```sh
-pm install unbraind/pm-gantt-chart
-```
-
-Or from a local clone:
+In a plain project directory, initialize a tracker and activate the published package:
 
 ```sh
-pm install ./path/to/pm-gantt-chart
+npx -y @unbrained/pm-cli@2026.10.21 init --defaults --agent-guidance skip
+npx -y @unbrained/pm-cli@2026.10.21 install npm:pm-gantt-chart@2026.10.20 --project
 ```
+
+With Bun:
+
+```sh
+bunx @unbrained/pm-cli@2026.10.21 init --defaults --agent-guidance skip
+bunx @unbrained/pm-cli@2026.10.21 install npm:pm-gantt-chart@2026.10.20 --project
+```
+
+Use the explicit `npm:` source: an owner/repository shorthand is interpreted as a
+local path, not as a registry package.
+
+### Without git
+
+Rendering, scheduling and chart exports work with a plain-directory tracker;
+no git repository or git executable is required. GitHub sync and changelog
+commands based on tags need a git repository and their separate tools.
 
 ## Usage
 
@@ -159,6 +172,62 @@ Under `--schedule`, a **backward pass** (classic CPM) computes each item's *late
 - **0 slack** → the item is on the critical path; any slip delays the project.
 - **positive slack** → the item can slip that many days harmlessly.
 - **negative slack** → the item's required start (to hit a downstream deadline) is *before* its earliest feasible start. The plan is **already late**. These items are listed in a `WARNING:` block on stderr by both `pm gantt` and `pm gantt export`, and flagged per-task in the JSON result (`tasks[].slack_days`, `tasks[].infeasible`, plus `infeasibleCount` / `warnings`).
+
+### Minimal deadline repair proposals
+
+`pm gantt repair` evaluates explicit changes for a fixed deadline. It returns the
+fewest moves that make **every retained active item** feasible under the existing
+forward/backward scheduler, including each item's own deadline. Repair feasibility
+uses earliest starts rather than the chart's just-in-time deadline placement:
+waiting until a later deadline must not create a need for extra capacity.
+Closed/canceled prerequisites count as satisfied. It never writes items, estimates, deadlines,
+dependencies, or plan decisions.
+
+```sh
+pm gantt repair --from 2026-10-21 --deadline 2026-10-22 \
+  --capacity task-a=960 --defer task-b --forbid task-release --json
+```
+
+Only named offers are considered: `--capacity id=minutesPerDay,...` supplies
+dedicated daily capacity for estimated work (baseline 480 minutes/day; offers
+481..4800), and `--defer id,...` allows those exact items to leave this scenario.
+No retained item may depend on deferred work. `--forbid id,...` overrides both.
+Capacity availability is a caller-supplied assumption; this is a precedence and
+calendar-day model, without shared-resource contention, weekends, or holidays.
+
+Output uses the host's compact TOON by default or JSON with `--json`. Each
+proposal includes exact `moves`, `affectedIds` (moved items plus items whose dates
+change), recomputed `finish`/`retainedCount`, `deferredMinutes`, and
+`addedMinutesPerDay`. Titles, bodies and full schedules are omitted.
+`minimalChanges` is minimum **move count within the explicit vocabulary**;
+ties prefer less deferred effort, then less added daily capacity, then stable
+move order. `totalProposals` and `truncated` describe output limiting.
+
+Bounds: 200 corpus items, 2000 ordering edges, 24 effective offers, 1..3 moves
+(`--max-changes`, default 3), 1..10 results (`--max-proposals`, default 5), and
+1..10000 evaluations (`--max-evaluations`, default 5000). Missing estimates use
+`--default-duration` (default 5 calendar days, 1..365); they cannot receive a
+capacity offer. Estimates must be finite, nonnegative and at most 175200 minutes.
+Cycles, missing prerequisites, malformed dates, invalid offers, oversized
+scenarios, exhausted search and unavailable repairs return typed refusals with
+`code`, `message`, `remedy` (CLI exit 2). Search exhaustion never presents an
+uncertified minimum. An already feasible scenario returns zero changes and no
+proposals. Full ISO tracker deadlines are accepted; CLI scenario days require
+real `YYYY-MM-DD` values.
+
+The typed SDK exports `proposeDeadlineRepairs(items, options, graph?)` and
+`DeadlineRepairOptions`, `DeadlineRepairResult`, `DeadlineRepairProposal`,
+`DeadlineRepairMove`, `DeadlineCapacityShift`, `DeadlineRepairRefusalCode`.
+Pass a complete dependency-closed corpus. The optional graph uses the existing
+`PrerequisiteGraph` contract for custom registry ordering; the CLI resolves
+workspace registrations automatically. Core `plan decision` can record a chosen
+proposal after review. See the [worked example](docs/deadline-repair.md).
+
+### Without git
+
+Rendering, scheduling, exports and deadline repair proposals work in plain
+trackers without git installed. This package's runtime commands do not require
+a git repository. Repository release/changelog tooling needs git history.
 
 ### Preflight data-sanity gate
 
