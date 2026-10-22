@@ -1,0 +1,29 @@
+id: pm-gantt-chart-uncertainty-intervals
+title: Render reproducible completion intervals for declared scheduling uncertainty
+description: Accept bounded estimate ranges or declared distributions and retain assumptions and seed in a scenario receipt.
+type: Feature
+status: in_progress
+priority: 2
+tags: []
+created_at: "2026-10-22T16:07:49.861Z"
+updated_at: "2026-10-22T16:21:54.297Z"
+assignee: codex-agent
+claim_principal: codex-agent
+author: codex-agent
+acceptance_criteria: Synthetic schedules reproduce quantiles; missing estimates remain unknown; sensitivity results identify which estimate dominates the interval.
+comments[3]{created_at,author,text}:
+  "2026-10-22T16:07:54.711Z",codex-agent,"Overlap check: existing gantt bars, schedule and repair use point estimates. Core graph SDK supplies deterministic registry-aware ordering and estimate/deadline analysis, without distribution sampling or completion quantiles. pm-graph renders graph analytics. pm-rl evaluates/trains learned policies; this feature samples caller-declared scheduling uncertainty and trains no model. Reuse certified complete-list reads, PmClient contracts/custom predecessors, RelationshipGraph and analyzeRelationshipExecution; keep the development SDK pin unchanged. Design: independent bounded uniform/triangular estimates, deterministic seeded sampling, explicit unknown propagation, compact quantiles and Pearson sensitivity, replayable scenario receipt. Local targeted checks; full npm and Bun release gates in CI."
+  "2026-10-22T16:18:36.616Z",codex-agent,"Implemented typed completionIntervals SDK and gantt uncertainty command. Targeted uncertainty suite: 29 pass; simulation source measured 100% lines/branches/functions. Existing repair and smoke regressions: 36 pass. Three behavioral reverts are caught: midpoint sampling, missing effort becoming zero, and discarded sensitivity association (node test/revert-uncertainty.ts). Public tracker validation at d999e65: 18 active items, 14 unknown estimates/completions, baseline project finish unknown. Explicit hypothetical ranges, seed 42 and 10000 draws: P10/P50/P90 10.894413/50.703685/89.778522 days; dominant pm-gantt-chart-2u8i, Pearson 0.9999986156; compact JSON 9616 bytes. Repeated receipt is identical; durable tracker documents are unchanged; no git executable is available during reads. Full gates pending CI."
+  "2026-10-22T16:21:54.297Z",codex-agent,"Linked tracker test execution passed all 65 targeted tests; automatic result persistence is disabled by existing project policy, so this comment retains the counts. Final simulation-only measurement after numerical hardening remains 29/29 and 100% lines/branches/functions. Typecheck, test typecheck, lint, docstrings and zero-duplication checks pass. Local strict health reports inherited global extension host-version skew and generated merge-fence drift; neither history repair nor merge-driver work is in scope. Fresh CI provisions its own dependencies and is authoritative for full npm/Bun and strict health evidence. No SDK/CLI defect was found in the feature path. npm ci required ignoring the local user npm configuration after EALLOWSCRIPTS in git dependency preparation; dependency pins are unchanged."
+files[3]{path,scope}:
+  index.ts,project
+  test/uncertainty.test.ts,project
+  uncertainty.ts,project
+tests[3]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
+  node --test test/uncertainty.test.ts test/deadline-repair.test.ts test/smoke.test.ts,project,codex-agent,"2026-10-22T16:17:17.086Z",local_mutation,feat/uncertainty-intervals
+  node test/revert-uncertainty.ts,project,codex-agent,"2026-10-22T16:21:52.559Z",local_mutation,feat/uncertainty-intervals
+  node test/validate-uncertainty.ts,project,codex-agent,"2026-10-22T16:21:53.490Z",local_mutation,feat/uncertainty-intervals
+docs[2]{path,scope}:
+  docs/uncertainty-intervals.md,project
+  README.md,project
+body: ""

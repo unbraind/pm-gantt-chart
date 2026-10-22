@@ -13,7 +13,9 @@ import type { RelationshipKindRegistry } from "@unbrained/pm-cli/sdk";
 import type { ContractsResult } from "@unbrained/pm-cli/sdk/runtime";
 import type { GraphTraversalResult } from "@unbrained/pm-cli/sdk/graph";
 import { resolveWorkspaceRelationshipKindRegistry } from "@unbrained/pm-cli/sdk/graph";
-import { writeFileSync } from "node:fs";
+import { readFileSync, statSync, writeFileSync } from "node:fs";
+import { simulateCompletionIntervals, type CompletionIntervalOptions, type CompletionIntervalResult, type UncertainEstimate } from "./uncertainty.ts";
+export type { CompletionIntervalOptions, CompletionIntervalResult, CompletionIntervalRefusalCode, CompletionScenarioReceipt, CompletionQuantile, UncertainEstimate, ResolvedEstimate } from "./uncertainty.ts";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -1050,6 +1052,11 @@ export type DeadlineRepairResult =
 /** Construct a typed refusal shared by validation and bounded search. */
 function repairRefusal(code: DeadlineRepairRefusalCode, message: string, remedy: string): DeadlineRepairResult {
   return { ok: false, code, message, remedy };
+}
+
+/** Compute seeded completion intervals without changing estimates, items or history. */
+export function completionIntervals(items: readonly PmItem[], options: CompletionIntervalOptions, graph: PrerequisiteGraph = buildPrerequisiteGraph(items)): CompletionIntervalResult {
+  return simulateCompletionIntervals(items, options, graph);
 }
 
 /** Accept real calendar days only, avoiding date rollover and timezone ambiguity. */
@@ -3115,6 +3122,52 @@ export default defineExtension({
 
   activate(api: ExtensionApi) {
     api.registerCommand({
+      name: "gantt uncertainty",
+      description: "Render reproducible completion quantiles and estimate sensitivity from declared uncertainty.",
+      intent: "Read-only seeded scheduling with explicit unknowns and replayable assumptions.",
+      read_output: { row_keys: [] },
+      examples: ["pm gantt uncertainty --from 2026-10-22 --seed 42 --estimates estimates.json --json"],
+      failure_hints: ["Supply a real --from day, unsigned --seed and a JSON map of active ids to bounded minute estimates."],
+      flags: [
+        { long: "--from", value_name: "day", description: "Required UTC anchor day (YYYY-MM-DD)." },
+        { long: "--seed", value_name: "n", description: "Required unsigned 32-bit reproducibility seed, including zero." },
+        { long: "--estimates", value_name: "file", description: "JSON map: id to [min,max], point, uniform or triangular minute declarations (max 64 KiB)." },
+        { long: "--samples", value_name: "n", description: "Simulation samples (default 2000; 100..10000)." },
+        { long: "--quantiles", value_name: "list", description: "Increasing probabilities in [0,1], at most nine (default 0.1,0.5,0.9)." },
+        { long: "--minutes-per-day", value_name: "n", description: "Effort per calendar day (default 480; 1..1440)." },
+        { long: "--limit", value_name: "n", description: "Item and sensitivity row limit (default 20; 1..200); receipt stays complete." },
+      ],
+      async run(ctx: CommandHandlerContext) {
+        let estimates: Record<string, UncertainEstimate> | undefined;
+        const file = readOption(ctx.options, "estimates");
+        if (file !== undefined) {
+          try {
+            const path = resolve(String(file));
+            if (!statSync(path).isFile() || statSync(path).size > 65536) throw new Error("bounded regular file required");
+            const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+            if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("map required");
+            estimates = parsed as Record<string, UncertainEstimate>;
+          } catch {
+            return { ok: false, code: "invalid_estimate", message: "Cannot read a bounded estimate map.", remedy: "Provide a readable JSON object file no larger than 64 KiB, keyed by active item id.", exit_code: EXIT_CODE.USAGE };
+          }
+        }
+        /** Preserve absent defaults while sending malformed numeric flags to typed validation. */
+        const numeric = (key: string, camel = key): number | undefined => {
+          const raw = readOption(ctx.options, key, camel);
+          return raw === undefined ? undefined : String(raw).trim() === "" ? NaN : Number(raw);
+        };
+        const rawQuantiles = readOption(ctx.options, "quantiles");
+        const items = fetchItems(ctx.pm_root);
+        const graph = await commandPrerequisiteGraph(items, ctx.pm_root);
+        const result = completionIntervals(items, {
+          from: String(readOption(ctx.options, "from") ?? ""), seed: numeric("seed") ?? NaN, estimates,
+          samples: numeric("samples"), minutesPerDay: numeric("minutes-per-day", "minutesPerDay"), limit: numeric("limit"),
+          quantiles: rawQuantiles === undefined ? undefined : String(rawQuantiles).split(",").map((part) => part.trim() === "" ? NaN : Number(part)),
+        }, graph);
+        return result.ok ? result : { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
+      },
+    });
+    api.registerCommand({
       name: "gantt repair",
       description: "Propose minimal explicit capacity or scope changes for an infeasible deadline.",
       intent: "Evaluate deadline repairs without modifying items, deadlines or dependencies.",
@@ -3368,7 +3421,7 @@ export default defineExtension({
     // (empty delta).
     // -----------------------------------------------------------------------
     api.registerPreflight({
-      commands: ["gantt", "gantt export", "gantt repair"],
+      commands: ["gantt", "gantt export", "gantt repair", "gantt uncertainty"],
       run: () => {
         // Intentionally no enforcement here (runtime swallows throws); the real
         // data-sanity gate is enforced in the command and exporter handlers
