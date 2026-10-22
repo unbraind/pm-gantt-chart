@@ -119,3 +119,15 @@ harness passed 1/1 before these mutations. Production source was restored
 byte-for-byte after every proof. Test compilation and lint passed. Isolated
 strict PM health with CI merge-driver setup passed; inherited stale-item and
 historical-provenance warnings remain non-failing.
+
+The continuation ran both complete release gates locally on code commit
+`fe9aeb6`: `npm run release:check` and `bun run release:check` each passed
+285/285 tests, with zero failures, skips or cancellations. Both measured
+100.00% lines, branches and functions across all three configured runtime
+sources, 0% duplication and zero production audit vulnerabilities. Each
+passed all three packed scenarios (npm/current, Bun/current, npm/minimum),
+changelog/date and workflow/publish-attestation checks. The committed
+distribution rebuild stayed byte-identical. PM-linked checks passed 95/95,
+3/3, 1/1 and 1/1. Two initial PM-runner attempts hit the default 120-second
+execution timeout under load; retries with `--timeout 1200` passed without
+changing tests or release thresholds. Full release gates had no timeouts.
