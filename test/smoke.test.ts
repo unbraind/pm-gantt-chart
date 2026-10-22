@@ -125,8 +125,17 @@ test("README installs the pinned registry package in project scope", () => {
   const installation = readFileSync(new URL("../README.md", import.meta.url), "utf8")
     .split("## Installation\n")[1]?.split("\n## ")[0];
   assert.ok(installation, "installation instructions must be present");
-  assert.match(installation, /npx -y @unbrained\/pm-cli@2026\.10\.21 init --defaults --agent-guidance skip/);
-  assert.match(installation, /npx -y @unbrained\/pm-cli@2026\.10\.21 install npm:pm-gantt-chart@2026\.10\.20 --project/);
+  const commandBlocks = [...installation.matchAll(/```sh\n([\s\S]*?)\n```/g)]
+    .map(([, block]) => block.split("\n"));
+  assert.deepEqual(commandBlocks, [
+    [
+      "npx -y @unbrained/pm-cli@2026.10.21 init --defaults --agent-guidance skip",
+      "npx -y @unbrained/pm-cli@2026.10.21 install npm:pm-gantt-chart@2026.10.20 --project",
+    ],
+    [
+      "bunx @unbrained/pm-cli@2026.10.21 init --defaults --agent-guidance skip",
+      "bunx @unbrained/pm-cli@2026.10.21 install npm:pm-gantt-chart@2026.10.20 --project",
+    ],
+  ]);
   assert.doesNotMatch(installation, /pm install (?:github\.com\/)?unbraind\//);
-  assert.match(installation, /bunx/);
 });

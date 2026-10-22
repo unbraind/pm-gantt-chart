@@ -6,18 +6,37 @@ status: in_progress
 priority: 2
 tags: []
 created_at: "2026-10-21T23:25:57.362Z"
-updated_at: "2026-10-21T23:36:48.197Z"
+updated_at: "2026-10-22T11:42:45.722Z"
+assignee: codex-agent
+claim_principal: codex-agent
 author: codex-agent
-comments[5]{created_at,author,text}:
+comments[7]{created_at,author,text}:
   "2026-10-21T23:26:04.441Z",codex-agent,Replace only the consumer source route; preserve dependency pins and separate SDK documentation task. Verify in fresh plain trackers using both runners and prove the documentation regression fails with the original README.
   "2026-10-21T23:26:53.699Z",codex-agent,"Targeted documentation suite: 5 passed, 0 failed. Typecheck and lint passed. Revert proof: restoring only the original README makes the new README regression exit 1; restoring the corrected README passes. Fresh npx and bunx registry acceptance is being recorded separately."
   "2026-10-21T23:29:14.334Z",codex-agent,"Fresh plain-directory README verification with CLI 2026.10.21: npx init exit 0; npx registry install exit 0; bunx init exit 0; bunx registry install exit 0. Each runner used its own empty project and home/config directories, with no Git repository. An initial prefer-offline metadata lookup returned ETARGET; online metadata refresh made the identical pinned route pass."
   "2026-10-21T23:33:05.211Z",codex-agent,"Full npm gate has passed 255/255 tests with zero skipped and 100% measured lines, branches and functions at unchanged thresholds; packed acceptance passed npm-current, bun-current and npm-minimum. Remaining verification steps and the full Bun gate are pending. Focused docs and PM-linked tests passed 5/5; README-only revert failed as required."
   "2026-10-21T23:36:45.827Z",codex-agent,"Final local validation: npm run release:check exit 0 and bun run release:check exit 0, each 255 passed / 0 failed / 0 skipped at unchanged 100% coverage thresholds. Each gate passed all three packed consumer scenarios. README npx and bunx init/install commands all exit 0 in fresh plain trackers; original README revert fails. Ready for PR CI verification; item remains in_progress and will be released for orchestrator review."
-files[1]{path,scope}:
+  "2026-10-22T11:30:11.928Z",codex-agent,"PR 165 review continuation: rechecked completed PR 164/163 worktrees and released PM claims without changing them. Pulled install-routes remote head; no unpublished commits or draft edits, and origin/main is already an ancestor. Fetched the sole unresolved thread PRRT_kwDOSYpIas6vIogU with all comments and latest CodeRabbit body; no outside-diff findings. Finding is valid: a generic bunx occurrence does not prove either pinned Bun command. Add explicit Bun init/install examples and assert entire npm/Bun shell blocks so packages, versions, arguments and pairing are exact. Self-review applies the same whole-command check to the existing npm examples. Keep the separately tracked SDK prose alignment outside this change. Repeat documentation revert proofs, then full isolated npm and Bun release gates at unchanged thresholds."
+  "2026-10-22T11:42:45.722Z",codex-agent,"PRRT_kwDOSYpIas6vIogU fixed: README now explicitly lists both Bun commands with CLI 2026.10.21, package 2026.10.20 and the exact init/install arguments. The regression compares complete npm and Bun shell blocks, including runner pairing and command order, rather than substring matches; this also closes the npm partial-match gap found in self-review. Behavioral documentation proof: node --test --test-name-pattern=\"README installs\" test/smoke.test.ts passes 1/1 intact, fails 0/1 (exit 1, ERR_ASSERTION) when only README is restored to the prior Bun-by-substitution wording, fails 0/1 when only the Bun init CLI version changes to 2026.10.20, and fails 0/1 when only Bun install scope changes from --project to --global. All three wrong examples still contain bunx, demonstrating the old weak check. README restored byte-for-byte after every mutation; restored focused run passes 1/1. PM-linked smoke and focused documentation runs pass 5/5 and 1/1 with no failures/skips/cancellations. Test compilation and lint pass. Clean npm ci reports zero vulnerabilities. No source, dependency-pin, threshold or separate SDK prose change. Full isolated npm and Bun gates follow."
+files[2]{path,scope}:
   test/smoke.test.ts,project
-tests[1]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
-  node --test test/smoke.test.ts,project,codex-agent,"2026-10-21T23:26:43.966Z",local_mutation,fix/install-routes-1022
+  README.md,project
+tests[2]:
+  - command: node --test test/smoke.test.ts
+    scope: project
+    provenance:
+      author: codex-agent
+      created_at: "2026-10-21T23:26:43.966Z"
+      source_kind: local_mutation
+      source_ref: fix/install-routes-1022
+  - command: node --test --test-name-pattern='README installs' test/smoke.test.ts
+    scope: project
+    timeout_seconds: 1200
+    provenance:
+      author: codex-agent
+      created_at: "2026-10-22T11:41:41.142Z"
+      source_kind: local_mutation
+      source_ref: fix/install-routes-1022
 docs[1]{path,scope}:
   README.md,project
 body: ""

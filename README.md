@@ -40,7 +40,13 @@ npx -y @unbrained/pm-cli@2026.10.21 init --defaults --agent-guidance skip
 npx -y @unbrained/pm-cli@2026.10.21 install npm:pm-gantt-chart@2026.10.20 --project
 ```
 
-With Bun, use `bunx` instead of `npx -y` for both commands.
+With Bun:
+
+```sh
+bunx @unbrained/pm-cli@2026.10.21 init --defaults --agent-guidance skip
+bunx @unbrained/pm-cli@2026.10.21 install npm:pm-gantt-chart@2026.10.20 --project
+```
+
 Use the explicit `npm:` source: an owner/repository shorthand is interpreted as a
 local path, not as a registry package.
 
