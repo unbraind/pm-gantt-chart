@@ -17,6 +17,19 @@ function task(id: string, days = 2, deps: string[] = []): PmItem {
   return { id, title: id, status: "open", estimated_minutes: days * 480, dependencies: deps.map((id) => ({ id, kind: "blocked_by" })) };
 }
 
+/**
+ * True when an inclusive local finish is on or before the horizon day.
+ *
+ * Compare Date values with the next local midnight. UTC ISO day text is not
+ * chronological here: a positive offset formats that midnight as the horizon
+ * day, and year 10000 also sorts before 9999 as text.
+ */
+function finishesByHorizon(end: Date, deadline: string): boolean {
+  const horizonEnd = new Date(`${deadline}T00:00:00`);
+  horizonEnd.setDate(horizonEnd.getDate() + 1);
+  return end < horizonEnd;
+}
+
 /** Narrow successful results and independently check every retained schedule. */
 function verify(items: PmItem[], options: DeadlineRepairOptions) {
   const before = JSON.stringify(items);
@@ -32,7 +45,7 @@ function verify(items: PmItem[], options: DeadlineRepairOptions) {
     const graph = buildPrerequisiteGraph(retained);
     assert.ok(retained.every((item) => graph.get(item.id)!.every((id) => !deferred.includes(id))));
     const computed = computeSchedule(retained.map((item) => ({ ...item, deadline: undefined, due_date: undefined })), new Date(`${options.from}T00:00:00`), options.defaultDuration ?? 5, graph);
-    assert.ok([...computed.values()].every((entry) => entry.end.toISOString().slice(0, 10) <= options.deadline));
+    assert.ok([...computed.values()].every((entry) => finishesByHorizon(entry.end, options.deadline)));
     assert.ok([...computeSlack(retained, computed, graph).values()].every((entry) => !entry.infeasible));
     assert.ok(proposal.moves.every((move) => !options.forbiddenIds?.includes(move.itemId)));
     assert.ok(proposal.moves.every((move) => proposal.affectedIds.includes(move.itemId)));
@@ -109,11 +122,32 @@ test("minimal repairs: inclusive horizon respects timestamp days and year overfl
   assert.equal(verify([timestamp], scenario).minimalChanges, 0);
   const items = [task("a", 3)];
   const options = { from: "9999-12-30", deadline: "9999-12-31", capacityShifts: [{ itemId: "a", minutesPerDay: 960 }] };
-  const result = proposeDeadlineRepairs(items, options);
-  assert.ok(result.ok);
+  const result = verify(items, options);
   assert.equal(result.baseline.finish, "10000-01-01");
   assert.equal(result.minimalChanges, 1);
   assert.equal(result.proposals[0].finish, "9999-12-31");
+});
+
+test("horizon comparison rejects the next local midnight when UTC day text still matches", () => {
+  const originalTimezone = process.env.TZ;
+  try {
+    for (const timezone of ["UTC", "Europe/Vienna"]) {
+      process.env.TZ = timezone;
+      for (const deadline of ["2026-10-22", "9999-12-31"]) {
+        const onDeadline = new Date(`${deadline}T00:00:00`);
+        const nextLocalMidnight = new Date(onDeadline);
+        nextLocalMidnight.setDate(nextLocalMidnight.getDate() + 1);
+        assert.equal(finishesByHorizon(onDeadline, deadline), true, `${timezone}: ${deadline}`);
+        assert.equal(finishesByHorizon(nextLocalMidnight, deadline), false, `${timezone}: ${deadline}`);
+        if (timezone === "Europe/Vienna" || deadline === "9999-12-31") {
+          assert.equal(nextLocalMidnight.toISOString().slice(0, 10) <= deadline, true);
+        }
+      }
+    }
+  } finally {
+    if (originalTimezone === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTimezone;
+  }
 });
 
 test("minimal repairs: post-horizon canonical, legacy and timestamp deadlines need no changes", () => {
@@ -247,15 +281,28 @@ test("minimal repairs: real no-git tracker, installed JSON/TOON CLI, typed refus
   process.env.PATH = bin;
   try {
     const harness = await createExtensionTestHarness(extension, { capabilities: ["commands", "schema", "importers", "preflight"] });
-    for (const options of [
-      { from: scenario.from, deadline: scenario.deadline, capacity: "repair-a=960", maxChanges: "2", maxProposals: "1", maxEvaluations: "20", defaultDuration: "1" },
-      { from: scenario.from, deadline: scenario.deadline, defer: "repair-b", forbid: "repair-a", "max-changes": "2" },
-      { capacity: "repair-a=960=extra" }, {},
-    ]) {
+    const limitKeys = ["max-changes", "maxChanges", "max-proposals", "maxProposals", "max-evaluations", "maxEvaluations", "default-duration", "defaultDuration"];
+    const cases: Array<[Record<string, string>, "ok" | "invalid_scenario" | "no_allowed_repair"]> = [
+      [{ from: scenario.from, deadline: scenario.deadline, capacity: "repair-a=960", maxChanges: "2", maxProposals: "1", maxEvaluations: "20", defaultDuration: "1" }, "ok"],
+      [{ from: scenario.from, deadline: scenario.deadline, defer: "repair-b", forbid: "repair-a", "max-changes": "2" }, "ok"],
+      [{ from: scenario.from, deadline: scenario.deadline, capacity: "repair-a=960=extra" }, "invalid_scenario"],
+      [{ from: scenario.from, deadline: scenario.deadline, capacity: "repair-a=960", forbid: "repair-a" }, "no_allowed_repair"],
+      [{}, "invalid_scenario"],
+      ...limitKeys.map((key): [Record<string, string>, "invalid_scenario"] => [{ from: scenario.from, deadline: scenario.deadline, capacity: "repair-a=960", [key]: "0" }, "invalid_scenario"]),
+    ];
+    for (const [options, expected] of cases) {
       const receipt = await harness.runCommand({ command: "gantt repair", pmRoot, options });
       assert.equal(receipt.handled, true);
       const data = receipt.result as DeadlineRepairResult;
-      if (!data.ok) assert.equal(receipt.exitCode, 2);
+      if (expected === "ok") {
+        assert.equal(data.ok, true, JSON.stringify(data));
+        if (data.ok) assert.equal(data.minimalChanges, 1);
+        assert.equal(receipt.exitCode, undefined);
+      } else {
+        assert.equal(data.ok, false, JSON.stringify(data));
+        if (!data.ok) assert.equal(data.code, expected);
+        assert.equal(receipt.exitCode, 2);
+      }
     }
   } finally { process.env.PATH = originalPath; }
   assert.equal(snapshot(pmRoot), before, "items, settings, dependencies and append-only history stay byte-identical");

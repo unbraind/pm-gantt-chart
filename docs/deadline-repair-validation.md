@@ -73,3 +73,49 @@ The PM-linked repair/scheduler/activation run passed 94/94, including the real
 non-git installed CLI and unchanged durable tracker bytes. Local typecheck,
 test typecheck, lint and the committed distribution rebuild passed. Full npm
 and Bun release gates remain CI evidence at unchanged thresholds.
+
+## PR 164 review-oracle regression
+
+Unresolved thread `PRRT_kwDOSYpIas6vAaV0` is valid. The independent proposal
+check compared `toISOString().slice(0, 10)` with the horizon. On a positive UTC
+offset that text is the horizon day for the next local midnight, so a late
+finish false-passes. Year 10000 has the same false pass: its ISO day text sorts
+before `9999-12-31`. The check now compares each inclusive finish with the next
+local midnight. The regression explicitly exercises UTC and Europe/Vienna,
+restores the prior timezone, and routes the year-overflow proposal through
+that same check.
+Self-review found no other ordering comparison of UTC day text in the repair
+path; chart placement is unchanged.
+
+Behavioral revert proof: restored only `finishesByHorizon` to the ISO day
+comparison. `node --test --test-name-pattern='horizon comparison'
+test/deadline-repair.test.ts` failed 0/1 (exit 1) because the next local
+midnight compared true. Restoring the Date comparison passed that command 1/1 (exit 0).
+
+Unresolved thread `PRRT_kwDOSYpIas6vAaV4` is valid. The harness loop accepted
+any refusal code and did not prove camelCase limit aliases, because a capacity
+offer alone makes the fixture feasible. Deferring the dependent while forbidding
+the prerequisite is a successful one-move repair, not `no_allowed_repair`.
+The loop now expects `ok` with one move for that case, `invalid_scenario` plus
+exit 2 for malformed input, and the same refusal for every zero kebab-case and
+camelCase limit. The latest review body had no outside-diff findings.
+
+Behavioral revert proof: dropped only the camelCase keys from
+`deadlineRepairOptions`. `node --test --test-name-pattern='real no-git tracker'
+test/deadline-repair.test.ts` failed 0/1 (exit 1): a camelCase `maxChanges` of
+`0` was ignored and the capacity repair returned `ok`. The alias arguments were
+restored immediately to the implementation that had passed 1/1 before the revert.
+
+Continuation self-review also isolated malformed capacity from required-date
+validation by supplying valid dates, and added an explicit harness
+`no_allowed_repair` outcome for forbidden capacity. Every numeric limit is
+checked independently in both kebab-case and camelCase form.
+
+Independent continuation verification repeated both behavioral reverts: the
+date helper failed 0/1 and passed 1/1 after restoration; removing camelCase
+lookup failed 0/1 in the real no-git harness. Removing only capacity suffix
+rejection also failed 0/1 with valid scenario dates. The intact expanded
+harness passed 1/1 before these mutations. Production source was restored
+byte-for-byte after every proof. Test compilation and lint passed. Isolated
+strict PM health with CI merge-driver setup passed; inherited stale-item and
+historical-provenance warnings remain non-failing.
