@@ -225,9 +225,59 @@ proposal after review. See the [worked example](docs/deadline-repair.md).
 
 ### Without git
 
-Rendering, scheduling, exports and deadline repair proposals work in plain
+Rendering, scheduling, exports, uncertainty intervals and deadline repair proposals work in plain
 trackers without git installed. This package's runtime commands do not require
 a git repository. Repository release/changelog tooling needs git history.
+
+### Completion intervals for agent plans
+
+`pm gantt uncertainty` samples declared effort uncertainty over the existing
+registry-aware prerequisite graph. Pass a JSON map of active item ids to bounded
+minute ranges (`[480,2400]`), uniform distributions
+(`{"kind":"uniform","min":480,"max":2400}`), triangular distributions
+(`{"kind":"triangular","min":480,"mode":960,"max":2400}`), or fixed points
+(`{"kind":"point","minutes":960}`). Unchanged recorded estimates are fixed
+points; missing estimates and every dependent completion remain **unknown**.
+
+```sh
+pm gantt uncertainty --from 2026-10-22 --seed 42 --estimates estimates.json
+pm gantt uncertainty --from 2026-10-22 --seed 42 --estimates estimates.json --json
+```
+
+Compact TOON (default) and JSON include project/per-item completion quantiles,
+unknown counts, a sensitivity ranking and a complete scenario receipt. Defaults
+are 2000 samples, probabilities 0.1/0.5/0.9, 480 effort minutes per calendar day
+and 20 output rows. Override with `--samples`, `--quantiles`,
+`--minutes-per-day`, and `--limit`. Quantile finishes are exclusive UTC instants;
+continuous durations do not round up to whole days like the bar renderer.
+Independent effort draws, unlimited parallel capacity and no holidays/resource
+contention are explicit assumptions. Deadlines and creation dates do not postpone
+earliest starts. This evaluates declared uncertainty and trains no model.
+
+The receipt retains the algorithm version, unsigned 32-bit seed, resolved inputs,
+normalized dependencies, controls, assumptions and SHA-256 input hash. Output
+limits bound item/sensitivity rows while retaining all receipt inputs; counts
+and `truncated` expose omissions. An unknown project finish suppresses project
+quantiles and sensitivity. Otherwise `dominantEstimate` identifies the largest
+absolute Pearson correlation between a sampled estimate and project finish.
+This is linear association, not causal variance attribution; constants return
+zero correlation. Monte Carlo quantiles and sensitivity are approximate.
+
+Bounds: 200 corpus items, 2000 ordering edges, 100..10000 samples, at most
+5,000,000 sample × (item + edge) operations, 1..200 output rows and 1..9 strictly
+increasing probabilities in [0,1]. Effort is finite, ordered and within
+0..175200 minutes; effort per day is 1..1440. `--estimates` must be a regular JSON
+object file no larger than 64 KiB. Cycles, missing prerequisites, invalid inputs
+and exceeded bounds return typed `code`, `message`, `remedy` refusals (exit 2).
+The command does not mutate tracker documents or write the receipt implicitly.
+
+The typed SDK exports `completionIntervals(items, options, graph?)`,
+`CompletionIntervalOptions`, `CompletionIntervalResult`, `UncertainEstimate`,
+`CompletionScenarioReceipt` and related quantile/refusal types. It reuses the
+SDK execution kernel and the package's registry-aware graph adapter. Supply a
+complete dependency-closed corpus; the CLI certifies its full read and resolves
+custom workspace ordering automatically. See the [worked example and receipt
+replay](docs/uncertainty-intervals.md).
 
 ### Preflight data-sanity gate
 

@@ -65,7 +65,7 @@ test("preflight override is scoped to pm-gantt-chart's owned command paths", asy
   const override = harness.assertPreflightOverride();
   assert.deepEqual(
     override.commands,
-    ["gantt", "gantt export", "gantt repair"],
+    ["gantt", "gantt export", "gantt repair", "gantt uncertainty"],
     "preflight override must be scoped to exactly pm-gantt-chart's owned command paths",
   );
   assert.equal(

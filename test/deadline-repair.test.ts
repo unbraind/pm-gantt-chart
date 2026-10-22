@@ -1,14 +1,10 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
-import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
 import test from "node:test";
-import { PmClient, createRelationshipKindRegistry } from "@unbrained/pm-cli/sdk";
 import { createExtensionTestHarness } from "@unbrained/pm-cli/sdk/testing";
 import extension, { buildPrerequisiteGraph, computeSchedule, computeSlack, proposeDeadlineRepairs,
   type PmItem, type DeadlineRepairOptions, type DeadlineRepairResult } from "../index.ts";
+
+import { assertTypedRefusal as refusal, orderingRegistry, packedTracker, snapshot } from "./tracker-fixture.ts";
 
 const scenario: DeadlineRepairOptions = { from: "2026-10-21", deadline: "2026-10-22" };
 
@@ -51,14 +47,6 @@ function verify(items: PmItem[], options: DeadlineRepairOptions) {
     assert.ok(proposal.moves.every((move) => proposal.affectedIds.includes(move.itemId)));
   }
   return result;
-}
-
-/** Assert a typed refusal includes an actionable remedy. */
-function refusal(result: DeadlineRepairResult, code: string): void {
-  assert.equal(result.ok, false);
-  if (result.ok) assert.fail("expected refusal");
-  assert.equal(result.code, code);
-  assert.ok(result.remedy.length > 15);
 }
 
 test("minimal repairs: capacity on a prerequisite fixes the chain with exact downstream impact", () => {
@@ -225,56 +213,28 @@ test("minimal repairs: incomplete, cyclic and malformed source data is refused",
 });
 
 test("minimal repairs: custom ordering and contextual relationships share registry semantics", () => {
-  const registry = createRelationshipKindRegistry();
-  registry.register({ kind: "ships_before", direction: "directed", ordering: true, hierarchy: false, outgoing: "many", incoming: "many", lifecycle: "persistent", compatibilityVersion: 1, allowSelf: false });
+  const registry = orderingRegistry();
   const items = [{ ...task("a"), dependencies: [{ id: "b", kind: "ships_before" }] }, { ...task("b", 1), dependencies: [{ id: "a", kind: "related" }] }];
   const result = proposeDeadlineRepairs(items, { ...scenario, capacityShifts: [{ itemId: "a", minutesPerDay: 960 }] }, buildPrerequisiteGraph(items, registry));
   assert.equal(result.ok, true);
   if (result.ok) assert.deepEqual(result.proposals[0].affectedIds, ["a", "b"]);
 });
 
-/** Hash durable tracker bytes, excluding host read caches and lock state. */
-function snapshot(root: string): string {
-  const hash = createHash("sha256");
-  for (const entry of readdirSync(root, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-    if (["runtime", "locks", "search", "node_modules"].includes(entry.name)) continue;
-    hash.update(entry.name);
-    const path = join(root, entry.name);
-    if (entry.isDirectory()) hash.update(snapshot(path));
-    else if (entry.isFile()) hash.update(readFileSync(path));
-  }
-  return hash.digest("hex");
-}
-
 test("minimal repairs: real no-git tracker, installed JSON/TOON CLI, typed refusal and byte preservation", async (t) => {
-  const root = mkdtempSync(join(tmpdir(), "gantt-repair-"));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  const repo = resolve(import.meta.dirname, "..");
-  const cli = join(repo, "node_modules", "@unbrained", "pm-cli", "dist", "cli.js");
-  const pmRoot = join(root, ".agents", "pm");
-  const sdk = new PmClient({ cwd: root, pmRoot, author: "fixture" });
-  await sdk.init("repair", { defaults: true, mergeFence: false, agentGuidance: "skip" });
-  const env = { ...process.env, PM_PATH: pmRoot, GIT_CEILING_DIRECTORIES: dirname(root) };
-  const packed = JSON.parse(execFileSync("npm", ["pack", "--json", "--ignore-scripts", "--pack-destination", root], { cwd: repo, encoding: "utf8" })) as { filename: string }[];
-  execFileSync(process.execPath, [cli, "package", "install", join(root, packed[0].filename), "--project"], { cwd: root, env, encoding: "utf8" });
+  const { sdk, bin, pmRoot, invoke } = await packedTracker(t, "repair");
   await sdk.create({ id: "repair-a", title: "Prerequisite", type: "Task", estimatedMinutes: "960", createMode: "progressive" });
   await sdk.create({ id: "repair-b", title: "Delivery", type: "Task", estimatedMinutes: "480", blockedBy: "repair-a", createMode: "progressive" });
-  const bin = join(root, "bin");
-  mkdirSync(bin);
-  symlinkSync(process.execPath, join(bin, "node"));
-  symlinkSync(cli, join(bin, "pm"));
-  const noGit = { ...env, PATH: bin };
   const before = snapshot(pmRoot);
-  const args = [cli, "gantt", "repair", "--from", scenario.from, "--deadline", scenario.deadline, "--capacity", "repair-a=960"];
-  const run = spawnSync(process.execPath, [...args, "--json"], { cwd: root, env: noGit, encoding: "utf8" });
+  const args = ["gantt", "repair", "--from", scenario.from, "--deadline", scenario.deadline, "--capacity", "repair-a=960"];
+  const run = invoke([...args, "--json"]);
   assert.equal(run.status, 0, run.stderr);
   const result = JSON.parse(run.stdout) as DeadlineRepairResult;
   assert.equal(result.ok, true);
   if (result.ok) assert.equal(result.minimalChanges, 1);
-  const toon = spawnSync(process.execPath, args, { cwd: root, env: noGit, encoding: "utf8" });
+  const toon = invoke(args);
   assert.equal(toon.status, 0, toon.stderr);
   assert.match(toon.stdout, /minimalChanges: 1/);
-  const denied = spawnSync(process.execPath, [...args, "--forbid", "repair-a", "--json"], { cwd: root, env: noGit, encoding: "utf8" });
+  const denied = invoke([...args, "--forbid", "repair-a", "--json"]);
   assert.equal(denied.status, 2, denied.stderr);
   assert.match(denied.stdout + denied.stderr, /no_allowed_repair/);
   const originalPath = process.env.PATH;

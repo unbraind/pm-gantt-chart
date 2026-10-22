@@ -1,6 +1,8 @@
 import type { ExtensionApi } from "@unbrained/pm-cli/sdk/authoring";
 import type { RelationshipKindRegistry } from "@unbrained/pm-cli/sdk";
 import type { ContractsResult } from "@unbrained/pm-cli/sdk/runtime";
+import { type CompletionIntervalOptions, type CompletionIntervalResult } from "./uncertainty.ts";
+export type { CompletionIntervalOptions, CompletionIntervalResult, CompletionIntervalRefusalCode, CompletionScenarioReceipt, CompletionQuantile, UncertainEstimate, ResolvedEstimate } from "./uncertainty.ts";
 interface PmDependency {
     id: string;
     kind?: string;
@@ -292,6 +294,8 @@ export type DeadlineRepairResult = {
     truncated: boolean;
     proposals: DeadlineRepairProposal[];
 };
+/** Compute seeded completion intervals without changing estimates, items or history. */
+export declare function completionIntervals(items: readonly PmItem[], options: CompletionIntervalOptions, graph?: PrerequisiteGraph): CompletionIntervalResult;
 /**
  * Enumerate the smallest feasible sets of explicitly allowed moves. Minimality
  * means fewest moves within this vocabulary (one move per item), not an
