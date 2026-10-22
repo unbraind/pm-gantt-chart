@@ -33,15 +33,28 @@ Legend: ██ in_progress/blocked  ░░ open/planned  ▓▓ critical-path (*
 Requires pm CLI `2026.10.6` or newer. Development and CI exact-pin 2026.10.6;
 the consumer floor is independently exercised by packed npm acceptance.
 
-```sh
-pm install unbraind/pm-gantt-chart
-```
-
-Or from a local clone:
+In a plain project directory, initialize a tracker and activate the published package:
 
 ```sh
-pm install ./path/to/pm-gantt-chart
+npx -y @unbrained/pm-cli@2026.10.21 init --defaults --agent-guidance skip
+npx -y @unbrained/pm-cli@2026.10.21 install npm:pm-gantt-chart@2026.10.20 --project
 ```
+
+With Bun:
+
+```sh
+bunx @unbrained/pm-cli@2026.10.21 init --defaults --agent-guidance skip
+bunx @unbrained/pm-cli@2026.10.21 install npm:pm-gantt-chart@2026.10.20 --project
+```
+
+Use the explicit `npm:` source: an owner/repository shorthand is interpreted as a
+local path, not as a registry package.
+
+### Without git
+
+Rendering, scheduling and chart exports work with a plain-directory tracker;
+no git repository or git executable is required. GitHub sync and changelog
+commands based on tags need a git repository and their separate tools.
 
 ## Usage
 
