@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
@@ -51,6 +52,31 @@ test("triangular distributions reproduce analytic quantiles including endpoint m
         : (4800 - Math.sqrt((1 - row.probability) * 4800 * (4800 - mode))) / 480;
       assert.ok(Math.abs(row.days - expected) < 0.12, `${mode}: ${JSON.stringify(row)}`);
     }
+  }
+});
+
+test("portable receipts and sensitivity ties use code-unit ids across real host locales", () => {
+  const script = `
+    import { completionIntervals } from "./index.ts";
+    const ids = ["z", "ä", "a", "A", "Z"];
+    const tasks = ids.map(id => ({ id, title: id, status: "open" }));
+    const estimates = Object.fromEntries(ids.map(id => [id, [480, 4800]]));
+    const controls = { from: "2026-10-22", seed: 42, samples: 100, estimates };
+    const sampled = completionIntervals(tasks, controls);
+    const tied = completionIntervals([...tasks, { id: "fixed", title: "fixed", status: "open", estimated_minutes: 48000 }], controls);
+    console.log(JSON.stringify({ locale: new Intl.Collator().resolvedOptions().locale, sampled, tied }));
+  `;
+  const observations = ["en_US.UTF-8", "sv_SE.UTF-8", "tr_TR.UTF-8"].map((locale) => JSON.parse(execFileSync(process.execPath, ["--input-type=module", "-e", script], {
+    cwd: join(import.meta.dirname, ".."), env: { ...process.env, LANG: locale, LC_ALL: locale }, encoding: "utf8",
+  })) as { locale: string; sampled: CompletionIntervalResult; tied: CompletionIntervalResult });
+  assert.equal(new Set(observations.map((value) => value.locale)).size, 3, "exercise three actual ICU default locales");
+  const expected = ["A", "Z", "a", "z", "ä"];
+  for (const observation of observations) {
+    assert.ok(observation.sampled.ok && observation.tied.ok);
+    assert.deepEqual(observation.sampled.receipt.tasks.map((task) => task.id), expected);
+    assert.deepEqual(observation.tied.sensitivity.map((row) => row.id), expected);
+    assert.deepEqual(observation.sampled, observations[0].sampled);
+    assert.deepEqual(observation.tied, observations[0].tied);
   }
 });
 
@@ -193,14 +219,19 @@ test("real non-git tracker: packed JSON/TOON CLI, typed remedies, SDK harness an
     }
     for (const controls of [{}, { ...base, seed: "" }, { ...base, quantiles: "" }, { ...base, samples: "0" }, { ...base, estimates: join(root, "absent") }, { ...base, estimates: root }]) {
       const receipt = await harness.runCommand({ command: "gantt uncertainty", pmRoot, options: controls });
-      assert.equal((receipt.result as CompletionIntervalResult).ok, false);
+      const data = receipt.result as CompletionIntervalResult & { remediation: string };
+      assert.equal(data.ok, false);
+      if (data.ok) assert.fail("expected refusal");
+      assert.equal(data.remediation, data.remedy);
       assert.equal(receipt.exitCode, 2);
     }
     for (const contents of ["{", "[]", "null", "0", " ".repeat(65537)]) {
       writeFileSync(file, contents);
       const receipt = await harness.runCommand({ command: "gantt uncertainty", pmRoot, options: { ...base, estimates: file } });
-      const data = receipt.result as CompletionIntervalResult;
+      const data = receipt.result as CompletionIntervalResult & { remediation: string };
       refused(data, "invalid_estimate");
+      if (data.ok) assert.fail("expected file refusal");
+      assert.equal(data.remediation, data.remedy);
       assert.equal(receipt.exitCode, 2);
     }
   } finally { process.env.PATH = originalPath; }

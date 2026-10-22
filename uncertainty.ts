@@ -117,6 +117,11 @@ function refuse(code: CompletionIntervalRefusalCode, message: string, remedy: st
   return { ok: false, code, message, remedy };
 }
 
+/** Compare UTF-16 code units so seed assignment and sensitivity ties ignore host locale. */
+function compareIds(a: string, b: string): number {
+  return Number(a > b) - Number(a < b);
+}
+
 /**
  * Sample declared independent effort over the SDK execution order. Ordering has
  * already been normalized by the package's registry-aware graph adapter. Completed
@@ -144,7 +149,7 @@ export function simulateCompletionIntervals(corpus: readonly PmItem[], options: 
       || graph.get(item.id)!.some((id) => !ids.has(id))) || [...graph.keys()].some((id) => !ids.has(id))) {
     return refuse("invalid_graph", "Duplicate ids, missing graph rows or unresolved prerequisites.", "Supply unique ids (1..128 characters) and a complete dependency-closed graph; resolve missing references explicitly.");
   }
-  const active = corpus.filter((item) => item.status !== "closed" && item.status !== "canceled").sort((a, b) => a.id.localeCompare(b.id));
+  const active = corpus.filter((item) => item.status !== "closed" && item.status !== "canceled").sort((a, b) => compareIds(a.id, b.id));
   const activeIds = new Set(active.map((item) => item.id));
   const overrides = options.estimates ?? {};
   if (Object.keys(overrides).some((id) => !activeIds.has(id))) {
@@ -158,7 +163,7 @@ export function simulateCompletionIntervals(corpus: readonly PmItem[], options: 
     if (estimate === undefined || (hasOverride && estimate === null)) {
       return refuse("invalid_estimate", `Invalid effort declaration for ${item.id}.`, "Use [min,max], point minutes, uniform min/max or triangular min/mode/max; all values must be finite, ordered and within 0..175200 minutes.");
     }
-    tasks.push({ id: item.id, prerequisites: [...new Set(graph.get(item.id)!.filter((id) => activeIds.has(id)))].sort(), estimate });
+    tasks.push({ id: item.id, prerequisites: [...new Set(graph.get(item.id)!.filter((id) => activeIds.has(id)))].sort(compareIds), estimate });
   }
   const kernel = new RelationshipGraph(tasks.map((task) => task.id), tasks.flatMap((task) => task.prerequisites.map((id) => ({ source: id, target: task.id, kind: "blocks" }))));
   const execution = analyzeRelationshipExecution(kernel);
@@ -196,7 +201,7 @@ export function simulateCompletionIntervals(corpus: readonly PmItem[], options: 
     });
   };
   const sensitivity = unknown.size > 0 ? [] : [...durations].map(([id, values]) => ({ id, correlation: correlation(values, projects) }))
-    .sort((a, b) => Math.abs(b.correlation) - Math.abs(a.correlation) || a.id.localeCompare(b.id));
+    .sort((a, b) => Math.abs(b.correlation) - Math.abs(a.correlation) || compareIds(a.id, b.id));
   const inputs = { from: options.from, seed: options.seed, samples, quantiles, minutesPerDay, tasks };
   return {
     ok: true, complete: unknown.size === 0, activeCount: tasks.length, unknownCount: unknown.size,

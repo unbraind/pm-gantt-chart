@@ -3148,7 +3148,8 @@ export default defineExtension({
             if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("map required");
             estimates = parsed as Record<string, UncertainEstimate>;
           } catch {
-            return { ok: false, code: "invalid_estimate", message: "Cannot read a bounded estimate map.", remedy: "Provide a readable JSON object file no larger than 64 KiB, keyed by active item id.", exit_code: EXIT_CODE.USAGE };
+            const remedy = "Provide a readable JSON object file no larger than 64 KiB, keyed by active item id.";
+            return { ok: false, code: "invalid_estimate", message: "Cannot read a bounded estimate map.", remedy, remediation: remedy, exit_code: EXIT_CODE.USAGE };
           }
         }
         /** Preserve absent defaults while sending malformed numeric flags to typed validation. */

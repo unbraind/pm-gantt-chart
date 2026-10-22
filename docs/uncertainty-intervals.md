@@ -66,9 +66,10 @@ const replay = completionIntervals(
 ```
 
 Save the whole receipt rather than just its hash. The hash identifies canonical
-simulation inputs, not the tracker snapshot or a security signature. Items and
-dependencies are sorted; reordered source rows do not change the samples. The
-receipt's versioned `mulberry32-nearest-rank-v1` algorithm uses inverse-CDF draws
+simulation inputs, not the tracker snapshot or a security signature. Items,
+dependencies and sensitivity ties use locale-independent UTF-16 code-unit id
+order; reordered source rows or different host locales do not change the samples.
+The receipt's versioned `mulberry32-nearest-rank-v1` algorithm uses inverse-CDF draws
 and nearest-rank empirical quantiles (q=0 returns the observed minimum). Fixed
 effort consumes no random draw. Replaying with another output limit may change
 the displayed rows, while the numerical scenario and input hash remain the same.
