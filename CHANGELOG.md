@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Repin the gated pm-github issue sync caller to pm-github 2026.10.15 ([pm-gantt-chart-722n](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-722n.toon))
+- Adopt pm-github 2026.10.16: default-branch-safe gated sync and daily gated closeout PRs ([pm-gantt-chart-nf8g](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-nf8g.toon))
+
+### Fixed
+
+- The changelog gate stamps an untagged version with the current date, so its verdict flips every midnight with no commit ([pm-gantt-chart-jv7f](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-jv7f.toon))
+- Shell scalar assignments are read from raw text, so a comment can flag an unattested publish ([pm-gantt-chart-grjk](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-grjk.toon))
+- The release job authenticated with a stored npm token that expired, so publishing stopped while every other gate stayed green ([pm-gantt-chart-mzvd](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-mzvd.toon))
+- A release run bumped and committed a new version every night while publishing was impossible, because the only externally-failable step runs last ([pm-gantt-chart-71s4](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-71s4.toon))
+
+### Security
+
+- Removed the vulnerable braces chain from duplication tooling ([pm-gantt-chart-e7rd](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-e7rd.toon))
+
+### Other
+
+- Enable GitHub CodeQL code scanning ([pm-gantt-chart-tpgu](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-tpgu.toon))
+- Render package visuals with build-time Triplicate tokens ([pm-gantt-chart-triplicate](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-triplicate.toon))
+
 ## 2026.10.19 - 2026-10-19
 
 ### Fixed

@@ -2,13 +2,18 @@ id: pm-gantt-chart-triplicate
 title: Render package visuals with build-time Triplicate tokens
 description: "Restyle every diagram format from pinned pm-brand values; preserve export behavior and prove light/dark accessibility with real tracker renders, regression and revert evidence."
 type: Task
-status: in_progress
+status: closed
 priority: 2
 tags: []
 created_at: "2026-10-17T09:27:52.639Z"
-updated_at: "2026-10-18T11:41:57.911Z"
+updated_at: "2026-10-21T19:27:46.158Z"
+closed_at: "2026-10-21T19:27:45.302Z"
+completed_at: "2026-10-21T19:27:45.302Z"
 author: codex-agent
-comments[32]{created_at,author,text}:
+resolution: Delivered by the audit-linked mainline implementation.
+expected_result: Render package visuals with build-time Triplicate tokens.
+actual_result: "Re-verified unchanged main 80717afb81f1: delivery 37452470fbc4 remains in main ancestry; index.ts, test/brand-values.test.ts remain present."
+comments[33]{created_at,author,text}:
   "2026-10-17T09:28:14.978Z",codex-agent,"Design: form-paper canvas and ruled top sheets; carbon text, Martian Mono ids and dates, explicit status labels and contract chip fills. Canary and rose only convey in_progress and blocked. Brand values are generated at build time from an exact devDependency; published runtime has no brand dependency or CDN fetches. Existing scheduling, graph edges and serialization stay intact."
   "2026-10-17T10:13:26.812Z",codex-agent,"Render review uses seven captured public brand-kit tracker items. Critical and overdue indicators preserve status fills. Mermaid initialization precedes the diagram header; native single-line task labels retain mono data. Behavioral revert proof independently restores only renderSvg, renderHtml, then renderMermaid in disposable source copies: each unchanged real-tracker regression fails 1/1; restoring the implementation passes 1/1. The immutable README banner points to pm-brand commit 5c80a2b707f3a00afe986e81e520843b86f3ee83. Full npm/Bun gates and final browser capture are pending."
   "2026-10-17T10:33:42.809Z",codex-agent,"The final 390 px browser review found CSS table columns constraining the mobile card body. The timeline table now becomes a full-width block, hides its desktop column definitions, and keeps all four week headings visible. At 390 px each item is 348 px wide with a maximum 70 px label height; light/dark at 1x/2x pass with no page overflow. Reverting only the mobile CSS to the prior Triplicate implementation makes the browser assertion fail. The 80 existing SVG/scheduler tests pass after the correction."
@@ -41,6 +46,7 @@ comments[32]{created_at,author,text}:
   "2026-10-18T11:29:05.182Z",codex-agent,"Merged main release metadata and synced issue #153 without discarding the restyle description. No clone-local or durable merge receipts were created; reconcile dry-run reports pending_before=0, drifted_streams=0 and missing_history_references=0. Both new regressions fail on the pre-fix renderer: stylesheet-free item text has zero carbon pixels; critical row title omits its context. Existing history is unchanged."
   "2026-10-18T11:30:35.695Z",codex-agent,"Independent behavioral revert proof: node test/revert-review.ts removes only the root fill, then only the critical row-title suffix. Each unchanged regression fails 1/1 reverted and passes 1/1 restored. The previous legend extent and shared-source proofs also pass independently (four revert pairs total). Focused token/visual suite passes 10/10; contract contrast checks cover 44 text/background pairs in both themes. Refreshed exact pm-brand main pin to 505f386aaa68c0947b9380eae9cfe74dc48e47c7 without changing the pinned pm SDK. Initial npm ci required ignoring user npm configuration because its allow-scripts setting breaks Git dependency preparation; clean configuration installation succeeded."
   "2026-10-18T11:41:49.375Z",codex-agent,"Review round 5 gates at 0e52456782d9508265fca2f197fee750a65324a9: Node 26 CI-isolated npm run release:check and bun run release:check each pass 254/254 tests, zero failures/cancellations/skips/TODOs, with unchanged 100% lines/branches/functions across all three runtime sources. Both packed gates pass all scenarios; lint and duplication pass at unchanged thresholds. All seven linked checks pass through pm test --run --progress --timeout 1200, including portable/labels/glyphs and all four independent review revert pairs. The first npm attempt hit the default 120-second linked-test timeout; the longer rerun supersedes it. Test-result persistence remains disabled by existing project policy. Fresh no-local clone with npm ci and isolated HOME passes pm health --strict-exit --require-merge-drivers; only inherited stale-item/provenance advisories remain. No history was rewritten. Published 24 fixture screenshots under brand/triplicate-visuals/round5 on pr-screenshots; SVG and HTML after checks pass at 1440/768/390 in both themes with zero overflow, running animations, interactive controls or external requests. CI will be checked after push; native Inkscape 1.4 acceptance remains pending."
+  "2026-10-21T19:27:39.354Z",codex-agent,"Tracker reconciliation authorized for the audited verdict FIXED-STALE. Re-verified unchanged main 80717afb81f1: delivery 37452470fbc4 remains in main ancestry; index.ts, test/brand-values.test.ts remain present. Render package visuals with build-time Triplicate tokens. [PR #152](https://github.com/unbraind/pm-gantt-chart/pull/152) (3745247) applies build-time Triplicate values to exported diagrams and adds behavior/accessibility regressions. Scope: tracker state only; no new runtime certification or deployment claim."
 files[15]{path,scope}:
   brand-values.ts,project
   brand.ts,project
@@ -73,4 +79,5 @@ docs[7]{path,scope}:
   docs/triplicate-visuals.md,project
   "https://github.com/unbraind/pm-gantt-chart/actions/runs/39094703019",project
   README.md,project
+close_reason: "Re-verified unchanged main 80717afb81f1: delivery 37452470fbc4 remains in main ancestry; index.ts, test/brand-values.test.ts remain present. Audit delivery: Render package visuals with build-time Triplicate tokens. [PR #152](https://github.com/unbraind/pm-gantt-chart/pull/152) (3745247) applies build-time Triplicate values to exported diagrams and adds behavior/accessibility regressions."
 body: ""
