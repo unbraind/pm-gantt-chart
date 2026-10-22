@@ -10,6 +10,7 @@ const mutations = [
   { file: "uncertainty.ts", name: "missing effort silently becomes zero", pattern: "unknown estimates and their downstream", before: "if (raw === undefined || raw === null) return null;", after: 'if (raw === undefined || raw === null) return { kind: "point", minutes: 0 };' },
   { file: "uncertainty.ts", name: "sensitivity loses estimate association", pattern: "sensitivity ranks the dominating", before: "return xx === 0 || yy === 0 ? 0 : Math.max(-1, Math.min(1, xy / (Math.sqrt(xx) * Math.sqrt(yy))));", after: "return 0;" },
   { file: "uncertainty.ts", name: "seed assignment uses host locale", pattern: "portable receipts and sensitivity ties", before: ".sort((a, b) => compareIds(a.id, b.id));", after: ".sort((a, b) => a.id.localeCompare(b.id));" },
+  { file: "uncertainty.ts", name: "issue 167 Unicode row reversal changes per-ID quantiles", pattern: "issue 167: composed and decomposed Unicode ids", before: ".sort((a, b) => compareIds(a.id, b.id));", after: ".sort((a, b) => a.id.localeCompare(b.id));" },
   { file: "uncertainty.ts", name: "sensitivity ties use host locale", pattern: "portable receipts and sensitivity ties", before: "|| compareIds(a.id, b.id));", after: "|| a.id.localeCompare(b.id));" },
   { file: "index.ts", name: "estimate-file refusal loses host remediation", pattern: "real non-git tracker: packed", before: 'message: "Cannot read a bounded estimate map.", remedy, remediation: remedy,', after: 'message: "Cannot read a bounded estimate map.", remedy,' },
 ];

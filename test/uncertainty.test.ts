@@ -80,6 +80,31 @@ test("portable receipts and sensitivity ties use code-unit ids across real host 
   }
 });
 
+test("issue 167: composed and decomposed Unicode ids preserve per-ID quantiles when rows reverse", () => {
+  const unicodeIds = [String.fromCodePoint(0xe9), "e" + String.fromCodePoint(0x301)];
+  assert.notEqual(unicodeIds[0], unicodeIds[1]);
+  assert.equal(unicodeIds[0].normalize("NFD"), unicodeIds[1]);
+  for (const ids of [unicodeIds, ["task-a", "task-b"]]) {
+    const items = ids.map((id) => ({ id, title: id, status: "open" as const }));
+    const controls: CompletionIntervalOptions = {
+      from: "2026-10-22", seed: 42, samples: 1000,
+      estimates: Object.fromEntries(ids.map((id) => [id, [480, 4800] as const])),
+    };
+    const forward = completionIntervals(items, controls);
+    const reversed = completionIntervals([...items].reverse(), controls);
+    assert.ok(forward.ok && reversed.ok);
+    assert.equal(forward.items.length, 2, "retain both distinct accepted ids");
+    for (const id of ids) {
+      assert.deepEqual(forward.items.find((item) => item.id === id)!.completion,
+        reversed.items.find((item) => item.id === id)!.completion, `unchanged quantiles for ${JSON.stringify(id)}`);
+    }
+    assert.equal(forward.receipt.inputHash, reversed.receipt.inputHash);
+    assert.deepEqual(forward.sensitivity, reversed.sensitivity);
+    assert.deepEqual(forward.receipt.tasks.map((item) => item.id), [...ids].sort());
+    assert.deepEqual(forward, reversed);
+  }
+});
+
 test("parallel joins take the maximum and diamond branches share one prerequisite draw", () => {
   const parallel = simulate([task("a"), task("b"), task("join", 480, ["a", "b"])], {
     ...options, samples: 10000, estimates: { a: [0, 4800], b: [0, 4800] },
