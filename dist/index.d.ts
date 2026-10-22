@@ -233,6 +233,77 @@ interface SlackEntry {
  * Exported for tests.
  */
 declare function computeSlack(items: PmItem[], schedule: Map<string, ScheduleEntry>, graph?: PrerequisiteGraph): Map<string, SlackEntry>;
+/** An explicitly available capacity increase for one item's unchanged effort. */
+export interface DeadlineCapacityShift {
+    itemId: string;
+    minutesPerDay: number;
+}
+/** Bounded, read-only scenario: every retained active item must meet the horizon. */
+export interface DeadlineRepairOptions {
+    from: string;
+    deadline: string;
+    capacityShifts?: readonly DeadlineCapacityShift[];
+    deferrableIds?: readonly string[];
+    forbiddenIds?: readonly string[];
+    defaultDuration?: number;
+    maxChanges?: number;
+    maxProposals?: number;
+    maxEvaluations?: number;
+}
+/** Exact hypothetical change, never a tracker mutation. */
+export type DeadlineRepairMove = {
+    kind: "capacity_shift";
+    itemId: string;
+    beforeDays: number;
+    afterDays: number;
+    minutesPerDay: number;
+    addedMinutesPerDay: number;
+} | {
+    kind: "scope_deferral";
+    itemId: string;
+    deferredMinutes: number;
+};
+/** Recomputed feasibility certificate and explicit resource/scope tradeoffs. */
+export interface DeadlineRepairProposal {
+    moves: DeadlineRepairMove[];
+    affectedIds: string[];
+    finish: string;
+    retainedCount: number;
+    deferredMinutes: number;
+    addedMinutesPerDay: number;
+}
+/** Stable refusal codes let agents select remedies without parsing prose. */
+export type DeadlineRepairRefusalCode = "invalid_scenario" | "invalid_graph" | "scenario_too_large" | "search_budget_exceeded" | "no_allowed_repair";
+/** Small JSON/TOON-compatible result; no titles, bodies, or full schedule dump. */
+export type DeadlineRepairResult = {
+    ok: false;
+    code: DeadlineRepairRefusalCode;
+    message: string;
+    remedy: string;
+} | {
+    ok: true;
+    baseline: {
+        finish: string | null;
+        infeasibleIds: string[];
+    };
+    examined: number;
+    minimalChanges: number;
+    totalProposals: number;
+    truncated: boolean;
+    proposals: DeadlineRepairProposal[];
+};
+/**
+ * Enumerate the smallest feasible sets of explicitly allowed moves. Minimality
+ * means fewest moves within this vocabulary (one move per item), not an
+ * inferred resource allocation optimum. Capacity is dedicated to the named
+ * item; the caller must ensure that offered capacity is actually available.
+ * Deferral is legal only when no retained item requires deferred work. Closed
+ * and canceled prerequisites are satisfied. All own deadlines and the scenario
+ * horizon remain fixed. Search is exhaustive at the first successful size;
+ * exhausting a budget refuses instead of making an unproved minimality claim.
+ * Neither input items, graph, nor tracker state is modified.
+ */
+export declare function proposeDeadlineRepairs(corpus: readonly PmItem[], options: DeadlineRepairOptions, graph?: PrerequisiteGraph): DeadlineRepairResult;
 /**
  * Turn the fetched items into render-ready {@link GanttRow} entries.
  *

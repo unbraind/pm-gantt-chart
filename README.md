@@ -160,6 +160,62 @@ Under `--schedule`, a **backward pass** (classic CPM) computes each item's *late
 - **positive slack** → the item can slip that many days harmlessly.
 - **negative slack** → the item's required start (to hit a downstream deadline) is *before* its earliest feasible start. The plan is **already late**. These items are listed in a `WARNING:` block on stderr by both `pm gantt` and `pm gantt export`, and flagged per-task in the JSON result (`tasks[].slack_days`, `tasks[].infeasible`, plus `infeasibleCount` / `warnings`).
 
+### Minimal deadline repair proposals
+
+`pm gantt repair` evaluates explicit changes for a fixed deadline. It returns the
+fewest moves that make **every retained active item** feasible under the existing
+forward/backward scheduler, including each item's own deadline. Repair feasibility
+uses earliest starts rather than the chart's just-in-time deadline placement:
+waiting until a later deadline must not create a need for extra capacity.
+Closed/canceled prerequisites count as satisfied. It never writes items, estimates, deadlines,
+dependencies, or plan decisions.
+
+```sh
+pm gantt repair --from 2026-10-21 --deadline 2026-10-22 \
+  --capacity task-a=960 --defer task-b --forbid task-release --json
+```
+
+Only named offers are considered: `--capacity id=minutesPerDay,...` supplies
+dedicated daily capacity for estimated work (baseline 480 minutes/day; offers
+481..4800), and `--defer id,...` allows those exact items to leave this scenario.
+No retained item may depend on deferred work. `--forbid id,...` overrides both.
+Capacity availability is a caller-supplied assumption; this is a precedence and
+calendar-day model, without shared-resource contention, weekends, or holidays.
+
+Output uses the host's compact TOON by default or JSON with `--json`. Each
+proposal includes exact `moves`, `affectedIds` (moved items plus items whose dates
+change), recomputed `finish`/`retainedCount`, `deferredMinutes`, and
+`addedMinutesPerDay`. Titles, bodies and full schedules are omitted.
+`minimalChanges` is minimum **move count within the explicit vocabulary**;
+ties prefer less deferred effort, then less added daily capacity, then stable
+move order. `totalProposals` and `truncated` describe output limiting.
+
+Bounds: 200 corpus items, 2000 ordering edges, 24 effective offers, 1..3 moves
+(`--max-changes`, default 3), 1..10 results (`--max-proposals`, default 5), and
+1..10000 evaluations (`--max-evaluations`, default 5000). Missing estimates use
+`--default-duration` (default 5 calendar days, 1..365); they cannot receive a
+capacity offer. Estimates must be finite, nonnegative and at most 175200 minutes.
+Cycles, missing prerequisites, malformed dates, invalid offers, oversized
+scenarios, exhausted search and unavailable repairs return typed refusals with
+`code`, `message`, `remedy` (CLI exit 2). Search exhaustion never presents an
+uncertified minimum. An already feasible scenario returns zero changes and no
+proposals. Full ISO tracker deadlines are accepted; CLI scenario days require
+real `YYYY-MM-DD` values.
+
+The typed SDK exports `proposeDeadlineRepairs(items, options, graph?)` and
+`DeadlineRepairOptions`, `DeadlineRepairResult`, `DeadlineRepairProposal`,
+`DeadlineRepairMove`, `DeadlineCapacityShift`, `DeadlineRepairRefusalCode`.
+Pass a complete dependency-closed corpus. The optional graph uses the existing
+`PrerequisiteGraph` contract for custom registry ordering; the CLI resolves
+workspace registrations automatically. Core `plan decision` can record a chosen
+proposal after review. See the [worked example](docs/deadline-repair.md).
+
+### Without git
+
+Rendering, scheduling, exports and deadline repair proposals work in plain
+trackers without git installed. This package's runtime commands do not require
+a git repository. Repository release/changelog tooling needs git history.
+
 ### Preflight data-sanity gate
 
 Before rendering, both `pm gantt` and `pm gantt export` run a **preflight data-sanity gate** so bad data surfaces early instead of producing a silently-confusing chart. It splits problems into two tiers:

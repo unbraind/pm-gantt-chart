@@ -764,9 +764,164 @@ function computeSlack(items, schedule, graph = buildPrerequisiteGraph(items)) {
     }
     return result;
 }
-// ---------------------------------------------------------------------------
-// Row building (shared by terminal render and exporters)
-// ---------------------------------------------------------------------------
+/** Construct a typed refusal shared by validation and bounded search. */
+function repairRefusal(code, message, remedy) {
+    return { ok: false, code, message, remedy };
+}
+/** Accept real calendar days only, avoiding date rollover and timezone ambiguity. */
+function repairDate(value) {
+    const date = parseDate(value);
+    return /^\d{4}-\d{2}-\d{2}$/.test(value) && date && isoDay(date) === value ? date : null;
+}
+/**
+ * Evaluate earliest possible completion, then enforce unchanged real deadlines.
+ * Deadline back-anchoring is a chart placement preference, not a feasibility
+ * constraint: waiting until a prerequisite's deadline can needlessly delay its
+ * dependents. Strip both due-date aliases only for the forward pass; the
+ * backward pass retains every original deadline. Inputs remain untouched.
+ */
+function repairSchedule(items, anchor, horizon, duration, graph) {
+    const earliest = items.map((item) => ({ ...item, deadline: undefined, due_date: undefined }));
+    const schedule = computeSchedule(earliest, anchor, duration, graph);
+    const slack = computeSlack(items, schedule, graph);
+    let finish = null;
+    const horizonEnd = addDays(horizon, 1);
+    const infeasibleIds = [];
+    for (const item of items) {
+        const end = schedule.get(item.id).end;
+        if (finish === null || end > finish)
+            finish = end;
+        if (end >= horizonEnd || slack.get(item.id).infeasible)
+            infeasibleIds.push(item.id);
+    }
+    return { schedule, finish: finish === null ? null : isoDay(finish), infeasibleIds };
+}
+/**
+ * Enumerate the smallest feasible sets of explicitly allowed moves. Minimality
+ * means fewest moves within this vocabulary (one move per item), not an
+ * inferred resource allocation optimum. Capacity is dedicated to the named
+ * item; the caller must ensure that offered capacity is actually available.
+ * Deferral is legal only when no retained item requires deferred work. Closed
+ * and canceled prerequisites are satisfied. All own deadlines and the scenario
+ * horizon remain fixed. Search is exhaustive at the first successful size;
+ * exhausting a budget refuses instead of making an unproved minimality claim.
+ * Neither input items, graph, nor tracker state is modified.
+ */
+export function proposeDeadlineRepairs(corpus, options, graph = buildPrerequisiteGraph(corpus)) {
+    const anchor = repairDate(options.from);
+    const horizon = repairDate(options.deadline);
+    const duration = options.defaultDuration ?? 5;
+    const maxChanges = options.maxChanges ?? 3;
+    const maxProposals = options.maxProposals ?? 5;
+    const maxEvaluations = options.maxEvaluations ?? 5000;
+    const limits = [[duration, 365], [maxChanges, 3], [maxProposals, 10], [maxEvaluations, 10000]];
+    if (!anchor || !horizon || horizon < anchor || limits.some(([value, max]) => !Number.isInteger(value) || value < 1 || value > max)) {
+        return repairRefusal("invalid_scenario", "Invalid dates or search limits.", "Use real YYYY-MM-DD days with from <= deadline; duration 1..365, changes 1..3, proposals 1..10, evaluations 1..10000.");
+    }
+    const byId = new Map(corpus.map((item) => [item.id, item]));
+    const items = corpus.filter((item) => item.status !== "closed" && item.status !== "canceled").sort((a, b) => a.id.localeCompare(b.id));
+    if (corpus.length > 200 || [...graph.values()].reduce((sum, deps) => sum + deps.length, 0) > 2000) {
+        return repairRefusal("scenario_too_large", "Scenario exceeds 200 items or 2000 ordering edges.", "Select a complete dependency-closed scenario within these limits.");
+    }
+    if (byId.size !== corpus.length || corpus.some((item) => !item.id || item.id.length > 128) || items.some((item) => !graph.has(item.id) || graph.get(item.id).some((id) => !byId.has(id)) ||
+        (itemDueDate(item) !== undefined && (!repairDate(itemDueDate(item).slice(0, 10)) || !parseDate(itemDueDate(item)))) ||
+        (item.estimated_minutes !== undefined && (!Number.isFinite(item.estimated_minutes) || item.estimated_minutes < 0 || item.estimated_minutes > 175200)))) {
+        return repairRefusal("invalid_graph", "Duplicate ids, missing prerequisites, invalid deadlines or estimates.", "Supply unique ids (1..128 characters), complete ordering edges, real ISO deadlines and finite estimates of 0..175200 minutes.");
+    }
+    const activeIds = new Set(items.map((item) => item.id));
+    const activeGraph = new Map(items.map((item) => [item.id, graph.get(item.id).filter((id) => activeIds.has(id))]));
+    if (detectCycles(items, activeGraph).length > 0) {
+        return repairRefusal("invalid_graph", "Ordering cycle prevents a valid schedule.", "Resolve the cycle explicitly before requesting deadline repairs.");
+    }
+    const shifts = options.capacityShifts ?? [];
+    const deferrable = options.deferrableIds ?? [];
+    const forbidden = new Set(options.forbiddenIds ?? []);
+    if ([...shifts.map((shift) => shift.itemId), ...deferrable, ...forbidden].some((id) => !activeIds.has(id)) ||
+        shifts.some((shift) => !Number.isInteger(shift.minutesPerDay) || shift.minutesPerDay <= MINUTES_PER_WORKDAY || shift.minutesPerDay > 4800 || !(byId.get(shift.itemId).estimated_minutes > 0))) {
+        return repairRefusal("invalid_scenario", "Moves must name active items and real capacity increases for estimated work.", "Use active ids; capacity needs a positive effort estimate and 481..4800 minutes/day. Omit forbidden moves or list them in forbiddenIds.");
+    }
+    const baseline = repairSchedule(items, anchor, horizon, duration, activeGraph);
+    const summary = { finish: baseline.finish, infeasibleIds: baseline.infeasibleIds };
+    if (baseline.infeasibleIds.length === 0)
+        return { ok: true, baseline: summary, examined: 0, minimalChanges: 0, totalProposals: 0, truncated: false, proposals: [] };
+    const candidates = [];
+    const seen = new Set();
+    for (const shift of shifts) {
+        const item = byId.get(shift.itemId);
+        const beforeDays = itemDurationDays(item, duration);
+        const afterDays = Math.max(1, Math.ceil(item.estimated_minutes / shift.minutesPerDay));
+        const key = `${item.id}:${shift.minutesPerDay}`;
+        if (!forbidden.has(item.id) && afterDays < beforeDays && !seen.has(key)) {
+            candidates.push({ kind: "capacity_shift", itemId: item.id, beforeDays, afterDays, minutesPerDay: shift.minutesPerDay, addedMinutesPerDay: shift.minutesPerDay - MINUTES_PER_WORKDAY });
+            seen.add(key);
+        }
+    }
+    for (const id of new Set(deferrable)) {
+        if (!forbidden.has(id)) {
+            const item = byId.get(id);
+            candidates.push({ kind: "scope_deferral", itemId: id, deferredMinutes: item.estimated_minutes || itemDurationDays(item, duration) * MINUTES_PER_WORKDAY });
+        }
+    }
+    if (candidates.length > 24)
+        return repairRefusal("scenario_too_large", "More than 24 effective allowed moves.", "Offer at most 24 distinct capacity/deferral moves, or forbid additional items.");
+    candidates.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+    let examined = 0;
+    let exhausted = false;
+    const proposals = [];
+    /** Recompute one candidate set; reject incomplete scope deferrals and an empty plan. */
+    function evaluate(moves) {
+        if (examined >= maxEvaluations) {
+            exhausted = true;
+            return;
+        }
+        examined++;
+        const deferred = new Set(moves.filter((move) => move.kind === "scope_deferral").map((move) => move.itemId));
+        const retained = items.filter((item) => !deferred.has(item.id));
+        if (retained.length === 0 || retained.some((item) => activeGraph.get(item.id).some((id) => deferred.has(id))))
+            return;
+        const hypothetical = retained.map((item) => {
+            const move = moves.find((entry) => entry.itemId === item.id && entry.kind === "capacity_shift");
+            return move?.kind === "capacity_shift" ? { ...item, estimated_minutes: move.afterDays * MINUTES_PER_WORKDAY } : item;
+        });
+        const computed = repairSchedule(hypothetical, anchor, horizon, duration, activeGraph);
+        if (computed.infeasibleIds.length > 0)
+            return;
+        const affectedIds = items.filter((item) => {
+            if (moves.some((move) => move.itemId === item.id))
+                return true;
+            const before = baseline.schedule.get(item.id);
+            const after = computed.schedule.get(item.id);
+            return before.start.getTime() !== after.start.getTime() || before.end.getTime() !== after.end.getTime();
+        }).map((item) => item.id);
+        proposals.push({ moves: [...moves], affectedIds, finish: computed.finish, retainedCount: retained.length,
+            deferredMinutes: moves.reduce((sum, move) => sum + (move.kind === "scope_deferral" ? move.deferredMinutes : 0), 0),
+            addedMinutesPerDay: moves.reduce((sum, move) => sum + (move.kind === "capacity_shift" ? move.addedMinutesPerDay : 0), 0) });
+    }
+    /** Visit combinations in increasing cardinality, with at most one move per item. */
+    function enumerate(start, remaining, chosen) {
+        if (remaining === 0) {
+            evaluate(chosen);
+            return;
+        }
+        for (let index = start; index <= candidates.length - remaining; index++) {
+            if (exhausted)
+                break;
+            const candidate = candidates[index];
+            if (!chosen.some((move) => move.itemId === candidate.itemId))
+                enumerate(index + 1, remaining - 1, [...chosen, candidate]);
+        }
+    }
+    for (let size = 1; size <= Math.min(maxChanges, candidates.length); size++) {
+        enumerate(0, size, []);
+        if (exhausted)
+            return repairRefusal("search_budget_exceeded", "Search stopped before minimal proposals could be certified.", "Increase maxEvaluations (up to 10000) or narrow the explicit move set.");
+        if (proposals.length > 0) {
+            proposals.sort((a, b) => a.deferredMinutes - b.deferredMinutes || a.addedMinutesPerDay - b.addedMinutesPerDay || JSON.stringify(a.moves).localeCompare(JSON.stringify(b.moves)));
+            return { ok: true, baseline: summary, examined, minimalChanges: size, totalProposals: proposals.length, truncated: proposals.length > maxProposals, proposals: proposals.slice(0, maxProposals) };
+        }
+    }
+    return repairRefusal("no_allowed_repair", "No feasible repair within the allowed moves and maxChanges.", "Offer more capacity or dependency-complete scope deferrals, or raise maxChanges up to 3; deadline and dependency edits require a separate explicit decision.");
+}
 /**
  * Sort rank for a status so active work surfaces above finished or shelved items.
  *
@@ -1929,6 +2084,26 @@ function readBoolOption(options, ...keys) {
     }
     return false;
 }
+/** Parse the repair command's explicit move vocabulary without inferring permissions. */
+function deadlineRepairOptions(options) {
+    /** Comma-separated ids are exact; empty flags offer no moves. */
+    const ids = (key) => String(readOption(options, key) ?? "").split(",").map((id) => id.trim()).filter(Boolean);
+    /** Missing numbers use SDK defaults; malformed numbers reach typed validation. */
+    const number = (key, camel) => {
+        const raw = readOption(options, key, camel);
+        return raw === undefined ? undefined : Number(raw);
+    };
+    return {
+        from: String(readOption(options, "from") ?? ""), deadline: String(readOption(options, "deadline") ?? ""),
+        capacityShifts: ids("capacity").map((entry) => {
+            const [itemId, minutes, extra] = entry.split("=");
+            return { itemId, minutesPerDay: extra === undefined ? Number(minutes) : NaN };
+        }),
+        deferrableIds: ids("defer"), forbiddenIds: ids("forbid"),
+        defaultDuration: number("default-duration", "defaultDuration"), maxChanges: number("max-changes", "maxChanges"),
+        maxProposals: number("max-proposals", "maxProposals"), maxEvaluations: number("max-evaluations", "maxEvaluations"),
+    };
+}
 /**
  * Validate and normalize raw command flags into a fully resolved options object.
  *
@@ -2477,6 +2652,31 @@ export default defineExtension({
     version: "2026.10.20",
     activate(api) {
         api.registerCommand({
+            name: "gantt repair",
+            description: "Propose minimal explicit capacity or scope changes for an infeasible deadline.",
+            intent: "Evaluate deadline repairs without modifying items, deadlines or dependencies.",
+            read_output: { row_keys: [] },
+            examples: ["pm gantt repair --from 2026-10-21 --deadline 2026-10-30 --capacity task-a=960 --defer task-b --json"],
+            failure_hints: ["Offer capacity with --capacity id=minutesPerDay or scope with --defer id,id; protect work with --forbid id,id."],
+            flags: [
+                { long: "--from", value_name: "day", description: "Required inclusive start day (YYYY-MM-DD)." },
+                { long: "--deadline", value_name: "day", description: "Required fixed completion horizon (YYYY-MM-DD)." },
+                { long: "--capacity", value_name: "moves", description: "Explicit dedicated capacity offers: id=minutesPerDay,id=minutesPerDay (481..4800)." },
+                { long: "--defer", value_name: "ids", description: "Exact ids allowed to leave this scenario; retained dependents prevent deferral." },
+                { long: "--forbid", value_name: "ids", description: "Exact ids that cannot be changed or deferred; overrides offers." },
+                { long: "--default-duration", value_name: "days", description: "Fallback calendar days for unestimated work (default 5, max 365)." },
+                { long: "--max-changes", value_name: "n", description: "Maximum moves per proposal (default/max 3)." },
+                { long: "--max-proposals", value_name: "n", description: "Output proposals (default 5, max 10); total and truncation stay explicit." },
+                { long: "--max-evaluations", value_name: "n", description: "Search evaluations (default 5000, max 10000); exhaustion refuses." },
+            ],
+            async run(ctx) {
+                const items = fetchItems(ctx.pm_root);
+                const graph = await commandPrerequisiteGraph(items, ctx.pm_root);
+                const result = proposeDeadlineRepairs(items, deadlineRepairOptions(ctx.options), graph);
+                return result.ok ? result : { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
+            },
+        });
+        api.registerCommand({
             name: "gantt",
             description: "Render pm items as an ASCII Gantt chart",
             intent: "visualize project timeline week-by-week in the terminal",
@@ -2673,7 +2873,7 @@ export default defineExtension({
         // (empty delta).
         // -----------------------------------------------------------------------
         api.registerPreflight({
-            commands: ["gantt", "gantt export"],
+            commands: ["gantt", "gantt export", "gantt repair"],
             run: () => {
                 // Intentionally no enforcement here (runtime swallows throws); the real
                 // data-sanity gate is enforced in the command and exporter handlers
