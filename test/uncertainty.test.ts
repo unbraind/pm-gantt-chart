@@ -54,6 +54,19 @@ test("triangular distributions reproduce analytic quantiles including endpoint m
   }
 });
 
+test("parallel joins take the maximum and diamond branches share one prerequisite draw", () => {
+  const parallel = simulate([task("a"), task("b"), task("join", 480, ["a", "b"])], {
+    ...options, samples: 10000, estimates: { a: [0, 4800], b: [0, 4800] },
+  });
+  for (const q of parallel.project!) assert.ok(Math.abs(q.days - (1 + 10 * Math.sqrt(q.probability))) < 0.12);
+  const diamond = [task("root"), task("a", 480, ["root"]), task("b", 960, ["root"]), task("join", 480, ["b", "a"])];
+  const result = simulate(diamond, { ...options, samples: 10000, estimates: { root: [480, 4800] } });
+  for (const q of result.project!) assert.ok(Math.abs(q.days - (4 + 9 * q.probability)) < 0.12);
+  const missing = simulate(diamond);
+  assert.equal(missing.unknownCount, 4);
+  assert.equal(missing.items.find((item) => item.id === "join")!.completion, null);
+});
+
 test("point estimates, explicit zero, fixed ranges, empty scope and calendar assumptions", () => {
   const result = simulate([task("a", 0), task("b", 960, ["a"])], { ...options, quantiles: [0, 0.5, 1] });
   assert.deepEqual(result.project!.map((row) => row.days), [2, 2, 2]);
