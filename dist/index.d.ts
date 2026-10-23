@@ -3,6 +3,9 @@ import type { RelationshipKindRegistry } from "@unbrained/pm-cli/sdk";
 import type { ContractsResult } from "@unbrained/pm-cli/sdk/runtime";
 import { type CompletionIntervalOptions, type CompletionIntervalResult } from "./uncertainty.ts";
 export type { CompletionIntervalOptions, CompletionIntervalResult, CompletionIntervalRefusalCode, CompletionScenarioReceipt, CompletionQuantile, UncertainEstimate, ResolvedEstimate } from "./uncertainty.ts";
+import { type ResourceScenarioOptions } from "./resources.ts";
+export { applyResourceSelection } from "./resources.ts";
+export type { ResourceCalendar, ResourceAlternative, ResourceScenarioOptions, ResourceRefusalCode, ResourceRefusal, ResourceScheduleRow, ResourceWitness, ResourceScenarioSuccess, ResourceScenarioResult, ResourceSelection } from "./resources.ts";
 interface PmDependency {
     id: string;
     kind?: string;
@@ -469,6 +472,8 @@ declare function renderHtml(rows: GanttRow[], opts: GanttOptions, windowStart: D
  * @returns A complete SVG document as a string.
  */
 declare function renderSvg(rows: GanttRow[], opts: GanttOptions, windowStart: Date): string;
+/** Compare explicit assignee budgets using the package's registry-aware graph adapter. */
+export declare function resourceScenarios(items: readonly PmItem[], options: ResourceScenarioOptions, graph?: PrerequisiteGraph): import("./resources.ts").ResourceScenarioResult;
 interface ResolvedOptions extends GanttOptions {
     windowStart: Date;
 }

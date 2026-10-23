@@ -1,0 +1,35 @@
+id: pm-gantt-chart-resource-scenarios
+title: Compare resource-constrained schedule scenarios and select revision-checked plans
+description: "Overlap audit: core owns estimates, calendar views, lifecycle plans and atomic mutation guards; pm-graph owns graph algorithms; existing Gantt critical path/slack, deadline repair and uncertainty do not pool assignee work budgets or working calendars. Reuse certified complete reads, registry graph, execution analysis and guarded SDK transactions."
+type: Feature
+status: in_progress
+priority: 2
+tags: []
+created_at: "2026-10-23T15:29:31.966Z"
+updated_at: "2026-10-23T15:43:16.095Z"
+author: codex-agent
+acceptance_criteria: "Overloaded owners produce numerical infeasibility witnesses; weekends and time zones are deterministic; scenario application checks revisions and requires explicit selection without changing item dates; typed SDK and CLI with bounded TOON/JSON, refusals and remedies, docs and no-git public-tracker validation"
+comments[4]{created_at,author,text}:
+  "2026-10-23T15:32:27.270Z",codex-agent,"Overlap verified against pinned SDK lifecycle/plan, core calendar and graph deadline-scheduling contracts, sibling pm-graph analysis and existing Gantt repair/uncertainty APIs. No shared owner-capacity scheduler exists there. Design: reuse SDK execution analysis and certified registry-aware reads; deterministic civil-day alternatives with daily/weekly/total budgets and proof witnesses. Explicit selection records a core note through guarded journaled SDK mutation with locked target updated_at matching; source content revision binds the reviewed read snapshot. No date mutations. Initial npm ci hit host npm allow-scripts configuration; retry isolated user config without changing package pins."
+  "2026-10-23T15:39:50.021Z",codex-agent,"Public origin/main snapshot 9c887a56a99c7108591d9f223d09e3937ecf3e55 validated from archived read-only tracker documents outside git, with no git executable: 110 corpus items, 9 active, 7 missing estimates, 9 missing assignees. Explicit hypothetical work overrides preserve known effort and assume 480 minutes only for missing effort, pooling unassigned work without source edits; 3840 total minutes. Zero capacity yields one 3840-minute deficit witness; 480 minutes per working day with October 26 holiday completes all 9. Limit 3 returns 3 rows per alternative; compact JSON 1693 bytes; replay byte-identical and durable-source SHA-256 unchanged. Local targeted module coverage reached 100% lines/branches/functions; final CLI application cases and behavioural revert probes are being verified. Full unchanged npm/Bun release gates delegated to CI due host saturation."
+  "2026-10-23T15:41:40.784Z",codex-agent,"Minimum-host verification found the published 2026.10.6 SDK lacks BulkItemUpdateMutation.match. Raise consumer peer/manifest floor to 2026.10.20 so older hosts cannot silently ignore revision guards; existing development dependency remains unchanged. Five behavioural reverts each caused assertion failure: unlimited parallel effort, working weekends, suppressed overload witnesses, missing source revision guard and missing locked target revision guard. Sources restored after every probe."
+  "2026-10-23T15:43:14.761Z",codex-agent,"Verified targeted 10/10 resource tests, 13/13 smoke/compatibility tests, new resources.ts coverage 100% lines/branches/functions, typecheck, test typecheck, lint, docstrings and 0% duplication. pm test --run --progress recorded the 10/10 resource run. Local strict health reports clone-specific pm-github runtime version skew and prepared merge-fence drift; fresh CI provisioning is the authoritative health evidence. No unrelated extension or merge tooling changed. Full npm/Bun gates remain pending CI."
+files[10]{path,scope}:
+  index.ts,project
+  manifest.json,project
+  package-lock.json,project
+  package.json,project
+  resources.ts,project
+  test/compatibility-floor.test.ts,project
+  test/resources.test.ts,project
+  test/revert-resources.ts,project
+  test/smoke.test.ts,project
+  test/validate-resources.ts,project
+tests[3]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
+  node --test test/resources.test.ts,project,codex-agent,"2026-10-23T15:36:35.013Z",local_mutation,feat/resource-scenarios
+  npm run typecheck,project,codex-agent,"2026-10-23T15:42:32.934Z",local_mutation,feat/resource-scenarios
+  npm run lint,project,codex-agent,"2026-10-23T15:42:32.934Z",local_mutation,feat/resource-scenarios
+docs[2]{path,scope}:
+  docs/resource-scenarios.md,project
+  README.md,project
+body: ""
