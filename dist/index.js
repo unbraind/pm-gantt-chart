@@ -2654,7 +2654,7 @@ const GANTT_EXPORT_OPTIONS = {
 };
 export default defineExtension({
     name: "pm-gantt-chart",
-    version: "2026.10.20",
+    version: "2026.10.23",
     activate(api) {
         api.registerCommand({
             name: "gantt uncertainty",
