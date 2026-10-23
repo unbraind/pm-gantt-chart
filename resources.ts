@@ -63,7 +63,8 @@ function digest(value: unknown): string {
 }
 
 /** Check a real civil date without the permissive Date parser's rollover. */
-function day(value: string): number {
+function day(value: unknown): number {
+  if (typeof value !== "string") return NaN;
   const time = Date.parse(`${value}T00:00:00.000Z`);
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value ? time : NaN;
 }
@@ -139,10 +140,11 @@ export function computeResourceScenarios(corpus: readonly PmItem[], options: Res
   }
   const identities = corpus.map(({ id }) => id);
   const ids = new Set(identities);
+  const invalidReferences = corpus.some((item) => (item.dependencies ?? []).some((dependency) => !ids.has(dependency.id)));
   const invalidIdentity = identities.some((id) => !id || id.length > 128 || !graph.has(id));
   const invalidEdges = [...graph].some(([id, deps]) => !ids.has(id) || deps.some((dep) => !ids.has(dep)));
-  if (ids.size !== identities.length || invalidIdentity || invalidEdges) {
-    return refuse("invalid_graph", "Duplicate identities or incomplete prerequisite graph.", "Read the complete corpus and resolve every prerequisite before evaluating scenarios.");
+  if (ids.size !== identities.length || invalidIdentity || invalidEdges || invalidReferences) {
+    return refuse("invalid_graph", "Duplicate identities, unresolved relationship targets or incomplete prerequisite graph.", "Read the complete corpus and resolve every declared relationship target before evaluating scenarios.");
   }
   const activeIds = new Set(active.map((item) => item.id));
   const prerequisites = new Map(active.map((item) => [item.id, [...new Set(graph.get(item.id)!.filter((id) => activeIds.has(id)))].sort()]));

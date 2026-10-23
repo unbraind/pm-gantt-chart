@@ -123,6 +123,33 @@ test("SDK rejects identity corruption, missing prerequisite rows and active cycl
   ] as const) refused(resourceScenarios([...items], controls, graph), "invalid_graph");
 });
 
+test("review: dangling forward relationships refuse before adaptation can erase missing targets", async () => {
+  for (const kind of ["blocks", "blocked_by", "ships_before", "related", "unknown_context"]) {
+    const items = [{ ...task("a"), dependencies: [{ id: "missing", kind }] }];
+    const before = JSON.stringify(items);
+    const result = resourceScenarios(items, controls, buildPrerequisiteGraph(items, orderingRegistry()));
+    refused(result, "invalid_graph");
+    refused(resourceScenarios(items, controls, new Map([["a", []]])), "invalid_graph");
+    assert.deepEqual(await applyResourceSelection("unused", "fixture", result, {
+      scenarioId: "base", selection: "unavailable", expectedRevision: "unavailable", targetId: "a", targetRevision: "unavailable",
+    }), result, "an unresolved graph cannot become a selectable scenario");
+    assert.equal(JSON.stringify(items), before);
+  }
+  const resolved = [{ ...task("a"), dependencies: [{ id: "b", kind: "blocks" }] }, task("b")];
+  assert.equal(compute(resolved).scenarios[0].feasible, true);
+});
+
+test("review: non-string horizon values return invalid_scenario without coercion", () => {
+  for (const field of ["from", "through"]) {
+    for (const value of [null, undefined, 20261023, false, [], [controls.from], {}, { toString: null }, Symbol("day")]) {
+      assert.doesNotThrow(() => refused(resourceScenarios([task("a")], { ...controls, [field]: value } as ResourceScenarioOptions), "invalid_scenario"));
+    }
+    /** A runtime caller's conversion hook must never execute during validation. */
+    const hostile = { toString() { assert.fail("horizon values must not be coerced"); } };
+    refused(resourceScenarios([task("a")], { ...controls, [field]: hostile } as ResourceScenarioOptions), "invalid_scenario");
+  }
+});
+
 test("explicit application requires reviewed tokens and source revision before touching storage", async () => {
   const result = compute([task("a")]);
   const choice: ResourceSelection = { scenarioId: "base", selection: result.scenarios[0].selection, expectedRevision: result.revision, targetId: "target", targetRevision: "revision" };
@@ -202,4 +229,28 @@ test("packed CLI runs TOON/JSON and revision-checked selection in a real tracker
     } });
     refused(conflict.result as ResourceScenarioResult, "revision_conflict");
   } finally { process.env.PATH = oldPath; }
+});
+
+
+test("review: no-git CLI refuses dangling forward edges and malformed horizon objects without writes", async (t) => {
+  const { root, pmRoot, sdk, invoke } = await packedTracker(t, "resource-review");
+  const file = join(root, "review-scenarios.json");
+  const options = { ...controls, scenarios: [{ id: "base", owners: { fixture: calendar } }] };
+  await sdk.create({ id: "resource-review-a", title: "Forward reference", type: "Task", assignee: "fixture", estimatedMinutes: "480",
+    dep: ["id=resource-review-missing,kind=blocks"], allowUnresolvedDeps: true });
+  const before = snapshot(pmRoot);
+  for (const field of ["from", "through"]) {
+    writeFileSync(file, JSON.stringify({ ...options, [field]: { toString: null } }));
+    const run = invoke(["gantt", "resources", "--scenarios", file, "--json"]);
+    assert.equal(run.status, 2, run.stderr);
+    assert.match(run.stdout + run.stderr, /invalid_scenario/);
+    assert.doesNotMatch(run.stdout + run.stderr, /TypeError/);
+  }
+  writeFileSync(file, JSON.stringify(options));
+  for (const extra of [[], ["--select", "base", "--selection", "unavailable", "--expect-revision", "unavailable", "--target", "resource-review-a", "--target-revision", "unavailable"]]) {
+    const run = invoke(["gantt", "resources", "--scenarios", file, ...extra, "--json"]);
+    assert.equal(run.status, 2, run.stderr);
+    assert.match(run.stdout + run.stderr, /invalid_graph/);
+  }
+  assert.equal(snapshot(pmRoot), before, "refused evaluation and application leave durable tracker data unchanged");
 });

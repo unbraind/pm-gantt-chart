@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Propose minimal explicit repairs for infeasible deadlines ([pm-gantt-chart-deadline-repair](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-deadline-repair.toon))
+- Render reproducible completion intervals for declared scheduling uncertainty ([pm-gantt-chart-uncertainty-intervals](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-uncertainty-intervals.toon))
+
+### Fixed
+
+- Replace non-installable README source shorthand with registry activation ([pm-gantt-chart-install-routes-1022](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-install-routes-1022.toon))
+
 ## 2026.10.23 - 2026-10-23
 
 ### Changed

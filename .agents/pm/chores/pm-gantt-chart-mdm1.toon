@@ -2,17 +2,17 @@ id: pm-gantt-chart-mdm1
 title: Certify pm-gantt-chart on PM CLI/SDK 2026.10.4 and consolidate pending dependency updates
 description: "Dated certification scope: consolidate the PM CLI/SDK 2026.10.4 toolchain and preserve unchanged package gates, clean full and production audits, clean pinned-host health and packed npm/Bun acceptance. PR #128 delivered the toolchain update but its retained receipt reports four high dev-only audit findings, two health advisories and review gaps. PR #141 later removed the dependency chain; that later remediation does not establish the missing dated 2026.10.4 certification acceptance."
 type: Chore
-status: in_progress
+status: open
 priority: 2
 tags[4]: cli,dependencies,release-readiness,sdk
 created_at: "2026-10-04T09:32:11.603Z"
-updated_at: "2026-10-22T11:16:25.917Z"
+updated_at: "2026-10-23T15:26:46.086Z"
 author: pi-glm
 acceptance_criteria: "npm run release:check passes with configured coverage thresholds and the unchanged zero-duplication gate; pm health with the repo-pinned 2026.10.4 binary is clean; packed tarball passes real-tracker gantt render/export scenarios via npx @unbrained/pm-cli@2026.10.4 and bunx; pm-github managed extension installed with read-only preview only"
 resolution: PR #128 delivered the dated toolchain update; certification remains unestablished.
 expected_result: Establish every dated certification acceptance criterion separately from toolchain delivery.
 actual_result: "Main 80717afb81f1 contains PR #128 delivery 9a772c1c667f. Its retained 2026.10.4 receipt records release:check 232/232, hostile NODE_PATH 8/8, packed npm/Bun exports for 95 items and production audit 0, but full audit 4 high dev-only findings, two health advisories and review gaps; it explicitly says NOT READY for certification. PR #141 later removes the dependency chain. No later receipt establishes the dated 2026.10.4 certification or current exact-head certification; this item remains in progress."
-comments[14]:
+comments[15]:
   - created_at: "2026-10-04T09:32:17.384Z"
     author: pi-glm
     text: "Starting at 7145c6f (Release pm-gantt-chart v2026.09.26). Plan: pm-cli 2026.9.23->2026.10.4, pm-ops->2026.10.4, pm-changelog->2026.9.25, jscpd ^4.3.0->^5.4.0 with #122's zero-dup fixes (shared main-invocation guard, single JSON render, accept-packed PM_PATH isolation), codeql SHA 1c5b6756, @types/node 26.6.4, eslint latest in range; carry #122's pm issue pm-gantt-chart-chso; recopy canonical prepare-merge-driver.ts from pm-ops 2026.10.4; full gate + dogfood + pm-github preview."
@@ -56,6 +56,9 @@ comments[14]:
   - created_at: "2026-10-22T11:16:19.487Z"
     author: codex-agent
     text: "PR 163 final tracker-only proof: main 80717afb81f1 and its retained mdm1 receipt explicitly leave dated 2026.10.4 certification NOT READY; PR #128 is recorded as toolchain delivery only. Materialized reconciliation comment corrected through a new append-only event; original close event retained verbatim. Reopened state has no close_reason/closed_at/completed_at. PR #141 remediation receipt, current lockfile and fresh full/production audit zero establish the dependency replacement; e7rd title/result/description/closure and regenerated changelog now describe delivered removal. All 11 changed history streams preserve both the complete main prefix and complete original PR-head prefix. This main-evidence recheck replaces behavioral revert tests for a tracker-only change. npm ci passed (133 packages, zero vulnerabilities); both audit scopes zero; pm test --run --progress --match=\"git show origin/main:\" --timeout 1200 passed 2/2 evidence commands. npm run changelog:full and changelog:check passed. Isolated pm health --strict-exit --require-merge-drivers passed all gate requirements with no history drift; only non-failing stale-item, historical-provenance and transient telemetry-queue advisories were reported. No runtime/source/dist/dependency/threshold change, thread reply/resolution, mention, merge or release. No new PM CLI/SDK defect encountered. Keep certification in progress and release ownership for orchestrator verification."
+  - created_at: "2026-10-23T15:26:30.541Z"
+    author: codex-agent
+    text: "STALE-CLAIM: audited main 9c887a56a99c7108591d9f223d09e3937ecf3e55; no open PR or recently pushed live branch references this record. Inspected: package.json, .agents/pm/chores/pm-gantt-chart-mdm1.toon. Remaining: PR 163 explicitly restored dated 2026.10.4 certification as NOT READY. Later dependency remediation does not supply the missing dated clean-host/audit/packed acceptance; retain certification work separately from toolchain delivery. Release historical contention and retain real work as open; no delivery/cancellation is claimed."
 files[13]:
   - path: .agents/pm/extensions/.managed-extensions.json
     scope: project
