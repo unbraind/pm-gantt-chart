@@ -21,7 +21,7 @@ const source = execFileSync("git", ["rev-parse", process.argv[2] ?? "origin/main
 const scratch = mkdtempSync(join(tmpdir(), "gantt-resource-public-"));
 const oldPath = process.env.PATH, oldCeiling = process.env.GIT_CEILING_DIRECTORIES;
 try {
-  const archived = execFileSync("git", ["archive", source, ".agents/pm"]);
+  const archived = execFileSync("git", ["archive", source, ".agents/pm"], { maxBuffer: 64 * 1024 * 1024 });
   execFileSync("tar", ["-xf", "-", "-C", scratch], { input: archived });
   const pmRoot = join(scratch, ".agents", "pm");
   protect(pmRoot);
