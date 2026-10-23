@@ -48,7 +48,7 @@
     "brand:check": "node scripts/brand-values.ts --check"
   },
   "peerDependencies": {
-    "@unbrained/pm-cli": ">=2026.10.6"
+    "@unbrained/pm-cli": ">=2026.10.20"
   },
   "devDependencies": {
     "@babel/eslint-parser": "8.0.7",

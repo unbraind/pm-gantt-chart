@@ -1,8 +1,10 @@
 import { brandCss, brandStatus, brandStatuses, brandValue, mermaidBrand } from "./brand.js";
-import { certifyCompleteListResult, EXIT_CODE, inspectCompleteListResult, PmClient } from "@unbrained/pm-cli/sdk";
+import { certifyCompleteListResult, EXIT_CODE, inspectCompleteListResult, PmClient, resolveAuthor, readSettings } from "@unbrained/pm-cli/sdk";
 import { resolveWorkspaceRelationshipKindRegistry } from "@unbrained/pm-cli/sdk/graph";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { simulateCompletionIntervals } from "./uncertainty.js";
+import { computeResourceScenarios, applyResourceSelection } from "./resources.js";
+export { applyResourceSelection } from "./resources.js";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 // ---------------------------------------------------------------------------
@@ -2089,6 +2091,10 @@ function readBoolOption(options, ...keys) {
     }
     return false;
 }
+/** Compare explicit assignee budgets using the package's registry-aware graph adapter. */
+export function resourceScenarios(items, options, graph = buildPrerequisiteGraph(items)) {
+    return computeResourceScenarios(items, options, graph);
+}
 /** Parse the repair command's explicit move vocabulary without inferring permissions. */
 function deadlineRepairOptions(options) {
     /** Comma-separated ids are exact; empty flags offer no moves. */
@@ -2657,6 +2663,46 @@ export default defineExtension({
     version: "2026.10.23",
     activate(api) {
         api.registerCommand({
+            name: "gantt resources",
+            description: "Compare resource-constrained alternatives and explicitly record a revision-checked selection.",
+            intent: "Expose owner capacity and calendar consequences without editing item dates.",
+            read_output: { row_keys: [] },
+            examples: ["pm gantt resources --scenarios resources.json --json"],
+            failure_hints: ["Provide a bounded scenario JSON file; selection requires exact tokens and source/target revisions."],
+            flags: [
+                { long: "--scenarios", value_name: "file", description: "Required JSON ResourceScenarioOptions file, maximum 256 KiB." },
+                { long: "--select", value_name: "id", description: "Explicit feasible alternative id to record as a core note." },
+                { long: "--selection", value_name: "hash", description: "Reviewed alternative selection token." },
+                { long: "--expect-revision", value_name: "hash", description: "Reviewed source scheduling revision." },
+                { long: "--target", value_name: "id", description: "Item receiving the selection note." },
+                { long: "--target-revision", value_name: "updated_at", description: "Expected target revision, checked under the core item lock." },
+            ],
+            async run(ctx) {
+                let controls;
+                try {
+                    const file = resolve(String(readOption(ctx.options, "scenarios") ?? ""));
+                    if (!statSync(file).isFile() || statSync(file).size > 262144)
+                        throw new Error("bounded file required");
+                    controls = JSON.parse(readFileSync(file, "utf8"));
+                }
+                catch {
+                    const remedy = "Provide --scenarios with a readable regular JSON file no larger than 256 KiB.";
+                    return { ok: false, code: "invalid_scenario", message: "Cannot read bounded scenario controls.", remedy, remediation: remedy, exit_code: EXIT_CODE.USAGE };
+                }
+                const items = fetchItems(ctx.pm_root);
+                const graph = await commandPrerequisiteGraph(items, ctx.pm_root);
+                const evaluated = resourceScenarios(items, controls, graph);
+                const selectionKeys = ["select", "selection", "expect-revision", "expectRevision", "target", "target-revision", "targetRevision"];
+                const applying = selectionKeys.some((key) => readOption(ctx.options, key) !== undefined);
+                const result = applying ? await applyResourceSelection(ctx.pm_root, resolveAuthor(ctx.global.author, (await readSettings(ctx.pm_root)).author_default), evaluated, {
+                    scenarioId: String(readOption(ctx.options, "select") ?? ""), selection: String(readOption(ctx.options, "selection") ?? ""),
+                    expectedRevision: String(readOption(ctx.options, "expect-revision", "expectRevision") ?? ""),
+                    targetId: String(readOption(ctx.options, "target") ?? ""), targetRevision: String(readOption(ctx.options, "target-revision", "targetRevision") ?? ""),
+                }) : evaluated;
+                return result.ok ? result : { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
+            },
+        });
+        api.registerCommand({
             name: "gantt uncertainty",
             description: "Render reproducible completion quantiles and estimate sensitivity from declared uncertainty.",
             intent: "Read-only seeded scheduling with explicit unknowns and replayable assumptions.",
@@ -2928,7 +2974,7 @@ export default defineExtension({
         // (empty delta).
         // -----------------------------------------------------------------------
         api.registerPreflight({
-            commands: ["gantt", "gantt export", "gantt repair", "gantt uncertainty"],
+            commands: ["gantt", "gantt export", "gantt repair", "gantt uncertainty", "gantt resources"],
             run: () => {
                 // Intentionally no enforcement here (runtime swallows throws); the real
                 // data-sanity gate is enforced in the command and exporter handlers

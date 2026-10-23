@@ -35,7 +35,7 @@ const releaseWorkflow = readFileSync(resolve(repoRoot, ".github/workflows/releas
 
 const CLI = "@unbrained/pm-cli";
 const EXACT_VERSION = /^\d+\.\d+\.\d+$/;
-const MINIMUM_HOST = "2026.10.6";
+const MINIMUM_HOST = "2026.10.20";
 
 /**
  * Two independent systems enforce the pm CLI compatibility floor, and each reads
@@ -102,7 +102,7 @@ test("the extension manifest declares the same floor the CLI actually enforces",
     peer.slice(">=".length),
     "manifest.json pm_min_version must equal the peerDependencies floor, or npm and the pm CLI enforce different minimums",
   );
-  assert.equal(declared, MINIMUM_HOST, "the workspace relationship registry API floor is 2026.10.6");
+  assert.equal(declared, MINIMUM_HOST, "the guarded SDK transaction contract requires 2026.10.20");
 });
 
 test("the development dependency is an exact pin at or above the declared floor", () => {

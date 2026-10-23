@@ -30,7 +30,8 @@ Legend: ██ in_progress/blocked  ░░ open/planned  ▓▓ critical-path (*
 
 ## Installation
 
-Requires pm CLI `2026.10.6` or newer. Development and CI exact-pin 2026.10.6;
+Requires pm CLI `2026.10.20` or newer for locked scenario-selection guards.
+Development and CI retain the existing exact pin at 2026.10.20;
 the consumer floor is independently exercised by packed npm acceptance.
 
 In a plain project directory, initialize a tracker and activate the published package:
@@ -229,6 +230,25 @@ Rendering, scheduling, exports, uncertainty intervals and deadline repair propos
 trackers without git installed. This package's runtime commands do not require
 a git repository. Repository release/changelog tooling needs git history.
 
+### Resource-constrained schedule scenarios
+
+`pm gantt resources --scenarios resources.json` compares explicitly named
+alternatives with shared assignee capacity, weekday/holiday calendars and daily,
+weekly and total minute limits. It returns bounded TOON (default) or `--json`,
+per-item computed dates, numerical owner overload witnesses, counts and revision
+receipts. Existing item dates stay unchanged. Calendar days use an explicit IANA
+time zone and reproduce across host zones and daylight-saving weekends.
+
+Explicit `--select`, `--selection`, `--expect-revision`, `--target` and
+`--target-revision` record a feasible reviewed snapshot as a core note through
+the SDK's journaled mutation and locked target revision check. Source changes
+require recomputation. The allocator is a deterministic heuristic; exhaustion
+without a capacity witness does not prove global infeasibility. Missing effort
+or capacity refuses with a typed remedy. The typed SDK exports
+`resourceScenarios`, `applyResourceSelection` and their calendar, alternative,
+result, refusal and selection types. Everything works without git. See the
+[worked example, bounds and selection semantics](docs/resource-scenarios.md).
+
 ### Completion intervals for agent plans
 
 `pm gantt uncertainty` samples declared effort uncertainty over the existing
@@ -404,7 +424,7 @@ pm install .     # load the built extension locally
 
 ## Requirements
 
-- pm-cli `>=2026.7.29`
+- pm-cli `>=2026.10.20`
 - Node.js `>=22.18.0`
 
 ## License
@@ -416,8 +436,8 @@ MIT
 The repository release gate runs type checking, build, coverage, docstrings,
 production dependency audit, package packing, and unbounded pm-changelog
 validation. It also installs the real tarball into fresh npm/npx and Bun/bunx
-projects on the current 2026.10.6 host and into npm/npx on the declared
-2026.10.6 minimum, then executes both `pm gantt` and `pm --quiet gantt export
+projects on the pinned 2026.10.20 host and into npm/npx on the declared
+2026.10.20 minimum, then executes both `pm gantt` and `pm --quiet gantt export
 --format json` against real tracker data. The daily workflow publishes at most
 once when commits exist after the latest release tag. These technical gates do
 not override repository-owned privacy or all-source coverage blockers.

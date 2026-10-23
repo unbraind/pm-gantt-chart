@@ -1,0 +1,68 @@
+id: pm-gantt-chart-resource-scenarios
+title: Compare resource-constrained schedule scenarios and select revision-checked plans
+description: "Overlap audit: core owns estimates, calendar views, lifecycle plans and atomic mutation guards; pm-graph owns graph algorithms; existing Gantt critical path/slack, deadline repair and uncertainty do not pool assignee work budgets or working calendars. Reuse certified complete reads, registry graph, execution analysis and guarded SDK transactions."
+type: Feature
+status: in_progress
+priority: 2
+tags: []
+created_at: "2026-10-23T15:29:31.966Z"
+updated_at: "2026-10-23T16:16:09.722Z"
+author: codex-agent
+acceptance_criteria: "Overloaded owners produce numerical infeasibility witnesses; weekends and time zones are deterministic; scenario application checks revisions and requires explicit selection without changing item dates; typed SDK and CLI with bounded TOON/JSON, refusals and remedies, docs and no-git public-tracker validation"
+comments[11]{created_at,author,text}:
+  "2026-10-23T15:32:27.270Z",codex-agent,"Overlap verified against pinned SDK lifecycle/plan, core calendar and graph deadline-scheduling contracts, sibling pm-graph analysis and existing Gantt repair/uncertainty APIs. No shared owner-capacity scheduler exists there. Design: reuse SDK execution analysis and certified registry-aware reads; deterministic civil-day alternatives with daily/weekly/total budgets and proof witnesses. Explicit selection records a core note through guarded journaled SDK mutation with locked target updated_at matching; source content revision binds the reviewed read snapshot. No date mutations. Initial npm ci hit host npm allow-scripts configuration; retry isolated user config without changing package pins."
+  "2026-10-23T15:39:50.021Z",codex-agent,"Public origin/main snapshot 9c887a56a99c7108591d9f223d09e3937ecf3e55 validated from archived read-only tracker documents outside git, with no git executable: 110 corpus items, 9 active, 7 missing estimates, 9 missing assignees. Explicit hypothetical work overrides preserve known effort and assume 480 minutes only for missing effort, pooling unassigned work without source edits; 3840 total minutes. Zero capacity yields one 3840-minute deficit witness; 480 minutes per working day with October 26 holiday completes all 9. Limit 3 returns 3 rows per alternative; compact JSON 1693 bytes; replay byte-identical and durable-source SHA-256 unchanged. Local targeted module coverage reached 100% lines/branches/functions; final CLI application cases and behavioural revert probes are being verified. Full unchanged npm/Bun release gates delegated to CI due host saturation."
+  "2026-10-23T15:41:40.784Z",codex-agent,"Minimum-host verification found the published 2026.10.6 SDK lacks BulkItemUpdateMutation.match. Raise consumer peer/manifest floor to 2026.10.20 so older hosts cannot silently ignore revision guards; existing development dependency remains unchanged. Five behavioural reverts each caused assertion failure: unlimited parallel effort, working weekends, suppressed overload witnesses, missing source revision guard and missing locked target revision guard. Sources restored after every probe."
+  "2026-10-23T15:43:14.761Z",codex-agent,"Verified targeted 10/10 resource tests, 13/13 smoke/compatibility tests, new resources.ts coverage 100% lines/branches/functions, typecheck, test typecheck, lint, docstrings and 0% duplication. pm test --run --progress recorded the 10/10 resource run. Local strict health reports clone-specific pm-github runtime version skew and prepared merge-fence drift; fresh CI provisioning is the authoritative health evidence. No unrelated extension or merge tooling changed. Full npm/Bun gates remain pending CI."
+  "2026-10-23T15:51:04.019Z",codex-agent,"CI evidence for code commit 02f18753d208a05e36b50332b9fd3d8ed4ababd5: https://github.com/unbraind/pm-gantt-chart/actions/runs/39980831978 Node 26 job passed npm run release:check and bun run release:check, each 328 tests passed, 0 failed/skipped, 100% lines/branches/functions over all 5 shipped source modules. Each full gate passed the 3-scenario real packed npm/Bun/minimum-host matrix; minimum host is 2026.10.20. CodeQL passed https://github.com/unbraind/pm-gantt-chart/actions/runs/39980832004. Node 22.18.0 floor job is completing separately. All local checks and 5 behavioural revert probes passed. The final validation helper now bounds git archive output at 64 MiB (default 1 MiB was insufficient); rerun reproduces exactly 110 corpus/9 active/3840 minutes/1693 JSON bytes and unchanged read-only durable source. PR https://github.com/unbraind/pm-gantt-chart/pull/171 is ready for review. Sourcery quota and CodeRabbit repository policy prevented automated reviews; neither is approval. Item remains in progress and released for orchestrator verification."
+  "2026-10-23T15:51:43.488Z",codex-agent,"First complete CI run 39980831978 is green on both matrix jobs. Node 22.18.0 independently passed 328/328 tests, 0 failed/skipped, 100% lines/branches/functions over 5 shipped sources and packed acceptance. Node 26 npm and Bun full gates each passed the same 328/328 plus all release checks. The evidence/helper-only follow-up will receive a fresh exact-head CI run; the PR body and final handoff will link that final run. No merge or release performed."
+  "2026-10-23T16:09:17.608Z",codex-agent,"Review follow-up: rechecked clean PR branch and released in-progress item, pulled the remote PR head, and integrated advanced main. Fix both findings in the resource scenario path: validate declared relationship target closure before adaptation can discard forward edges; validate horizon value types before date coercion. Add SDK and no-git CLI regressions plus isolated behavioural revert proofs for each finding. Existing scheduler, application semantics and dependency pins remain unchanged."
+  "2026-10-23T16:11:55.740Z",codex-agent,"Blocking finding fixed: computeResourceScenarios now validates raw declared relationship targets independently of adapted edges. A dangling forward blocks row, custom ships_before row, or context row cannot disappear into a feasible/selectable scenario; invalid_graph names unresolved targets and gives a closure remedy. Regression: dangling forward relationships refuse before adaptation can erase missing targets. Revert proof: node test/revert-resources.ts \"dangling forward\" replaced only the new raw-reference check with false; the named regression exited 1 with ERR_ASSERTION. Restored the fix. A packed no-git CLI regression also checks evaluation/selection refusals and unchanged durable tracker data."
+  "2026-10-23T16:12:05.481Z",codex-agent,"Non-blocking finding fixed: the civil-day parser accepts unknown input and returns NaN for non-strings before interpolation, Date.parse or regex conversion. Regression: non-string horizon values return invalid_scenario without coercion. It covers both horizon fields with null, omitted values, numbers, booleans, arrays, plain/hostile objects, toString:null and symbols. Revert proof: node test/revert-resources.ts \"non-string horizon\" removed only the new typeof guard; the named regression exited 1 with ERR_ASSERTION. Restored the guard. The packed no-git CLI regression submits JSON toString:null objects and requires exit 2/invalid_scenario without TypeError or durable writes."
+  "2026-10-23T16:14:55.683Z",codex-agent,"Local validation update: both isolated revert probes exited 1 with ERR_ASSERTION and restored source; build, test typecheck, lint, docstrings and 0% duplication passed. The broad linked resource run passed both new SDK regressions and the original packed integration test, but hit the host 120-second timeout before the new packed CLI case; no assertion failure was reported. Linked typecheck and lint passed. Run the review-prefixed regressions separately and retain unchanged full npm/Bun CI gates as authoritative full-suite evidence. Revalidated the same public snapshot after stricter closure checks: 110 corpus, 9 active, 3840 effort minutes, 1693-byte bounded JSON, identical replay and unchanged read-only durable tracker hash."
+  "2026-10-23T16:16:06.662Z",codex-agent,"Targeted review command node --test --test-name-pattern=review: test/resources.test.ts passed 3/3 tests with 0 failures/skips: dangling forward closure, non-string horizon refusal, and packed CLI evaluation/selection in a non-git tracker with git unavailable. Both isolated revert probes passed and restored only the respective fix. Linked npm run typecheck and npm run lint passed; build, test typecheck, docstrings and 0% duplication passed. Public snapshot validation still reproduces the prior measurements. Main integration was conflict-free; no merge-receipts-pending health finding appeared. Local extension runtime skew and prepared fence drift remain clone-specific; use fresh CI health and full npm/Bun release gates for final acceptance."
+files[10]{path,scope}:
+  index.ts,project
+  manifest.json,project
+  package-lock.json,project
+  package.json,project
+  resources.ts,project
+  test/compatibility-floor.test.ts,project
+  test/resources.test.ts,project
+  test/revert-resources.ts,project
+  test/smoke.test.ts,project
+  test/validate-resources.ts,project
+tests[4]:
+  - command: node --test test/resources.test.ts
+    scope: project
+    provenance:
+      author: codex-agent
+      created_at: "2026-10-23T15:36:35.013Z"
+      source_kind: local_mutation
+      source_ref: feat/resource-scenarios
+  - command: npm run typecheck
+    scope: project
+    provenance:
+      author: codex-agent
+      created_at: "2026-10-23T15:42:32.934Z"
+      source_kind: local_mutation
+      source_ref: feat/resource-scenarios
+  - command: npm run lint
+    scope: project
+    provenance:
+      author: codex-agent
+      created_at: "2026-10-23T15:42:32.934Z"
+      source_kind: local_mutation
+      source_ref: feat/resource-scenarios
+  - command: "node --test --test-name-pattern=review: test/resources.test.ts"
+    scope: project
+    timeout_seconds: 240
+    provenance:
+      author: codex-agent
+      created_at: "2026-10-23T16:14:48.378Z"
+      source_kind: local_mutation
+      source_ref: feat/resource-scenarios
+docs[2]{path,scope}:
+  docs/resource-scenarios.md,project
+  README.md,project
+body: ""
