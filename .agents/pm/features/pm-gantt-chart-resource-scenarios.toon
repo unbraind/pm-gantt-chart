@@ -2,13 +2,18 @@ id: pm-gantt-chart-resource-scenarios
 title: Compare resource-constrained schedule scenarios and select revision-checked plans
 description: "Overlap audit: core owns estimates, calendar views, lifecycle plans and atomic mutation guards; pm-graph owns graph algorithms; existing Gantt critical path/slack, deadline repair and uncertainty do not pool assignee work budgets or working calendars. Reuse certified complete reads, registry graph, execution analysis and guarded SDK transactions."
 type: Feature
-status: in_progress
+status: closed
 priority: 2
 tags: []
 created_at: "2026-10-23T15:29:31.966Z"
-updated_at: "2026-10-23T16:16:09.722Z"
+updated_at: "2026-10-24T21:45:52.982Z"
+closed_at: "2026-10-24T21:45:52.917Z"
+completed_at: "2026-10-24T21:45:52.917Z"
 author: codex-agent
 acceptance_criteria: "Overloaded owners produce numerical infeasibility witnesses; weekends and time zones are deterministic; scenario application checks revisions and requires explicit selection without changing item dates; typed SDK and CLI with bounded TOON/JSON, refusals and remedies, docs and no-git public-tracker validation"
+resolution: "Capacity scenarios report numeric infeasibility, deterministic weekend/timezone handling and explicit revision-checked selection without changing dates, with compact no-git SDK/CLI."
+expected_result: "Overloaded owners produce numerical infeasibility witnesses; weekends and time zones are deterministic; scenario application checks revisions and requires explicit selection without changing item dates; typed SDK and CLI with bounded TOON/JSON, refusals and remedies, docs and no-git public-tracker validation"
+actual_result: "https://github.com/unbraind/pm-gantt-chart/pull/171, merged 2026-10-23T16:39:20Z, merge 6a1fc997b077bf5a946e96892148c3461c54966b: Capacity scenarios report numeric infeasibility, deterministic weekend/timezone handling and explicit revision-checked selection without changing dates, with compact no-git SDK/CLI."
 comments[11]{created_at,author,text}:
   "2026-10-23T15:32:27.270Z",codex-agent,"Overlap verified against pinned SDK lifecycle/plan, core calendar and graph deadline-scheduling contracts, sibling pm-graph analysis and existing Gantt repair/uncertainty APIs. No shared owner-capacity scheduler exists there. Design: reuse SDK execution analysis and certified registry-aware reads; deterministic civil-day alternatives with daily/weekly/total budgets and proof witnesses. Explicit selection records a core note through guarded journaled SDK mutation with locked target updated_at matching; source content revision binds the reviewed read snapshot. No date mutations. Initial npm ci hit host npm allow-scripts configuration; retry isolated user config without changing package pins."
   "2026-10-23T15:39:50.021Z",codex-agent,"Public origin/main snapshot 9c887a56a99c7108591d9f223d09e3937ecf3e55 validated from archived read-only tracker documents outside git, with no git executable: 110 corpus items, 9 active, 7 missing estimates, 9 missing assignees. Explicit hypothetical work overrides preserve known effort and assume 480 minutes only for missing effort, pooling unassigned work without source edits; 3840 total minutes. Zero capacity yields one 3840-minute deficit witness; 480 minutes per working day with October 26 holiday completes all 9. Limit 3 returns 3 rows per alternative; compact JSON 1693 bytes; replay byte-identical and durable-source SHA-256 unchanged. Local targeted module coverage reached 100% lines/branches/functions; final CLI application cases and behavioural revert probes are being verified. Full unchanged npm/Bun release gates delegated to CI due host saturation."
@@ -65,4 +70,5 @@ tests[4]:
 docs[2]{path,scope}:
   docs/resource-scenarios.md,project
   README.md,project
+close_reason: "https://github.com/unbraind/pm-gantt-chart/pull/171, merged 2026-10-23T16:39:20Z, merge 6a1fc997b077bf5a946e96892148c3461c54966b: Capacity scenarios report numeric infeasibility, deterministic weekend/timezone handling and explicit revision-checked selection without changing dates, with compact no-git SDK/CLI."
 body: ""
