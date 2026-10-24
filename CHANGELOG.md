@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Compare resource-constrained schedule scenarios and select revision-checked plans ([pm-gantt-chart-resource-scenarios](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-resource-scenarios.toon))
+
+### Other
+
+- Reconcile stale in-progress tracker records (2026-10-23) ([pm-gantt-chart-reconcile-1023](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-reconcile-1023.toon))
+
 ## 2026.10.24 - 2026-10-24
 
 ### Added
