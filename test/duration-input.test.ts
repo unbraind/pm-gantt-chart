@@ -212,3 +212,27 @@ test("array bounds are captured once from the own length descriptor without invo
   assert.ok(result.ok);
   assert.deepEqual(result.project!.map((row) => row.days), [0.125, 0.125, 0.125]);
 });
+
+test("graph size and entries are captured through intrinsic operations before validating child values", () => {
+  let sizeReads = 0;
+  const large = new Map(Array.from({ length: 100001 }, (_, index) => [String(index), []]));
+  Object.setPrototypeOf(large, Object.create(Map.prototype, { size: { get() { sizeReads++; return 0; } } }));
+  invalid(validateDurationInput("graph", large));
+  assert.equal(sizeReads, 0);
+  const graph = new Map<string, string[]>();
+  const dependencies = new Proxy(["future"], { getOwnPropertyDescriptor(target, key) {
+    if (key === "0") graph.set("late", ["future"]);
+    return Reflect.getOwnPropertyDescriptor(target, key);
+  } });
+  graph.set("future", dependencies);
+  const read = validateDurationInput("graph", graph);
+  assert.ok(read.ok);
+  assert.equal(read.value!.length, 1, "children cannot extend the captured Map traversal");
+});
+
+test("aggregate validation work is bounded even when oversized products share small source arrays", () => {
+  const dependencies = Array.from({ length: 5000 }, () => ({ id: "future", kind: "related" }));
+  const corpus = Array.from({ length: 100 }, (_, index) => ({ ...item, id: String(index), dependencies }));
+  invalid(completionIntervals(corpus, options));
+  invalid(validateDurationInput("calibration", Object.fromEntries(Array.from({ length: 10001 }, (_, index) => [String(index), 1]))));
+});

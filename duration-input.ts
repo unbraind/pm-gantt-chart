@@ -122,7 +122,9 @@ function validTextFormat(value: string, format: "day" | "timestamp" | "civil" | 
 function fields(value: unknown, path: string): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value) || ![Object.prototype, null].includes(Object.getPrototypeOf(value))) throw new DurationInputError(path);
   const result: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
-  for (const key of Reflect.ownKeys(value)) {
+  const keys = Reflect.ownKeys(value);
+  if (keys.length > 10000) throw new DurationInputError(path);
+  for (const key of keys) {
     const descriptor = Object.getOwnPropertyDescriptor(value, key)!;
     if (typeof key !== "string" || !Object.hasOwn(descriptor, "value")) throw new DurationInputError(path);
     result[key] = descriptor.value;
@@ -131,7 +133,8 @@ function fields(value: unknown, path: string): Record<string, unknown> {
 }
 
 /** Interpret the single declarative contract; recurse only after bounded shape checks. */
-function parse(rule: Rule, value: unknown, path: string): unknown {
+function parse(rule: Rule, value: unknown, path: string, budget = { remaining: 1000000 }): unknown {
+  if (--budget.remaining < 0) throw new DurationInputError("bounded_input_work");
   if (rule.optional && value === undefined) return undefined;
   switch (rule.kind) {
     case "number":
@@ -144,42 +147,45 @@ function parse(rule: Rule, value: unknown, path: string): unknown {
       if (value !== rule.value) throw new DurationInputError(path);
       return value;
     case "union":
-      for (const choice of rule.choices) { try { const parsed = parse(choice, value, path); return rule === estimate ? canonicalDurationEstimate(parsed as UncertainEstimate) : parsed; } catch { /* Try the next closed variant. */ } }
+      for (const choice of rule.choices) { try { const parsed = parse(choice, value, path, budget); return rule === estimate ? canonicalDurationEstimate(parsed as UncertainEstimate) : parsed; } catch { /* Try the next closed variant. */ } }
       throw new DurationInputError(path);
     case "array": {
       if (!Array.isArray(value)) throw new DurationInputError(path);
-      const length = parse({ kind: "number", min: rule.min, max: rule.max, integer: true }, Object.getOwnPropertyDescriptor(value, "length")!.value, `${path}.length`) as number;
+      const length = parse({ kind: "number", min: rule.min, max: rule.max, integer: true }, Object.getOwnPropertyDescriptor(value, "length")!.value, `${path}.length`, budget) as number;
       if (Reflect.ownKeys(value).length !== length + 1) throw new DurationInputError(path);
       const result: unknown[] = [];
       for (let index = 0; index < length; index++) {
         const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
         if (descriptor === undefined || !Object.hasOwn(descriptor, "value")) throw new DurationInputError(`${path}[${index}]`);
-        result.push(parse(rule.tuple?.[index] ?? rule.entry, descriptor.value, `${path}[${index}]`));
+        result.push(parse(rule.tuple?.[index] ?? rule.entry, descriptor.value, `${path}[${index}]`, budget));
         if (index > 0 && ((rule.increasing && (result[index] as number) <= (result[index - 1] as number)) || (rule.ordered && (result[index] as number) < (result[index - 1] as number)))) throw new DurationInputError(path);
       }
       if (rule.unique && new Set(result).size !== result.length) throw new DurationInputError(path);
       return Object.freeze(result);
     }
     case "map": {
-      if (!(value instanceof Map) || value.size > rule.max || Reflect.ownKeys(value).length > 0) throw new DurationInputError(path);
+      if (!(value instanceof Map) || Reflect.ownKeys(value).length > 0) throw new DurationInputError(path);
+      const size = Object.getOwnPropertyDescriptor(Map.prototype, "size")!.get!.call(value) as number;
+      if (size > rule.max) throw new DurationInputError(path);
+      const entries = Array.from(Map.prototype.entries.call(value)) as [unknown, unknown][];
       const result: (readonly [string, readonly string[]])[] = [];
-      for (const [key, entry] of Map.prototype.entries.call(value)) {
-        const id = parse({ kind: "string", max: 4096 }, key, path) as string;
-        result.push(Object.freeze([id, parse(rule.entry, entry, `${path}.${id}`) as readonly string[]] as const));
+      for (const [key, entry] of entries) {
+        const id = parse({ kind: "string", max: 4096 }, key, path, budget) as string;
+        result.push(Object.freeze([id, parse(rule.entry, entry, `${path}.${id}`, budget) as readonly string[]] as const));
       }
       return Object.freeze(result);
     }
     case "dictionary": {
       const input = fields(value, path), keys = Object.keys(input);
       if (keys.length > rule.max) throw new DurationInputError(path);
-      return Object.freeze(Object.fromEntries(keys.map((key) => [rule.key ? parse(rule.key, key, path) as string : key, parse(rule.entry, input[key], `${path}.${key}`)])));
+      return Object.freeze(Object.fromEntries(keys.map((key) => [rule.key ? parse(rule.key, key, path, budget) as string : key, parse(rule.entry, input[key], `${path}.${key}`, budget)])));
     }
     case "object": {
       const input = fields(value, path);
       if (!rule.open && Object.keys(input).some((key) => !Object.hasOwn(rule.fields, key))) throw new DurationInputError(path);
       const result = rule.open ? { ...input } : {} as Record<string, unknown>;
       for (const [key, child] of Object.entries(rule.fields)) {
-        const parsed = parse(child, input[key], `${path}.${key}`);
+        const parsed = parse(child, input[key], `${path}.${key}`, budget);
         if (parsed !== undefined) result[key] = parsed;
       }
       if (rule.ordered) for (let i = 1; i < rule.ordered.length; i++) {

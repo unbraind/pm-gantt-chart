@@ -11,6 +11,11 @@ sampling/calibration controls previously labeled `invalid_scenario` or
 `invalid_calibration`. Semantic graph, scope, missing-work, sample-minimum and
 computational-budget refusals retain their distinct codes.
 
+One request is capped at 1000000 schema steps (including union attempts), and
+objects at 10000 own fields, so shared source arrays cannot create unbounded
+validation products. Graph size and entries are captured with Map intrinsics
+before child values are inspected.
+
 Arrays must have every own index from zero through length minus one, without
 accessors or extra keys. Inherited entries never fill holes. Each nested value is
 checked; sparse empirical populations and quantile arrays cannot reach sampling.
