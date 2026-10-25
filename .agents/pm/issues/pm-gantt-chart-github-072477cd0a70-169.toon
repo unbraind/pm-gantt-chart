@@ -1,0 +1,25 @@
+id: pm-gantt-chart-github-072477cd0a70-169
+title: Daily Release workflow is failing
+description: "GH issue #169: https://github.com/unbraind/pm-gantt-chart/issues/169 · author @github-actions[bot] · state reason completed · created 2026-10-23T10:00:45Z · updated 2026-10-23T14:39:22Z"
+type: Issue
+status: closed
+priority: 2
+tags[3]: "gh:unbraind/pm-gantt-chart#169","github_author:github-actions[bot]",release-failure
+created_at: "2026-10-23T10:00:45Z"
+updated_at: "2026-10-25T06:13:47.267Z"
+closed_at: "2026-10-23T14:39:22Z"
+completed_at: "2026-10-23T14:39:22Z"
+author: pm-github
+release: v2026.10.24
+close_reason: "Closed on GitHub as completed on 2026-10-23T14:39:22Z"
+github_close_reason: "Closed on GitHub as completed on 2026-10-23T14:39:22Z"
+github_closed_at: "2026-10-23T14:39:22Z"
+github_created_at: "2026-10-23T10:00:45Z"
+github_link_only: false
+github_number: 169
+github_release: v2026.10.24
+github_state: closed
+github_state_reason: completed
+github_updated_at: "2026-10-23T14:39:22Z"
+github_url: "https://github.com/unbraind/pm-gantt-chart/issues/169"
+body: "The `release` job of the Daily Release workflow failed.\n\n- Failing job: `release`\n- Run URL: https://github.com/unbraind/pm-gantt-chart/actions/runs/39926222453\n- Commit: b0770a49ed1d7d9b28e3c770be0330e9a765cc0d\n- Date (UTC): 2026-10-23T10:00:43Z\n\n\n---\n\n### GitHub comments (1)\n\n> **@unbraind** (2026-10-23T14:39:21Z)\n>\n> Resolved: the 2026-10-23 release PR (#168) merged after the release job's merge wait had expired. A resumed Daily Release (run 39969259950, workflow_dispatch on main) published v2026.10.23 to npm and GitHub. Prevention landed this morning: release PR runs are approved every 5 minutes during the release window and the approve script no longer auto-merges release PRs."
