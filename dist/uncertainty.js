@@ -15,6 +15,9 @@ function resolveEstimate(raw) {
     const { kind, min, max, mode, minutes } = value;
     /** Finite nonnegative effort, bounded to one 365-day working year. */
     const valid = (n) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 175200;
+    if (kind === "empirical")
+        return Array.isArray(value.values) && value.values.length >= 1 && value.values.length <= 2000 && value.values.every(valid)
+            ? { kind, values: [...value.values].sort((a, b) => a - b) } : undefined;
     if (kind === "point")
         return valid(minutes) ? { kind, minutes } : undefined;
     if (!valid(min) || !valid(max) || min > max)
@@ -39,6 +42,8 @@ function generator(seed) {
 function draw(estimate, random) {
     if (estimate.kind === "point")
         return estimate.minutes;
+    if (estimate.kind === "empirical")
+        return estimate.values[Math.floor(random() * estimate.values.length)];
     if (estimate.min === estimate.max)
         return estimate.min;
     const u = random();
@@ -112,7 +117,7 @@ export function simulateCompletionIntervals(corpus, options, graph) {
         const raw = hasOverride ? overrides[item.id] : item.estimated_minutes === undefined ? undefined : { kind: "point", minutes: item.estimated_minutes };
         const estimate = resolveEstimate(raw);
         if (estimate === undefined || (hasOverride && estimate === null)) {
-            return refuse("invalid_estimate", `Invalid effort declaration for ${item.id}.`, "Use [min,max], point minutes, uniform min/max or triangular min/mode/max; all values must be finite, ordered and within 0..175200 minutes.");
+            return refuse("invalid_estimate", `Invalid effort declaration for ${item.id}.`, "Use [min,max], point minutes, uniform min/max triangular min/mode/max, or empirical values (1..2000); all values must be finite, ordered and within 0..175200 minutes.");
         }
         tasks.push({ id: item.id, prerequisites: [...new Set(graph.get(item.id).filter((id) => activeIds.has(id)))].sort(compareIds), estimate });
     }
@@ -130,7 +135,7 @@ export function simulateCompletionIntervals(corpus, options, graph) {
             unknown.add(id);
     }
     const completions = new Map(tasks.map((task) => [task.id, []]));
-    const durations = new Map(tasks.filter((task) => task.estimate !== null && task.estimate.kind !== "point" && task.estimate.min !== task.estimate.max).map((task) => [task.id, []]));
+    const durations = new Map(tasks.filter((task) => task.estimate !== null && task.estimate.kind !== "point" && (task.estimate.kind === "empirical" ? task.estimate.values[0] !== task.estimate.values[task.estimate.values.length - 1] : task.estimate.min !== task.estimate.max)).map((task) => [task.id, []]));
     const projects = [], random = generator(options.seed);
     for (let run = 0; run < samples; run++) {
         const ends = new Map();

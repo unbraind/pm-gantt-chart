@@ -2,6 +2,8 @@ import { brandCss, brandStatus, brandStatuses, brandValue, mermaidBrand } from "
 import { certifyCompleteListResult, EXIT_CODE, inspectCompleteListResult, PmClient, resolveAuthor, readSettings } from "@unbrained/pm-cli/sdk";
 import { resolveWorkspaceRelationshipKindRegistry } from "@unbrained/pm-cli/sdk/graph";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
+import { calibrateObservedDurations } from "./calibration.js";
+export { calibrateObservedDurations } from "./calibration.js";
 import { simulateCompletionIntervals } from "./uncertainty.js";
 import { computeResourceScenarios, applyResourceSelection } from "./resources.js";
 export { applyResourceSelection } from "./resources.js";
@@ -2663,6 +2665,29 @@ export default defineExtension({
     version: "2026.10.24",
     activate(api) {
         api.registerCommand({
+            name: "gantt calibrate",
+            description: "Calibrate empirical calendar durations from verified task episodes.",
+            intent: "Compare observed elapsed duration with planned effort without changing estimates.",
+            read_output: { row_keys: [] },
+            examples: ["pm gantt calibrate --type Task --minimum-samples 10 --json"],
+            flags: [
+                { long: "--type", value_name: "type", description: "Required exact current task class." },
+                { long: "--tag", value_name: "tag", description: "Optional exact cohort tag." },
+                { long: "--minimum-samples", value_name: "n", description: "Required evidence floor (1..2000)." },
+                { long: "--limit", value_name: "n", description: "Diagnostic rows (default 20; 1..200); distribution stays complete." },
+            ],
+            async run(ctx) {
+                const limit = readOption(ctx.options, "limit");
+                const result = await calibrateObservedDurations(ctx.pm_root, {
+                    type: String(readOption(ctx.options, "type") ?? ""),
+                    tag: readOption(ctx.options, "tag"),
+                    minimumSamples: Number(readOption(ctx.options, "minimum-samples", "minimumSamples") ?? NaN),
+                    limit: limit === undefined ? undefined : Number(limit),
+                });
+                return result.ok ? result : { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
+            },
+        });
+        api.registerCommand({
             name: "gantt resources",
             description: "Compare resource-constrained alternatives and explicitly record a revision-checked selection.",
             intent: "Expose owner capacity and calendar consequences without editing item dates.",
@@ -2712,7 +2737,7 @@ export default defineExtension({
             flags: [
                 { long: "--from", value_name: "day", description: "Required UTC anchor day (YYYY-MM-DD)." },
                 { long: "--seed", value_name: "n", description: "Required unsigned 32-bit reproducibility seed, including zero." },
-                { long: "--estimates", value_name: "file", description: "JSON map: id to [min,max], point, uniform or triangular minute declarations (max 64 KiB)." },
+                { long: "--estimates", value_name: "file", description: "JSON map: id to [min,max], point, uniform, triangular or empirical minute declarations (max 64 KiB)." },
                 { long: "--samples", value_name: "n", description: "Simulation samples (default 2000; 100..10000)." },
                 { long: "--quantiles", value_name: "list", description: "Increasing probabilities in [0,1], at most nine (default 0.1,0.5,0.9)." },
                 { long: "--minutes-per-day", value_name: "n", description: "Effort per calendar day (default 480; 1..1440)." },
@@ -2974,7 +2999,7 @@ export default defineExtension({
         // (empty delta).
         // -----------------------------------------------------------------------
         api.registerPreflight({
-            commands: ["gantt", "gantt export", "gantt repair", "gantt uncertainty", "gantt resources"],
+            commands: ["gantt", "gantt export", "gantt repair", "gantt uncertainty", "gantt resources", "gantt calibrate"],
             run: () => {
                 // Intentionally no enforcement here (runtime swallows throws); the real
                 // data-sanity gate is enforced in the command and exporter handlers

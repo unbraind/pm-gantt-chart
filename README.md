@@ -226,9 +226,24 @@ proposal after review. See the [worked example](docs/deadline-repair.md).
 
 ### Without git
 
-Rendering, scheduling, exports, uncertainty intervals and deadline repair proposals work in plain
+Rendering, scheduling, exports, duration calibration, uncertainty intervals and deadline repair proposals work in plain
 trackers without git installed. This package's runtime commands do not require
 a git repository. Repository release/changelog tooling needs git history.
+
+### Observed-duration calibration
+
+`pm gantt calibrate --type Task --minimum-samples 10 --json` compares elapsed
+calendar minutes with planned effort at verified start, for an exact task class
+and optional `--tag`. Default output is compact TOON. Canceled, reopened,
+incomplete and unverifiable histories are disclosed; too few usable episodes
+returns a typed refusal with remedies and no numerical calibration.
+
+The typed SDK `calibrateObservedDurations(pmRoot, options)` returns deterministic
+nearest-rank quantiles, complete sample counts, bounded diagnostics and an
+explicit `{kind: "empirical", values: [...]}` duration population. Callers can
+choose to pass it to `completionIntervals` with `minutesPerDay: 1440` for calendar
+time. Estimates stay unchanged; elapsed time includes waits and makes no causal
+productivity claim. See the [worked SDK/CLI example and evidence rules](docs/observed-duration-calibration.md).
 
 ### Resource-constrained schedule scenarios
 

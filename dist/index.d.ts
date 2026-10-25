@@ -1,6 +1,8 @@
 import type { ExtensionApi } from "@unbrained/pm-cli/sdk/authoring";
 import type { RelationshipKindRegistry } from "@unbrained/pm-cli/sdk";
 import type { ContractsResult } from "@unbrained/pm-cli/sdk/runtime";
+export { calibrateObservedDurations } from "./calibration.ts";
+export type { DurationCalibrationOptions, DurationCalibrationEvidence, DurationCalibrationResult, DurationCalibrationRefusalCode, DurationExclusion } from "./calibration.ts";
 import { type CompletionIntervalOptions, type CompletionIntervalResult } from "./uncertainty.ts";
 export type { CompletionIntervalOptions, CompletionIntervalResult, CompletionIntervalRefusalCode, CompletionScenarioReceipt, CompletionQuantile, UncertainEstimate, ResolvedEstimate } from "./uncertainty.ts";
 import { type ResourceScenarioOptions } from "./resources.ts";

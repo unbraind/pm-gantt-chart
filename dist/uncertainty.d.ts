@@ -4,6 +4,9 @@ export type UncertainEstimate = readonly [number, number] | {
     kind: "point";
     minutes: number;
 } | {
+    kind: "empirical";
+    values: readonly number[];
+} | {
     kind: "uniform";
     min: number;
     max: number;

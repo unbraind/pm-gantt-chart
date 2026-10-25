@@ -109,3 +109,8 @@ the tracker. This corpus validates unknown handling and read-only integration;
 the synthetic chain/fork and custom-kind tests validate dependency propagation.
 The numerical input hash is
 `ee5bbb16cea39f5d291a22e6acc432c76952f0601058c73540aa357b4277cea0`.
+
+Empirical declarations `{kind: "empirical", values: [1440, 2880]}` draw uniformly
+with replacement from 1..2000 finite minute observations in 0..175200. Duplicate
+values preserve frequency. See [observed-duration calibration](observed-duration-calibration.md)
+for explicit adoption of calendar observations with `minutesPerDay: 1440`.
