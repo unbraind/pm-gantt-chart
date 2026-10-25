@@ -14,7 +14,7 @@ import type { ContractsResult } from "@unbrained/pm-cli/sdk/runtime";
 import type { GraphTraversalResult } from "@unbrained/pm-cli/sdk/graph";
 import { resolveWorkspaceRelationshipKindRegistry } from "@unbrained/pm-cli/sdk/graph";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
-import { durationFlagNumber, durationFlagQuantiles, durationInputGraph, validateDurationInput, type ValidatedInputs } from "./duration-input.ts";
+import { durationFlagNumber, durationFlagQuantiles, durationInputGraph, validateDurationInput, validateDurationOutput, type ValidatedInputs } from "./duration-input.ts";
 import { calibrateObservedDurations } from "./calibration.ts";
 export { calibrateObservedDurations } from "./calibration.ts";
 export type { DurationCalibrationOptions, DurationCalibrationEvidence, DurationCalibrationResult, DurationCalibrationRefusalCode, DurationExclusion } from "./calibration.ts";
@@ -1143,7 +1143,7 @@ function runValidatedRepairs({ corpus, options, graph: storedGraph }: ValidatedI
   }
   const baseline = repairSchedule(items, anchor, horizon, duration, activeGraph);
   const summary = { finish: baseline.finish, infeasibleIds: baseline.infeasibleIds };
-  if (baseline.infeasibleIds.length === 0) return { ok: true, baseline: summary, examined: 0, minimalChanges: 0, totalProposals: 0, truncated: false, proposals: [] };
+  if (baseline.infeasibleIds.length === 0) return validateDurationOutput("repair", { ok: true, baseline: summary, examined: 0, minimalChanges: 0, totalProposals: 0, truncated: false, proposals: [] });
   const candidates: DeadlineRepairMove[] = [];
   const seen = new Set<string>();
   for (const shift of shifts) {
@@ -1204,7 +1204,7 @@ function runValidatedRepairs({ corpus, options, graph: storedGraph }: ValidatedI
     if (exhausted) return repairRefusal("search_budget_exceeded", "Search stopped before minimal proposals could be certified.", "Increase maxEvaluations (up to 10000) or narrow the explicit move set.");
     if (proposals.length > 0) {
       proposals.sort((a, b) => a.deferredMinutes - b.deferredMinutes || a.addedMinutesPerDay - b.addedMinutesPerDay || JSON.stringify(a.moves).localeCompare(JSON.stringify(b.moves)));
-      return { ok: true, baseline: summary, examined, minimalChanges: size, totalProposals: proposals.length, truncated: proposals.length > maxProposals, proposals: proposals.slice(0, maxProposals) };
+      return validateDurationOutput("repair", { ok: true, baseline: summary, examined, minimalChanges: size, totalProposals: proposals.length, truncated: proposals.length > maxProposals, proposals: proposals.slice(0, maxProposals) });
     }
   }
   return repairRefusal("no_allowed_repair", "No feasible repair within the allowed moves and maxChanges.", "Offer more capacity or dependency-complete scope deferrals, or raise maxChanges up to 3; deadline and dependency edits require a separate explicit decision.");

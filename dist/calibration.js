@@ -1,4 +1,4 @@
-import { DurationInputError, requireDurationInput, validateDurationInput } from "./duration-input.js";
+import { DurationInputError, requireDurationInput, validateDurationInput, validateDurationOutput } from "./duration-input.js";
 import { createHash } from "node:crypto";
 import { applyHistoryPatch, certifyCompleteListResult, isPmCliExpectedError, getHistoryPath, locateItem, PmClient, readHistorySnapshot, readLocatedItem, readSettings, replayHistoryToTarget, resolveItemTypeRegistry, resolveCompletionTimestamp, getActiveExtensionRegistrations, verifyHistoryEntries } from "@unbrained/pm-cli/sdk";
 /** Unreadable foreign streams are excluded without exposing or repairing their contents. */
@@ -70,8 +70,9 @@ function episode(history, options) {
     if (start.minutes === undefined || start.minutes === 0)
         return { reason: "missing_estimate" };
     const elapsedMinutes = (end - start.at) / 60000;
-    if (!validateDurationInput("elapsed", elapsedMinutes).ok)
+    if (elapsedMinutes < 0)
         return { reason: "invalid_duration" };
+    requireDurationInput("elapsed", elapsedMinutes);
     return { reason: null, elapsedMinutes, plannedMinutes: start.minutes };
 }
 /**
@@ -143,10 +144,10 @@ export async function calibrateObservedDurations(pmRoot, rawOptions) {
             const index = Math.max(0, Math.ceil(probability * accepted.length) - 1);
             return { probability, elapsedMinutes: elapsed[index], plannedMinutes: planned[index], elapsedToPlannedRatio: ratios[index] };
         });
-        return { ok: true, evidence, distribution: { kind: "empirical", values: elapsed }, quantiles,
+        return validateDurationOutput("calibration", { ok: true, evidence, distribution: { kind: "empirical", values: elapsed }, quantiles,
             receipt: { version: 1, method: "verified-single-episode-nearest-rank-v1", inputHash: createHash("sha256").update(JSON.stringify({ options: { type: options.type, tag: options.tag ?? null }, hashes })).digest("hex"),
                 type: options.type, tag: options.tag ?? null, unit: "elapsed_calendar_minutes",
-                assumptions: ["current exact type/tag cohort; class must match at start", "one equally weighted verified episode per item", "whole-item exclusion after cancellation or reopening", "elapsed time includes waits, blocking and nonworking time", "positive planned estimate recorded at start", "marginal nearest-rank quantiles; ratio computed per item", "no causal productivity or confidence claim", "explicit scenario adoption only; estimates unchanged"] } };
+                assumptions: ["current exact type/tag cohort; class must match at start", "one equally weighted verified episode per item", "whole-item exclusion after cancellation or reopening", "elapsed time includes waits, blocking and nonworking time", "positive planned estimate recorded at start", "marginal nearest-rank quantiles; ratio computed per item", "no causal productivity or confidence claim", "explicit scenario adoption only; estimates unchanged"] } });
     }
     catch (error) {
         if (error instanceof DurationInputError)

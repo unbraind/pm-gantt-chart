@@ -9,17 +9,20 @@ export interface DurationInputRefusal { ok: false; code: "invalid_estimate"; mes
 export type DurationInputResult<T> = { ok: true; value: T } | DurationInputRefusal;
 
 type Rule = { optional?: boolean } & (
-  | { kind: "number"; min: number; max: number; integer?: boolean }
+  | { kind: "number"; min: number; max: number; integer?: boolean; positiveMin?: number }
   | { kind: "string"; max: number; nonblank?: boolean; format?: "day" | "timestamp" | "civil" | "zone" | "identifier" }
-  | { kind: "literal"; value: string }
+  | { kind: "literal"; value: string | number | boolean | null }
   | { kind: "array"; entry: Rule; min: number; max: number; tuple?: readonly Rule[]; increasing?: boolean; ordered?: boolean; unique?: boolean }
   | { kind: "object"; fields: Readonly<Record<string, Rule>>; open?: boolean; ordered?: readonly string[] }
   | { kind: "dictionary"; entry: Rule; max: number; key?: Rule }
   | { kind: "map"; entry: Rule; max: number }
+  | { kind: "nullable"; entry: Rule }
   | { kind: "union"; choices: readonly Rule[] }
 );
 
-const minutes: Rule = { kind: "number", min: 0, max: 175200 };
+/** Positive forecast effort/observations span one second through 120 elapsed days; zero is explicit no work. */
+export const DURATION_MINUTES = Object.freeze({ minimumPositive: 1 / 60, maximum: 175200, legacyMaximum: 20 * 365 * 1440 });
+const minutes: Rule = { kind: "number", min: 0, max: DURATION_MINUTES.maximum, positiveMin: DURATION_MINUTES.minimumPositive };
 const text: Rule = { kind: "string", max: 128, nonblank: true };
 const timestamp: Rule = { kind: "string", max: 40, format: "timestamp" };
 const quantiles: Rule = { kind: "array", entry: { kind: "number", min: 0, max: 1 }, min: 1, max: 9, increasing: true, optional: true };
@@ -77,7 +80,7 @@ const schemas = {
     deferrableIds: { kind: "array", entry: text, min: 0, max: 200, optional: true }, forbiddenIds: { kind: "array", entry: text, min: 0, max: 200, optional: true },
     capacityShifts: { kind: "array", min: 0, max: 200, optional: true, entry: { kind: "object", fields: { itemId: text, minutesPerDay: { kind: "number", min: 481, max: 4800, integer: true } } } },
   } } } },
-  corpus, graph, storedEstimate: { kind: "number", min: 0, max: Number.MAX_VALUE, optional: true },
+  corpus, graph, storedEstimate: { kind: "number", min: 0, max: DURATION_MINUTES.legacyMaximum, positiveMin: DURATION_MINUTES.minimumPositive, optional: true },
   historyPoint: { kind: "object", fields: { type: item.fields.type, tags: item.fields.tags, at: timestamp, minutes: { ...minutes, optional: true }, completed_at: { ...timestamp, optional: true }, closed_at: { ...timestamp, optional: true } } },
   elapsed: minutes,
 } as const satisfies Record<string, Rule>;
@@ -98,10 +101,12 @@ export interface ValidatedInputs {
 /** Marker keeps foreign malformed input separate from unavailable tracker evidence. */
 export class DurationInputError extends Error {
   readonly refusal: DurationInputRefusal;
+  readonly path: string;
   constructor(path: string) {
     super(`Invalid duration input at ${path}.`);
+    this.path = path;
     this.refusal = { ok: false, code: "invalid_estimate", message: this.message,
-      remedy: "Use dense own-index arrays, finite nonnegative numbers (not negative zero) within declared bounds, real ISO dates, and only declared keys in closed estimate/control objects. See the duration input contract." };
+      remedy: "Use dense own-index arrays, finite nonnegative numbers (not negative zero) within declared bounds, real ISO dates, and only declared keys in closed estimate/control objects. Positive duration estimates must be at least one second and at most the documented minute ceiling. See the duration input contract." };
   }
 }
 
@@ -138,7 +143,7 @@ function parse(rule: Rule, value: unknown, path: string, budget = { remaining: 1
   if (rule.optional && value === undefined) return undefined;
   switch (rule.kind) {
     case "number":
-      if (typeof value !== "number" || !Number.isFinite(value) || Object.is(value, -0) || value < rule.min || value > rule.max || (rule.integer && !Number.isInteger(value))) throw new DurationInputError(path);
+      if (typeof value !== "number" || !Number.isFinite(value) || Object.is(value, -0) || value < rule.min || value > rule.max || (rule.positiveMin !== undefined && value > 0 && value < rule.positiveMin) || (rule.integer && !Number.isInteger(value))) throw new DurationInputError(path);
       return value;
     case "string":
       if (typeof value !== "string" || value.length > rule.max || (rule.nonblank && value.trim().length === 0) || (rule.format && !validTextFormat(value, rule.format))) throw new DurationInputError(path);
@@ -146,6 +151,8 @@ function parse(rule: Rule, value: unknown, path: string, budget = { remaining: 1
     case "literal":
       if (value !== rule.value) throw new DurationInputError(path);
       return value;
+    case "nullable":
+      return value === null ? null : parse(rule.entry, value, path, budget);
     case "union":
       for (const choice of rule.choices) { try { const parsed = parse(choice, value, path, budget); return rule === estimate ? canonicalDurationEstimate(parsed as UncertainEstimate) : parsed; } catch { /* Try the next closed variant. */ } }
       throw new DurationInputError(path);
@@ -245,4 +252,65 @@ export function durationInputGraph(stored: ValidatedGraph | undefined, override:
   const read = override === undefined ? { ok: true as const, value: stored } : validateDurationInput("graph", override);
   if (!read.ok) return read;
   return { ok: true, value: read.value === undefined ? undefined : new Map(read.value.map(([id, deps]) => [id, [...deps]])) };
+}
+
+const count: Rule = { kind: "number", min: 0, max: 200, integer: true };
+const probability: Rule = { kind: "number", min: 0, max: 1 };
+const flag: Rule = { kind: "union", choices: [{ kind: "literal", value: true }, { kind: "literal", value: false }] };
+const nil: Rule = { kind: "literal", value: null };
+const day: Rule = { kind: "string", max: 10, format: "day" };
+const totalMinutes: Rule = { kind: "number", min: 0, max: 200 * DURATION_MINUTES.maximum };
+const quantileRow: Rule = { kind: "object", fields: { probability, days: totalMinutes, finish: timestamp } };
+const completion: Rule = { kind: "nullable", entry: { kind: "array", min: 1, max: 9, entry: quantileRow } };
+const labels: Rule = { kind: "array", min: 0, max: 200, entry: { kind: "string", max: 4096 } };
+const strings: Rule = { kind: "array", min: 0, max: 32, entry: { kind: "string", max: 1024 } };
+const nullableDay: Rule = { kind: "nullable", entry: day };
+const successful: Rule = { kind: "literal", value: true };
+const populationCount: Rule = { ...count, max: 2000 };
+const baseline: Rule = { kind: "object", fields: { finish: nullableDay, infeasibleIds: labels } };
+const repairMove: Rule = { kind: "union", choices: [
+  { kind: "object", fields: { kind: { kind: "literal", value: "capacity_shift" }, itemId: text, beforeDays: { kind: "number", min: 1, max: 365, integer: true }, afterDays: { kind: "number", min: 1, max: 365, integer: true }, minutesPerDay: { kind: "number", min: 481, max: 4800, integer: true }, addedMinutesPerDay: { kind: "number", min: 1, max: 4320, integer: true } } },
+  { kind: "object", fields: { kind: { kind: "literal", value: "scope_deferral" }, itemId: text, deferredMinutes: minutes } },
+] };
+
+/** Closed success contracts check every promised numeric/date leaf before any SDK/CLI return. */
+type DurationOutputKind = "calibration" | "sampling" | "resources" | "repair";
+const outputSchemas: Record<DurationOutputKind, Rule> = {
+  calibration: { kind: "object", fields: { ok: successful,
+    evidence: { kind: "object", fields: { selectedCount: populationCount, sampleCount: populationCount, minimumSamples: { ...populationCount, min: 1 },
+      excluded: { kind: "object", fields: Object.fromEntries(["unverified_history", "reopened", "canceled", "incomplete", "missing_start", "missing_estimate", "class_changed", "invalid_duration"].map((key) => [key, populationCount])) },
+      truncated: flag, rows: { kind: "array", min: 0, max: 200, entry: { kind: "object", fields: { id: text,
+        reason: { kind: "union", choices: [nil, text] }, elapsedMinutes: { ...minutes, optional: true }, plannedMinutes: { ...minutes, min: DURATION_MINUTES.minimumPositive, optional: true } } } } } },
+    distribution: { kind: "object", fields: { kind: { kind: "literal", value: "empirical" }, values: { kind: "array", min: 1, max: 2000, entry: minutes } } },
+    quantiles: { kind: "array", min: 1, max: 9, entry: { kind: "object", fields: { probability, elapsedMinutes: minutes, plannedMinutes: { ...minutes, min: DURATION_MINUTES.minimumPositive }, elapsedToPlannedRatio: { kind: "number", min: 0, max: DURATION_MINUTES.maximum / DURATION_MINUTES.minimumPositive } } } },
+    receipt: { kind: "object", fields: { version: { kind: "literal", value: 1 }, method: { kind: "literal", value: "verified-single-episode-nearest-rank-v1" }, inputHash: text, type: text, tag: { kind: "union", choices: [nil, text] }, unit: { kind: "literal", value: "elapsed_calendar_minutes" }, assumptions: strings } },
+  } },
+  sampling: { kind: "object", fields: { ok: successful, complete: flag, activeCount: count, unknownCount: count, unknownEstimateCount: count, itemCount: count, sensitivityCount: count, truncated: flag,
+    project: completion, items: { kind: "array", min: 0, max: 200, entry: { kind: "object", fields: { id: text, completion, reason: { kind: "union", choices: [nil, text] } } } },
+    sensitivity: { kind: "array", min: 0, max: 200, entry: { kind: "object", fields: { id: text, correlation: { kind: "number", min: -1, max: 1 } } } }, dominantEstimate: { kind: "union", choices: [nil, text] }, sensitivityMethod: { kind: "literal", value: "pearson-duration-project-finish" },
+    receipt: { kind: "object", fields: { version: { kind: "literal", value: 1 }, algorithm: { kind: "literal", value: "mulberry32-nearest-rank-v1" }, inputHash: text, from: day, seed: schemas.sampling.fields.options.fields.seed,
+      samples: { kind: "number", min: 100, max: 10000, integer: true }, quantiles: { ...quantiles, optional: false }, minutesPerDay: { kind: "number", min: 1, max: 1440 }, tasks: { kind: "array", min: 0, max: 200, entry: { kind: "object", fields: { id: text, prerequisites: labels, estimate: { kind: "union", choices: [nil, estimate] } } } }, assumptions: strings } },
+  } },
+  resources: { kind: "object", fields: { ok: successful, revision: text, activeCount: count, assumptions: strings,
+    scenarios: { kind: "array", min: 1, max: 5, entry: { kind: "object", fields: { id: text, selection: text, feasible: flag, outcome: text, remainingMinutes: totalMinutes, itemCount: count, truncated: flag,
+      items: { kind: "array", min: 0, max: 200, entry: { kind: "object", fields: { id: text, owner: { kind: "string", max: 128 }, minutes, allocatedMinutes: minutes, start: nullableDay, finish: nullableDay } } },
+      witnesses: { kind: "array", min: 0, max: 50, entry: { kind: "object", fields: { owner: text, requiredMinutes: totalMinutes, availableMinutes: { kind: "number", min: 0, max: 527040 }, deficitMinutes: totalMinutes } } },
+    } } },
+  } },
+  repair: { kind: "object", fields: { ok: successful, baseline, examined: { kind: "number", min: 0, max: 10000, integer: true }, minimalChanges: { kind: "number", min: 0, max: 3, integer: true }, totalProposals: { kind: "number", min: 0, max: 2024, integer: true }, truncated: flag,
+    proposals: { kind: "array", min: 0, max: 10, entry: { kind: "object", fields: { moves: { kind: "array", min: 1, max: 3, entry: repairMove }, affectedIds: labels, finish: day, retainedCount: count,
+      deferredMinutes: { kind: "number", min: 0, max: 3 * DURATION_MINUTES.maximum }, addedMinutesPerDay: { kind: "number", min: 0, max: 12960, integer: true } } } },
+  } },
+};
+
+/** Fail closed on arithmetic/domain defects, identifying the output field instead of serializing a bad number/date. */
+export function validateDurationOutput<T>(kind: DurationOutputKind, value: T): T | DurationInputRefusal {
+  try {
+    parse(outputSchemas[kind], value, kind);
+    return value;
+  } catch (error) {
+    const path = error instanceof DurationInputError ? error.path : kind;
+    return { ok: false, code: "invalid_estimate", message: `Duration output at ${path} violates its finite numeric/date contract.`,
+      remedy: `Review ${path}, use documented bounded duration inputs and a representable ISO horizon, and retry. No successful numerical result was produced.` };
+  }
 }

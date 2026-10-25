@@ -18,8 +18,11 @@ read at that start, before later estimate changes. Completion uses the closing
 snapshot's `completed_at`, then `closed_at`, then the transition timestamp for
 legacy histories. UTC elapsed calendar minutes include blocking, waiting and
 nonworking time. They are **not measured labor effort**. Durations must be within
-0..175200 minutes, the scenario sampler's supported range; the start estimate
-must be finite and positive.
+zero or 1/60..175200 minutes (one second through 120 calendar days), the
+scenario sampler's supported range. Start estimates must be in the positive
+range; denormals, sub-second and multi-century values return `invalid_estimate`
+with a remedy. Positive out-of-domain elapsed observations also refuse. Ratios
+are checked finite in [0,10512000] before any successful SDK or CLI return.
 
 An item that was canceled or reopened at any point is excluded in full, including
 its earlier completed episode. Reopened takes precedence over canceled in the
@@ -62,7 +65,7 @@ if (!calibrated.ok) {
 ```
 
 `{kind: "empirical", values: [...]}` is accepted by `UncertainEstimate` and the
-uncertainty CLI's estimate JSON map. Values are finite minutes in 0..175200,
+uncertainty CLI's estimate JSON map. Values are zero or finite minutes in 1/60..175200,
 1..2000 entries, sorted canonically without changing their relative weights.
 Scenario sampling draws uniformly with replacement using the existing seeded
 sampler. Its finite simulation quantiles may differ from population quantiles.

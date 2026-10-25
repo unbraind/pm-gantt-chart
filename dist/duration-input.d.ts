@@ -14,6 +14,12 @@ export type DurationInputResult<T> = {
     ok: true;
     value: T;
 } | DurationInputRefusal;
+/** Positive forecast effort/observations span one second through 120 elapsed days; zero is explicit no work. */
+export declare const DURATION_MINUTES: Readonly<{
+    minimumPositive: number;
+    maximum: 175200;
+    legacyMaximum: number;
+}>;
 /** Detached graph entries keep mutable Map objects outside validation receipts. */
 type ValidatedGraph = readonly (readonly [string, readonly string[]])[];
 /** Internal schema outputs; callers obtain them only from successful validation receipts. */
@@ -52,6 +58,7 @@ export interface ValidatedInputs {
 /** Marker keeps foreign malformed input separate from unavailable tracker evidence. */
 export declare class DurationInputError extends Error {
     readonly refusal: DurationInputRefusal;
+    readonly path: string;
     constructor(path: string);
 }
 /** Internal calculators accept only receipts minted by this module; forged values refuse. */
@@ -66,5 +73,9 @@ export declare function durationFlagNumber(value: unknown): unknown;
 export declare function durationFlagQuantiles(value: unknown): unknown;
 /** Decode a supplied graph once, or clone already validated detached graph entries. */
 export declare function durationInputGraph(stored: ValidatedGraph | undefined, override: PrerequisiteGraph | undefined): DurationInputResult<PrerequisiteGraph | undefined>;
+/** Closed success contracts check every promised numeric/date leaf before any SDK/CLI return. */
+type DurationOutputKind = "calibration" | "sampling" | "resources" | "repair";
+/** Fail closed on arithmetic/domain defects, identifying the output field instead of serializing a bad number/date. */
+export declare function validateDurationOutput<T>(kind: DurationOutputKind, value: T): T | DurationInputRefusal;
 export {};
 //# sourceMappingURL=duration-input.d.ts.map

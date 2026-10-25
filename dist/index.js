@@ -2,7 +2,7 @@ import { brandCss, brandStatus, brandStatuses, brandValue, mermaidBrand } from "
 import { certifyCompleteListResult, EXIT_CODE, inspectCompleteListResult, PmClient, resolveAuthor, readSettings } from "@unbrained/pm-cli/sdk";
 import { resolveWorkspaceRelationshipKindRegistry } from "@unbrained/pm-cli/sdk/graph";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
-import { durationFlagNumber, durationFlagQuantiles, durationInputGraph, validateDurationInput } from "./duration-input.js";
+import { durationFlagNumber, durationFlagQuantiles, durationInputGraph, validateDurationInput, validateDurationOutput } from "./duration-input.js";
 import { calibrateObservedDurations } from "./calibration.js";
 export { calibrateObservedDurations } from "./calibration.js";
 import { runValidatedIntervals, simulateCompletionIntervals } from "./uncertainty.js";
@@ -852,7 +852,7 @@ function runValidatedRepairs({ corpus, options, graph: storedGraph }, suppliedGr
     const baseline = repairSchedule(items, anchor, horizon, duration, activeGraph);
     const summary = { finish: baseline.finish, infeasibleIds: baseline.infeasibleIds };
     if (baseline.infeasibleIds.length === 0)
-        return { ok: true, baseline: summary, examined: 0, minimalChanges: 0, totalProposals: 0, truncated: false, proposals: [] };
+        return validateDurationOutput("repair", { ok: true, baseline: summary, examined: 0, minimalChanges: 0, totalProposals: 0, truncated: false, proposals: [] });
     const candidates = [];
     const seen = new Set();
     for (const shift of shifts) {
@@ -926,7 +926,7 @@ function runValidatedRepairs({ corpus, options, graph: storedGraph }, suppliedGr
             return repairRefusal("search_budget_exceeded", "Search stopped before minimal proposals could be certified.", "Increase maxEvaluations (up to 10000) or narrow the explicit move set.");
         if (proposals.length > 0) {
             proposals.sort((a, b) => a.deferredMinutes - b.deferredMinutes || a.addedMinutesPerDay - b.addedMinutesPerDay || JSON.stringify(a.moves).localeCompare(JSON.stringify(b.moves)));
-            return { ok: true, baseline: summary, examined, minimalChanges: size, totalProposals: proposals.length, truncated: proposals.length > maxProposals, proposals: proposals.slice(0, maxProposals) };
+            return validateDurationOutput("repair", { ok: true, baseline: summary, examined, minimalChanges: size, totalProposals: proposals.length, truncated: proposals.length > maxProposals, proposals: proposals.slice(0, maxProposals) });
         }
     }
     return repairRefusal("no_allowed_repair", "No feasible repair within the allowed moves and maxChanges.", "Offer more capacity or dependency-complete scope deferrals, or raise maxChanges up to 3; deadline and dependency edits require a separate explicit decision.");

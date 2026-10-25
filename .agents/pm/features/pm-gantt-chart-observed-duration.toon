@@ -2,14 +2,15 @@ id: pm-gantt-chart-observed-duration
 title: Calibrate future task durations from verified observed episodes
 description: Compare planned effort at verified start with elapsed completion history for an explicitly selected task class; return an empirical sampled distribution without replacing estimates.
 type: Feature
+pm_format_version: 2
 status: in_progress
 priority: 2
 tags[2]: calibration,scheduling
 created_at: "2026-10-25T06:29:04.581Z"
-updated_at: "2026-10-25T10:35:36.493Z"
+updated_at: "2026-10-25T14:36:57.265Z"
 author: codex-agent
 acceptance_criteria: "Canceled, reopened and incomplete histories are disclosed; fewer than the declared sample minimum refuses calibration; a fixed corpus yields reproducible quantiles and sample counts."
-comments[17]{created_at,author,text}:
+comments[19]{created_at,author,text}:
   "2026-10-25T06:29:08.387Z",codex-agent,"Overlap recheck: CLI source has no observed task-duration calibration; its calibration APIs concern emitted-byte budgets. Existing gantt uncertainty consumes declared point/uniform/triangular effort; pm-brief summarizeMomentum reports throughput and closed_at cycle-time summaries. This feature reads verified lifecycle episodes and compares elapsed calendar minutes with planned minutes at start. It supplies explicit empirical scenario inputs, makes no causal productivity claim, and never replaces estimates. New command has no import, sync, journal, claim, outbox or mutation path; existing export remains read-only. Model-based tests will exercise seeded SDK lifecycle histories and preservation of native state in a non-git tracker."
   "2026-10-25T06:42:34.131Z",codex-agent,"Implemented typed SDK calibrateObservedDurations and gantt calibrate, using complete-list certification, SDK current-item/history verification and SDK replay/patch primitives. Added explicit empirical scenario inputs. Evidence excludes whole reopened/canceled items, incomplete work, absent start estimates and unverified streams. Real public main 0586b6d: Task 25 selected/1 sample; Feature 17/0; Issue 42/1; Chore 27/1. Each refuses declared minimum 5; Task sample is 4.021616666666667 elapsed minutes vs 15 planned. Source copy remained unchanged without git available. Initial seeded model: 500 sequences, 2145 operations, 72 samples; repeated SDK item readback unchanged. Concurrency instrumentation now exercises 20 item/history read-boundary interleavings plus an unrelated-item revision change, preserving peer writes. Seven behavioral reverts were caught, including sample minimum, reopened/canceled exclusions, planned comparison, quantiles, revision validation and empirical sampling. No new import/sync/write journal or shared mutable state exists. Existing exporter is a schedule projection, not an item round trip. Full npm/Bun release gates will be measured in CI."
   "2026-10-25T06:44:38.398Z",codex-agent,"Local targeted verification passed: node --test test/calibration.test.ts test/uncertainty.test.ts test/smoke.test.ts reports 48 passed, 0 failed/skipped/canceled. Native SDK startTask/closeTask integration is included. npm run typecheck, npm run build:test, npm run lint, npm run docstring and npm run duplication pass with unchanged thresholds; duplication is 0 percent. Seven behavioral revert probes fail with ERR_ASSERTION when the corresponding behavior is removed. The linked pm test command also passed; this tracker has result tracking disabled, so this comment retains the measured result instead of changing project policy. CI full npm/Bun release gates are pending."
@@ -27,7 +28,9 @@ comments[17]{created_at,author,text}:
   "2026-10-25T10:26:14.004Z",codex-agent,"CI 40184408310 exposed a merge-checkout changelog difference: upstream main had released v2026.10.25 and preserved source lifecycle/release metadata on synced issues. Integrated those upstream commits into the feature branch without editing their item/history pairs; the feature item is new and has no shared-main history. Regenerated changelog from the combined tracker; build, test typecheck, lint and changelog check pass. Isolated-home strict health passes, with inherited advisory provenance/telemetry findings only and no merge receipts pending. No release was created by this work. Full gates will rerun on the synchronized branch."
   "2026-10-25T10:31:18.216Z",codex-agent,"CI 40184785854 passed all 355 tests on both runtimes but retained one uncovered index.ts branch (99.90 percent; aggregate 99.93). Focused forecast coverage pinpointed line 3246: uncertainty command formatting of a semantic refusal after schema success. Added an SDK-backed non-git case with a well-formed point override for absent work; it asserts invalid_estimate, remedy/remediation, usage exit code and unchanged durable tracker hash. Focused packed CLI regression passes; build/test typecheck and lint pass. The strict schema itself remains measured at 100/100/100. This test-only follow-up leaves estimate and scheduling behavior unchanged; full unchanged-threshold npm/Bun gates rerun next."
   "2026-10-25T10:35:34.705Z",codex-agent,"Full CI https://github.com/unbraind/pm-gantt-chart/actions/runs/40185136546 passed on e095c03deba06d4fd00d641772d26b773ea4db21: Node 22.18.0 coverage 355/355, Node 26 npm run release:check 355/355, and Node 26 bun run release:check 355/355. Each reports zero failures, skips and cancellations; all seven intended source modules meet unchanged 100 percent lines, branches and functions. Tracker health, generated build, lint, docstrings, zero duplication, audit, real packed npm/Bun/minimum-host acceptance, changelog and release checks pass. CodeQL also passed. Seed 179202610 has 2000 malformed SDK plus 2000 CLI/native cases and the 300 valid-result digest remains identical. Empirical-boundary revert proof is recorded above. This final evidence-only commit will be reverified in CI; the PR body retains its exact-head receipt. Item remains open for orchestrator verification; no merge or release performed."
-files[13]{path,scope}:
+  "2026-10-25T14:15:48.250Z",codex-agent,"Round-2 review found finite start estimates can still overflow elapsed/planned ratios: 1e-308 planned minutes and 1440 elapsed minutes produces Infinity, serialized as null. Continuing the same item to define meaningful duration domains in the shared validator, check successful numeric/date output contracts, fuzz at least 2000 extreme cases including the exact report, and prove the output guard by behavioral revert. Existing strict input boundary and completed feature evidence remain intact."
+  "2026-10-25T14:36:55.571Z",codex-agent,"Round-2 class fix in duration-input.ts: positive forecast estimates/elapsed observations are 1/60..175200 minutes, zero work remains explicit, and bounded legacy rendering allows at most 10512000 minutes (20 365-day years). Closed output schemas guard calibration, sampling, resources and repairs before SDK/CLI success; resource selection checks supplied output before any note mutation. Every numeric leaf is finite and ranged, numeric nulls refuse, ISO dates remain within four-digit years, and invalid_estimate names the output field with a remedy. Ratios are 0..10512000. PM-linked node --test test/duration-output.test.ts passed serially: 4/4, zero failures/skips/cancellations; seed 1792202610, 2000 cases, 341 accepted calibrations and 1659 refusals, six SDK and four CLI routes, SDK readback plus unchanged durable hashes. 398 output-field corruption probes passed. The exact 1e-308 planned / 1440 elapsed case refuses in SDK and packed JSON CLI. The initial 120-second PM run timed out and a run overlapping the temporary revert was discarded; the isolated serial run with 300-second budget passed in 264 seconds. Separate resource/uncertainty tests passed 45/45; 300 supported scenarios retain the original digest. Public read-only corpus counts remain Task 25/1, Feature 17/0, Issue 42/1, Chore 27/1 with unchanged hashes. Typecheck, test typecheck, lint, docstrings and zero duplication pass. Revert proof: node test/revert-duration-output.ts removed only parse(outputSchemas[kind], value, kind); accepted SDK inputs emitted a year-10000 completion and the refusal assertion failed with ERR_ASSERTION. finally restored the source. CI full release gates pending."
+files[15]{path,scope}:
   calibration.ts,project
   duration-input.ts,project
   index.ts,project
@@ -36,14 +39,38 @@ files[13]{path,scope}:
   test/calibration.test.ts,project
   test/duration-input-corpus.ts,project
   test/duration-input.test.ts,project
+  test/duration-output.test.ts,project
   test/revert-calibration.ts,project
   test/revert-duration-input.ts,project
+  test/revert-duration-output.ts,project
   test/uncertainty.test.ts,project
   test/validate-calibration.ts,project
   uncertainty.ts,project
-tests[2]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
-  node --test test/calibration.test.ts test/uncertainty.test.ts test/smoke.test.ts,project,codex-agent,"2026-10-25T06:42:40.335Z",local_mutation,feat/observed-duration-calibration
-  node --test test/duration-input.test.ts,project,codex-agent,"2026-10-25T09:33:33.592Z",local_mutation,feat/observed-duration-calibration
+tests[3]:
+  - command: node --test test/calibration.test.ts test/uncertainty.test.ts test/smoke.test.ts
+    scope: project
+    provenance:
+      author: codex-agent
+      created_at: "2026-10-25T06:42:40.335Z"
+      source_kind: local_mutation
+      source_ref: feat/observed-duration-calibration
+  - command: node --test test/duration-input.test.ts
+    scope: project
+    provenance:
+      author: codex-agent
+      created_at: "2026-10-25T09:33:33.592Z"
+      source_kind: local_mutation
+      source_ref: feat/observed-duration-calibration
+  - command: node --test test/duration-output.test.ts
+    scope: project
+    timeout_seconds: 300
+    provenance:
+      author: codex-agent
+      created_at: "2026-10-25T14:26:41.925Z"
+      source_kind: local_mutation
+      source_ref: feat/observed-duration-calibration
+    updated_by: codex-agent
+    updated_at: "2026-10-25T14:29:10.900Z"
 docs[3]{path,scope}:
   docs/duration-input-contract.md,project
   docs/observed-duration-calibration.md,project

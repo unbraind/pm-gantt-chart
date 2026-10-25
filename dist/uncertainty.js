@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { analyzeRelationshipExecution, RelationshipGraph } from "@unbrained/pm-cli/sdk/graph";
 import { buildPrerequisiteGraph } from "./index.js";
-import { durationInputGraph, durationValidatedValue, validateDurationInput } from "./duration-input.js";
+import { durationInputGraph, durationValidatedValue, validateDurationInput, validateDurationOutput } from "./duration-input.js";
 /** Portable unsigned 32-bit generator; zero is a valid nondegenerate seed. */
 function generator(seed) {
     let state = seed;
@@ -142,7 +142,7 @@ export function runValidatedIntervals(receipt, suppliedGraph) {
     const sensitivity = unknown.size > 0 ? [] : [...durations].map(([id, values]) => ({ id, correlation: correlation(values, projects) }))
         .sort((a, b) => Math.abs(b.correlation) - Math.abs(a.correlation) || compareIds(a.id, b.id));
     const inputs = { from: options.from, seed: options.seed, samples, quantiles, minutesPerDay, tasks };
-    return {
+    return validateDurationOutput("sampling", {
         ok: true, complete: unknown.size === 0, activeCount: tasks.length, unknownCount: unknown.size,
         unknownEstimateCount: tasks.filter((task) => task.estimate === null).length,
         project: unknown.size > 0 ? null : summarize(projects),
@@ -153,6 +153,6 @@ export function runValidatedIntervals(receipt, suppliedGraph) {
         truncated: tasks.length > limit || sensitivity.length > limit,
         receipt: { version: 1, algorithm: "mulberry32-nearest-rank-v1", inputHash: createHash("sha256").update(JSON.stringify(inputs)).digest("hex"), ...inputs,
             assumptions: ["independent effort draws", "continuous calendar days at minutesPerDay effort/day", "UTC exclusive completion", "unlimited parallel capacity", "completed prerequisites satisfied", "deadlines and created dates do not delay earliest starts", "missing estimates stay unknown", "Pearson association is not causal variance attribution"] },
-    };
+    });
 }
 //# sourceMappingURL=uncertainty.js.map

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { analyzeRelationshipExecution, RelationshipGraph } from "@unbrained/pm-cli/sdk/graph";
 import { commitItemMutations, isPmCliExpectedError } from "@unbrained/pm-cli/sdk";
 import { buildPrerequisiteGraph } from "./index.js";
-import { durationInputGraph, durationValidatedValue, validateDurationInput } from "./duration-input.js";
+import { durationInputGraph, durationValidatedValue, validateDurationInput, validateDurationOutput } from "./duration-input.js";
 /** Exact content hashes are portable and contain no tracker paths or wall clock. */
 function digest(value) {
     return createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -132,7 +132,7 @@ export function runValidatedResources(receipt, suppliedGraph) {
         const selection = digest([revision, options.from, options.through, options.timeZone, alternative.id, [...capacity.keys()].map((owner) => [owner, alternative.owners[owner]]), tasks.map(({ id, owner, minutes }) => [id, owner, minutes])]);
         scenarios.push({ id: alternative.id, selection, feasible, outcome: feasible ? "feasible" : witnesses.length > 0 ? "capacity_infeasible" : "allocation_exhausted", remainingMinutes, itemCount: tasks.length, truncated: tasks.length > limit, items: tasks.slice(0, limit), witnesses });
     }
-    return { ok: true, revision, activeCount: active.length, assumptions: ["civil-day-v1", `timeZone=${options.timeZone}`, "inclusive-horizon", "preemptive-minute-budgets", "successors-next-day", "stable-id-heuristic", "deadlines-observational; horizon-is-hard-limit"], scenarios };
+    return validateDurationOutput("resources", { ok: true, revision, activeCount: active.length, assumptions: ["civil-day-v1", `timeZone=${options.timeZone}`, "inclusive-horizon", "preemptive-minute-budgets", "successors-next-day", "stable-id-heuristic", "deadlines-observational; horizon-is-hard-limit"], scenarios });
 }
 /**
  * Record a chosen feasible snapshot as a core note, without editing item dates.
@@ -144,6 +144,9 @@ export function runValidatedResources(receipt, suppliedGraph) {
 export async function applyResourceSelection(pmRoot, author, result, choice) {
     if (!result.ok)
         return result;
+    const checked = validateDurationOutput("resources", result);
+    if (!checked.ok)
+        return checked;
     if (!choice.scenarioId || !choice.selection || !choice.expectedRevision || !choice.targetId || !choice.targetRevision) {
         return refuse("selection_required", "An explicit scenario selection and both revisions are required.", "Pass scenarioId, selection token, expectedRevision, targetId and the target's updated_at as targetRevision.");
     }
