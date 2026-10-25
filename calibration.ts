@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { applyHistoryPatch, certifyCompleteListResult, getHistoryPath, locateItem, PmClient, readHistorySnapshot, readLocatedItem, readSettings, replayHistoryToTarget, resolveItemTypeRegistry, getActiveExtensionRegistrations, verifyHistoryEntries } from "@unbrained/pm-cli/sdk";
+import { applyHistoryPatch, certifyCompleteListResult, getHistoryPath, locateItem, PmClient, readHistorySnapshot, readLocatedItem, readSettings, replayHistoryToTarget, resolveItemTypeRegistry, resolveCompletionTimestamp, getActiveExtensionRegistrations, verifyHistoryEntries } from "@unbrained/pm-cli/sdk";
 
 /** Explicit cohort and evidence floor; all durations are elapsed UTC calendar minutes. */
 export interface DurationCalibrationOptions {
@@ -90,8 +90,12 @@ function episode(history: History, options: DurationCalibrationOptions): { reaso
     }
     if (after === "closed" && before !== "closed" && (entry.op === "close" || entry.op === "update")) {
       // Actual completion is canonical when available; never infer it from later edits.
-      const actual = state.metadata.completed_at ?? state.metadata.closed_at ?? entry.ts;
-      end = Date.parse(String(actual));
+      const completion = resolveCompletionTimestamp({
+        completed_at: state.metadata.completed_at as string | undefined,
+        closed_at: state.metadata.closed_at as string | undefined,
+        updated_at: entry.ts,
+      });
+      end = Date.parse(String(completion.timestamp));
     }
   }
   if (reopened) return { reason: "reopened" };

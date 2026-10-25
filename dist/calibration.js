@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { applyHistoryPatch, certifyCompleteListResult, getHistoryPath, locateItem, PmClient, readHistorySnapshot, readLocatedItem, readSettings, replayHistoryToTarget, resolveItemTypeRegistry, getActiveExtensionRegistrations, verifyHistoryEntries } from "@unbrained/pm-cli/sdk";
+import { applyHistoryPatch, certifyCompleteListResult, getHistoryPath, locateItem, PmClient, readHistorySnapshot, readLocatedItem, readSettings, replayHistoryToTarget, resolveItemTypeRegistry, resolveCompletionTimestamp, getActiveExtensionRegistrations, verifyHistoryEntries } from "@unbrained/pm-cli/sdk";
 /** Unreadable foreign streams are excluded without exposing or repairing their contents. */
 async function historySnapshot(pmRoot, id) {
     try {
@@ -57,8 +57,12 @@ function episode(history, options) {
         }
         if (after === "closed" && before !== "closed" && (entry.op === "close" || entry.op === "update")) {
             // Actual completion is canonical when available; never infer it from later edits.
-            const actual = state.metadata.completed_at ?? state.metadata.closed_at ?? entry.ts;
-            end = Date.parse(String(actual));
+            const completion = resolveCompletionTimestamp({
+                completed_at: state.metadata.completed_at,
+                closed_at: state.metadata.closed_at,
+                updated_at: entry.ts,
+            });
+            end = Date.parse(String(completion.timestamp));
         }
     }
     if (reopened)
