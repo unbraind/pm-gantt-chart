@@ -167,6 +167,9 @@ test("historical native fields use the same strict schema and typed refusal", as
     seedHistory(pmRoot, "future", [{}, { status: "in_progress" }, { status: "closed", closed_at }]);
     invalid(await calibrateObservedDurations(pmRoot, { type: "Task", minimumSamples: 1 }));
   }
+  seedHistory(pmRoot, "future", [{}, { status: "in_progress", estimated_minutes: "junk" as unknown as number }, { status: "closed", estimated_minutes: 60 }]);
+  invalid(await calibrateObservedDurations(pmRoot, { type: "Task", minimumSamples: 1 }));
+  for (const at of ["2026-01-01T25:00:00Z", "2026-01-01T00:00:00+24:00", "2026-01-01T00:00:00", "2026-02-30T00:00:00Z"]) invalid(validateDurationInput("historyPoint", { at }));
 });
 
 test("validation receipts are immutable and unforgeable, and missing SDK sources refuse cleanly", async (t) => {

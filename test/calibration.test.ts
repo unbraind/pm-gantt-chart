@@ -117,7 +117,7 @@ test("calibration packed command emits compact TOON/JSON and typed refusals with
   assert.match(toon.stdout, /sampleCount: 1/);
   const refused = invoke(["gantt", "calibrate", "--json"]);
   assert.equal(refused.status, 2);
-  assert.match(refused.stdout + refused.stderr, /invalid_calibration/);
+  assert.match(refused.stdout + refused.stderr, /invalid_estimate/);
   assert.equal(snapshot(pmRoot), before);
   const harness = await createExtensionTestHarness(extension, { capabilities: ["commands", "schema", "importers", "preflight"] });
   const bounded = await harness.runCommand({ command: "gantt calibrate", pmRoot, options: { type: "Task", minimumSamples: "1", limit: "1" } });

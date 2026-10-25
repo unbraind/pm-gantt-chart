@@ -20,9 +20,11 @@ Arrays must have every own index from zero through length minus one, without
 accessors or extra keys. Inherited entries never fill holes. Each nested value is
 checked; sparse empirical populations and quantile arrays cannot reach sampling.
 Numbers must be finite, within declared bounds, and not negative zero. Estimates
-are 0..175200 minutes; empirical populations contain 1..2000 samples. Quantiles
+used by forecasts are 0..175200 minutes; empirical populations contain 1..2000 samples. Quantiles
 contain 1..9 strictly increasing probabilities in [0,1]. Zero effort and seed zero
-remain valid. Dates reject calendar rollover; recorded history timestamps require
+remain valid. Legacy unscheduled chart input keeps its existing finite,
+nonnegative scalar contract so oversized values can still be displayed with
+data-sanity warnings; this does not widen the forecast bounds. Dates reject calendar rollover; recorded history timestamps require
 ISO timezone notation. Native civil deadlines retain the existing local-timestamp
 semantics. Resource calendars, capacity/work overrides and repair controls use
 their documented integer, size and date bounds.

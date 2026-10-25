@@ -77,7 +77,7 @@ const schemas = {
     deferrableIds: { kind: "array", entry: text, min: 0, max: 200, optional: true }, forbiddenIds: { kind: "array", entry: text, min: 0, max: 200, optional: true },
     capacityShifts: { kind: "array", min: 0, max: 200, optional: true, entry: { kind: "object", fields: { itemId: text, minutesPerDay: { kind: "number", min: 481, max: 4800, integer: true } } } },
   } } } },
-  corpus, graph, storedEstimate: { ...minutes, optional: true },
+  corpus, graph, storedEstimate: { kind: "number", min: 0, max: Number.MAX_VALUE, optional: true },
   historyPoint: { kind: "object", fields: { type: item.fields.type, tags: item.fields.tags, at: timestamp, minutes: { ...minutes, optional: true }, completed_at: { ...timestamp, optional: true }, closed_at: { ...timestamp, optional: true } } },
   elapsed: minutes,
 } as const satisfies Record<string, Rule>;
