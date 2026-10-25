@@ -1,10 +1,14 @@
 # Changelog
 
-## Unreleased
+## 2026.10.25 - 2026-10-25
 
 ### Added
 
 - Compare resource-constrained schedule scenarios and select revision-checked plans ([pm-gantt-chart-resource-scenarios](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-resource-scenarios.toon))
+
+### Fixed
+
+- Use registry ordering semantics for Gantt schedules and inverse-edge cycle detection ([pm-gantt-chart-github-072477cd0a70-135](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-135.toon))
 
 ### Other
 

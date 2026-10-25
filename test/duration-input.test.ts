@@ -187,6 +187,10 @@ test("validation receipts are immutable and unforgeable, and missing SDK sources
     const run = await harness.runCommand({ command, pmRoot: join(pmRoot, "absent"), options: { from: options.from, seed: "42", scenarios: join(pmRoot, "absent.json") } });
     invalid(run.result as { ok: false; code: string; remedy: string });
   }
+  const scenarios = join(pmRoot, "valid-scenarios.json");
+  writeFileSync(scenarios, JSON.stringify(resources));
+  const missingCorpus = await harness.runCommand({ command: "gantt resources", pmRoot: join(pmRoot, "absent"), options: { scenarios } });
+  invalid(missingCorpus.result as { ok: false; code: string; remedy: string });
   const result = await calibrateObservedDurations(123 as unknown as string, { type: "Task", minimumSamples: 1 });
   assert.equal(result.ok, false);
 });
