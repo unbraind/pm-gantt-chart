@@ -230,6 +230,12 @@ Rendering, scheduling, exports, duration calibration, uncertainty intervals and 
 trackers without git installed. This package's runtime commands do not require
 a git repository. Repository release/changelog tooling needs git history.
 
+Forecast and calibration APIs share one [strict duration input contract](docs/duration-input-contract.md).
+Malformed estimates, sampling controls, calibration controls and native effort
+fields return `invalid_estimate` with remedies before numerical work. Sparse
+arrays, nonfinite numbers, negative zero, invalid dates and extra keys in closed
+objects are refused.
+
 ### Observed-duration calibration
 
 `pm gantt calibrate --type Task --minimum-samples 10 --json` compares elapsed

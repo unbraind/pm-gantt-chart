@@ -23,7 +23,7 @@ export interface DurationCalibrationEvidence {
     truncated: boolean;
 }
 /** Failures include remedies and, after scanning, every exclusion count. */
-export type DurationCalibrationRefusalCode = "invalid_calibration" | "corpus_unavailable" | "calibration_too_large" | "tracker_changed" | "insufficient_samples";
+export type DurationCalibrationRefusalCode = "invalid_estimate" | "corpus_unavailable" | "calibration_too_large" | "tracker_changed" | "insufficient_samples";
 /** An empirical population: each accepted item contributes exactly one equally weighted observation. */
 export type DurationCalibrationResult = {
     ok: false;
@@ -59,5 +59,5 @@ export type DurationCalibrationResult = {
  * journals, locks or git subprocesses are used. Optimistic second reads refuse
  * mixed revisions, including history-only changes, instead of caching stale work.
  */
-export declare function calibrateObservedDurations(pmRoot: string, options: DurationCalibrationOptions): Promise<DurationCalibrationResult>;
+export declare function calibrateObservedDurations(pmRoot: string, rawOptions: DurationCalibrationOptions): Promise<DurationCalibrationResult>;
 //# sourceMappingURL=calibration.d.ts.map

@@ -1,37 +1,15 @@
 import { createHash } from "node:crypto";
 import { analyzeRelationshipExecution, RelationshipGraph } from "@unbrained/pm-cli/sdk/graph";
 import { commitItemMutations, isPmCliExpectedError } from "@unbrained/pm-cli/sdk";
+import { buildPrerequisiteGraph } from "./index.js";
+import { durationInputGraph, durationValidatedValue, validateDurationInput } from "./duration-input.js";
 /** Exact content hashes are portable and contain no tracker paths or wall clock. */
 function digest(value) {
     return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
-/** Check a real civil date without the permissive Date parser's rollover. */
-function day(value) {
-    if (typeof value !== "string")
-        return NaN;
-    const time = Date.parse(`${value}T00:00:00.000Z`);
-    return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value ? time : NaN;
-}
-/** Nonnegative bounded integers prevent fractional minutes and unbounded work. */
-function integer(value, maximum) {
-    return Number.isInteger(value) && value >= 0 && value <= maximum;
-}
 /** Refusals deliberately carry no partial schedule that could be mistaken for success. */
 function refuse(code, message, remedy) {
     return { ok: false, code, message, remedy };
-}
-/** Structural check shared by the CLI JSON boundary and typed SDK callers. */
-function record(value) {
-    return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-/** Validate an owner's explicit work limits, including holidays outside the selected horizon. */
-function calendarValid(value) {
-    return record(value) && Array.isArray(value.weekdays) && value.weekdays.length <= 7
-        && value.weekdays.every((n) => Number.isInteger(n) && n >= 1 && n <= 7)
-        && new Set(value.weekdays).size === value.weekdays.length
-        && Array.isArray(value.holidays) && value.holidays.length <= 366
-        && value.holidays.every((date) => typeof date === "string" && Number.isFinite(day(date)))
-        && integer(value.minutesPerDay, 1440) && integer(value.minutesPerWeek, 10080) && integer(value.totalMinutes, 527040);
 }
 /** Compute civil dates and ISO-week keys in UTC arithmetic, independent of DST and host zone. */
 function dates(from, through) {
@@ -62,20 +40,23 @@ function budgets(calendar, horizon) {
  * is a reproducible heuristic, not an optimal resource-leveling claim. Capacity
  * witnesses are necessary bounds; exhaustion alone is not an impossibility proof.
  */
-export function computeResourceScenarios(corpus, options, graph) {
-    if (!record(options))
-        return refuse("invalid_scenario", "Scenario controls must be an object.", "Provide from, through, timeZone and an explicit scenarios array.");
-    const from = day(options.from), through = day(options.through), limit = options.limit ?? 20;
-    if (!Number.isFinite(from) || !Number.isFinite(through) || through < from || !integer(limit, 200) || limit < 1
-        || typeof options.timeZone !== "string" || options.timeZone.length === 0 || !Array.isArray(options.scenarios) || options.scenarios.length < 1) {
-        return refuse("invalid_scenario", "Invalid horizon, zone, alternatives or row limit.", "Use real YYYY-MM-DD from <= through, explicit IANA timeZone, 1..5 alternatives and limit 1..200.");
-    }
-    try {
-        new Intl.DateTimeFormat("en", { timeZone: options.timeZone }).format(0);
-    }
-    catch {
-        return refuse("invalid_scenario", "Unknown IANA time zone.", "Use a supported IANA zone such as UTC or Europe/Vienna; dates are civil days in that zone.");
-    }
+export function computeResourceScenarios(rawCorpus, rawOptions, suppliedGraph) {
+    const validated = validateDurationInput("resources", { corpus: rawCorpus, options: rawOptions, graph: suppliedGraph });
+    if (!validated.ok)
+        return validated;
+    return runValidatedResources(validated);
+}
+/** Internal command adapter consumes the same immutable validation receipt as the public SDK. */
+export function runValidatedResources(receipt, suppliedGraph) {
+    const validated = durationValidatedValue("resources", receipt);
+    if (!validated.ok)
+        return validated;
+    const { corpus, options } = validated.value;
+    const checkedGraph = durationInputGraph(validated.value.graph, suppliedGraph);
+    if (!checkedGraph.ok)
+        return checkedGraph;
+    const graph = checkedGraph.value ?? buildPrerequisiteGraph(corpus);
+    const from = Date.parse(`${options.from}T00:00:00.000Z`), through = Date.parse(`${options.through}T00:00:00.000Z`), limit = options.limit ?? 20;
     const active = corpus.filter((item) => item.status !== "closed" && item.status !== "canceled").slice().sort((a, b) => a.id < b.id ? -1 : Number(a.id > b.id));
     if (corpus.length > 2000 || active.length > 200 || options.scenarios.length > 5 || through - from > 365 * 86400000
         || [...graph.values()].reduce((n, deps) => n + deps.length, 0) > 5000) {
@@ -99,16 +80,14 @@ export function computeResourceScenarios(corpus, options, graph) {
     const horizon = dates(from, through), scenarioIds = new Set();
     const scenarios = [];
     for (const alternative of options.scenarios) {
-        if (!record(alternative) || typeof alternative.id !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(alternative.id) || scenarioIds.has(alternative.id)
-            || !record(alternative.owners) || Object.keys(alternative.owners).length > 50 || Object.entries(alternative.owners).some(([owner, calendar]) => !owner || owner.length > 128 || !calendarValid(calendar))
-            || (alternative.work !== undefined && (!record(alternative.work) || Object.entries(alternative.work).some(([id, work]) => !activeIds.has(id) || !record(work) || typeof work.owner !== "string" || !integer(work.minutes, 175200))))) {
-            return refuse("invalid_scenario", "Invalid alternative, owner calendar or work override.", "Use unique short scenario ids, <=50 named owners with explicit weekday/holiday and integer daily/weekly/total limits, and active-id work overrides of 0..175200 minutes.");
+        if (scenarioIds.has(alternative.id) || Object.keys(alternative.work ?? {}).some((id) => !activeIds.has(id))) {
+            return refuse("invalid_scenario", "Duplicate scenario or work override outside active scope.", "Use unique scenario ids and work overrides naming active tasks only.");
         }
         scenarioIds.add(alternative.id);
         const tasks = [];
         for (const item of active) {
             const override = alternative.work?.[item.id], owner = override?.owner ?? item.assignee, minutes = override?.minutes ?? item.estimated_minutes;
-            if (owner === undefined || !Object.hasOwn(alternative.owners, owner) || minutes === undefined || !integer(minutes, 175200)) {
+            if (owner === undefined || !Object.hasOwn(alternative.owners, owner) || minutes === undefined) {
                 return refuse("missing_work", `Missing declared owner capacity or effort for ${item.id}.`, "Declare its assignee calendar and integer estimated minutes, or provide an explicit scenario work override; no estimates are invented.");
             }
             tasks.push({ id: item.id, owner, minutes, allocatedMinutes: 0, start: null, finish: null });

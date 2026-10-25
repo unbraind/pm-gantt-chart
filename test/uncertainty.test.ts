@@ -192,7 +192,7 @@ for (const invalid of [
   { limit: 0 }, { limit: 201 }, { quantiles: [] }, { quantiles: Array(10).fill(0) as number[] }, { quantiles: [-0.1] }, { quantiles: [1.1] },
   { quantiles: [NaN] }, { quantiles: [0.5, 0.5] }, { quantiles: [0.9, 0.1] },
 ] satisfies Partial<CompletionIntervalOptions>[]) {
-  test(`invalid uncertainty controls ${JSON.stringify(invalid)}`, () => refused(completionIntervals([task("a", 480)], { ...options, ...invalid }), "invalid_scenario"));
+  test(`invalid uncertainty controls ${JSON.stringify(invalid)}`, () => refused(completionIntervals([task("a", 480)], { ...options, ...invalid }), "invalid_estimate"));
 }
 
 test("invalid estimates, incomplete graphs and bounded work are refused", () => {
@@ -230,7 +230,7 @@ test("real non-git tracker: packed JSON/TOON CLI, typed remedies, SDK harness an
   }
   const denied = invoke([...args, "--samples", "0", "--json"]);
   assert.equal(denied.status, 2, denied.stderr);
-  assert.match(denied.stdout + denied.stderr, /invalid_scenario/);
+  assert.match(denied.stdout + denied.stderr, /invalid_estimate/);
   const originalPath = process.env.PATH;
   process.env.PATH = bin;
   try {

@@ -1,5 +1,6 @@
+import { DurationInputError, requireDurationInput, validateDurationInput } from "./duration-input.js";
 import { createHash } from "node:crypto";
-import { applyHistoryPatch, certifyCompleteListResult, getHistoryPath, locateItem, PmClient, readHistorySnapshot, readLocatedItem, readSettings, replayHistoryToTarget, resolveItemTypeRegistry, resolveCompletionTimestamp, getActiveExtensionRegistrations, verifyHistoryEntries } from "@unbrained/pm-cli/sdk";
+import { applyHistoryPatch, certifyCompleteListResult, isPmCliExpectedError, getHistoryPath, locateItem, PmClient, readHistorySnapshot, readLocatedItem, readSettings, replayHistoryToTarget, resolveItemTypeRegistry, resolveCompletionTimestamp, getActiveExtensionRegistrations, verifyHistoryEntries } from "@unbrained/pm-cli/sdk";
 /** Unreadable foreign streams are excluded without exposing or repairing their contents. */
 async function historySnapshot(pmRoot, id) {
     try {
@@ -9,19 +10,9 @@ async function historySnapshot(pmRoot, id) {
         return { raw: undefined, entries: [] };
     }
 }
-/** Stable numeric controls also protect JavaScript SDK callers from unbounded output. */
-function validOptions(options) {
-    const quantiles = options.quantiles ?? [0.1, 0.5, 0.9];
-    return typeof options.type === "string" && options.type.trim().length > 0 && options.type.length <= 128
-        && (options.tag === undefined || (typeof options.tag === "string" && options.tag.trim().length > 0 && options.tag.length <= 128))
-        && Number.isInteger(options.minimumSamples) && options.minimumSamples >= 1 && options.minimumSamples <= 2000
-        && Number.isInteger(options.limit ?? 20) && (options.limit ?? 20) >= 1 && (options.limit ?? 20) <= 200
-        && quantiles.length >= 1 && quantiles.length <= 9
-        && quantiles.every((q, i) => Number.isFinite(q) && q >= 0 && q <= 1 && (i === 0 || q > quantiles[i - 1]));
-}
 /** Exact current classification; no fuzzy title search or implicit selection. */
 function matches(item, options) {
-    return item.type === options.type && (options.tag === undefined || (Array.isArray(item.tags) && item.tags.includes(options.tag)));
+    return item.type === options.type && (options.tag === undefined || (item.tags?.includes(options.tag) === true));
 }
 /** Build typed refusals without exposing tracker paths or raw history content. */
 function refusal(code, message, remedy, evidence) {
@@ -42,8 +33,9 @@ function episode(history, options) {
         const before = state.metadata.status;
         state = applyHistoryPatch(state, entry.patch, 1, entry.op);
         const after = state.metadata.status;
-        const at = Date.parse(entry.ts);
-        if (!Number.isFinite(at) || at < previousTime)
+        const point = requireDurationInput("historyPoint", { type: state.metadata.type, tags: state.metadata.tags, at: entry.ts, minutes: state.metadata.estimated_minutes, completed_at: state.metadata.completed_at, closed_at: state.metadata.closed_at });
+        const at = Date.parse(point.at);
+        if (at < previousTime)
             return { reason: "unverified_history" };
         previousTime = at;
         if (after === "canceled")
@@ -53,13 +45,13 @@ function episode(history, options) {
         if (after === "closed" || after === "canceled")
             terminal = true;
         if (after === "in_progress" && before !== "in_progress" && before !== undefined && entry.op === "update" && start === undefined) {
-            start = { at, minutes: state.metadata.estimated_minutes, matching: matches(state.metadata, options) };
+            start = { at, minutes: point.minutes, matching: matches(point, options) };
         }
         if (after === "closed" && before !== "closed" && (entry.op === "close" || entry.op === "update")) {
             // Actual completion is canonical when available; never infer it from later edits.
             const completion = resolveCompletionTimestamp({
-                completed_at: state.metadata.completed_at,
-                closed_at: state.metadata.closed_at,
+                completed_at: point.completed_at,
+                closed_at: point.closed_at,
                 updated_at: entry.ts,
             });
             end = Date.parse(String(completion.timestamp));
@@ -75,10 +67,10 @@ function episode(history, options) {
         return { reason: "missing_start" };
     if (!start.matching)
         return { reason: "class_changed" };
-    if (typeof start.minutes !== "number" || !Number.isFinite(start.minutes) || start.minutes <= 0)
+    if (start.minutes === undefined || start.minutes === 0)
         return { reason: "missing_estimate" };
     const elapsedMinutes = (end - start.at) / 60000;
-    if (!Number.isFinite(elapsedMinutes) || elapsedMinutes < 0 || elapsedMinutes > 175200)
+    if (!validateDurationInput("elapsed", elapsedMinutes).ok)
         return { reason: "invalid_duration" };
     return { reason: null, elapsedMinutes, plannedMinutes: start.minutes };
 }
@@ -87,12 +79,14 @@ function episode(history, options) {
  * journals, locks or git subprocesses are used. Optimistic second reads refuse
  * mixed revisions, including history-only changes, instead of caching stale work.
  */
-export async function calibrateObservedDurations(pmRoot, options) {
-    if (!validOptions(options))
-        return refusal("invalid_calibration", "Invalid cohort, sample floor or output controls.", "Supply an exact type, optional nonblank tag, minimumSamples 1..2000, limit 1..200 and 1..9 increasing quantiles in [0,1].");
+export async function calibrateObservedDurations(pmRoot, rawOptions) {
+    const validated = validateDurationInput("calibration", rawOptions);
+    if (!validated.ok)
+        return validated;
+    const options = validated.value;
     const client = PmClient.forActiveExtensionHost({ pmRoot });
     try {
-        const corpus = certifyCompleteListResult(await client.listAllComplete()).items;
+        const corpus = requireDurationInput("corpus", certifyCompleteListResult(await client.listAllComplete()).items);
         const selected = corpus.filter((item) => matches(item, options)).sort((a, b) => Number(a.id > b.id) - Number(a.id < b.id));
         if (selected.length > 2000)
             return refusal("calibration_too_large", "Selected cohort exceeds 2000 items.", "Select a narrower exact type/tag cohort with at most 2000 items.");
@@ -119,7 +113,9 @@ export async function calibrateObservedDurations(pmRoot, options) {
                         row = episode(snapshot.entries, options);
                 }
             }
-            catch {
+            catch (error) {
+                if (error instanceof DurationInputError)
+                    return error.refusal;
                 // A foreign, corrupt or unsupported stream is disclosed, never repaired.
             }
             hashes.push({ id: item.id, historyHash: createHash("sha256").update(snapshot.raw === undefined ? "unreadable" : snapshot.raw ?? "").digest("hex") });
@@ -152,7 +148,11 @@ export async function calibrateObservedDurations(pmRoot, options) {
                 type: options.type, tag: options.tag ?? null, unit: "elapsed_calendar_minutes",
                 assumptions: ["current exact type/tag cohort; class must match at start", "one equally weighted verified episode per item", "whole-item exclusion after cancellation or reopening", "elapsed time includes waits, blocking and nonworking time", "positive planned estimate recorded at start", "marginal nearest-rank quantiles; ratio computed per item", "no causal productivity or confidence claim", "explicit scenario adoption only; estimates unchanged"] } };
     }
-    catch {
+    catch (error) {
+        if (error instanceof DurationInputError)
+            return error.refusal;
+        if (isPmCliExpectedError(error) && error.code === "list_source_incomplete")
+            return new DurationInputError("corpus").refusal;
         return refusal("corpus_unavailable", "Complete tracker or history evidence could not be read.", "Verify tracker initialization, readability and SDK completeness; retry on a stable copy. No calibration was produced.");
     }
 }

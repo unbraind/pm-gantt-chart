@@ -280,7 +280,7 @@ export interface DeadlineRepairProposal {
     addedMinutesPerDay: number;
 }
 /** Stable refusal codes let agents select remedies without parsing prose. */
-export type DeadlineRepairRefusalCode = "invalid_scenario" | "invalid_graph" | "scenario_too_large" | "search_budget_exceeded" | "no_allowed_repair";
+export type DeadlineRepairRefusalCode = "invalid_estimate" | "invalid_scenario" | "invalid_graph" | "scenario_too_large" | "search_budget_exceeded" | "no_allowed_repair";
 /** Small JSON/TOON-compatible result; no titles, bodies, or full schedule dump. */
 export type DeadlineRepairResult = {
     ok: false;
@@ -312,7 +312,7 @@ export declare function completionIntervals(items: readonly PmItem[], options: C
  * exhausting a budget refuses instead of making an unproved minimality claim.
  * Neither input items, graph, nor tracker state is modified.
  */
-export declare function proposeDeadlineRepairs(corpus: readonly PmItem[], options: DeadlineRepairOptions, graph?: PrerequisiteGraph): DeadlineRepairResult;
+export declare function proposeDeadlineRepairs(rawCorpus: readonly PmItem[], rawOptions: DeadlineRepairOptions, suppliedGraph?: PrerequisiteGraph): DeadlineRepairResult;
 /**
  * Turn the fetched items into render-ready {@link GanttRow} entries.
  *

@@ -78,7 +78,7 @@ test("calibration validates runtime controls and unreadable trackers with typed 
     { minimumSamples: 0 }, { minimumSamples: 2001 }, { minimumSamples: 1.5 }, { minimumSamples: NaN },
     { limit: 0 }, { limit: 201 }, { limit: 1.5 }, { quantiles: [] }, { quantiles: Array(10).fill(0.5) as number[] },
     { quantiles: [-1] }, { quantiles: [2] }, { quantiles: [NaN] }, { quantiles: [0.5, 0.5] },
-  ]) assertTypedRefusal(await calibrateObservedDurations(pmRoot, { ...controls, ...patch }), "invalid_calibration");
+  ]) assertTypedRefusal(await calibrateObservedDurations(pmRoot, { ...controls, ...patch }), "invalid_estimate");
   assertTypedRefusal(await calibrateObservedDurations(join(pmRoot, "absent"), controls), "corpus_unavailable");
   const result = await calibrateObservedDurations(pmRoot, { ...controls, tag: "selected" });
   assertTypedRefusal(result, "insufficient_samples");
@@ -126,7 +126,7 @@ test("calibration packed command emits compact TOON/JSON and typed refusals with
   assert.equal(success(defaults.result as DurationCalibrationResult).evidence.sampleCount, 1);
   const invalid = await harness.runCommand({ command: "gantt calibrate", pmRoot });
   assert.equal(invalid.exitCode, 2);
-  assertTypedRefusal(invalid.result as DurationCalibrationResult, "invalid_calibration");
+  assertTypedRefusal(invalid.result as DurationCalibrationResult, "invalid_estimate");
 });
 
 test("500 seeded model operation sequences preserve SDK state, old-input replays, CRLF and relationships", async (t) => {
@@ -323,6 +323,6 @@ test("a foreign writer corrupting the item after history capture is refused with
   t.after(() => sdkConcurrency.resetActiveExtensionRuntimeState());
   const result = await calibrateObservedDurations(pmRoot, controls);
   assert.equal(fired, true);
-  assertTypedRefusal(result, "corpus_unavailable");
+  assertTypedRefusal(result, "invalid_estimate");
   assert.equal(readFileSync(itemPath, "utf8"), "foreign unsupported content");
 });

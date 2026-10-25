@@ -7,7 +7,7 @@ const sources = ["uncertainty.ts", "index.ts"];
 const originals = new Map(sources.map((file) => [file, readFileSync(join(import.meta.dirname, "..", file), "utf8")]));
 const mutations = [
   { file: "uncertainty.ts", name: "fixed midpoint instead of distribution draws", pattern: "uniform quantiles match", before: "const u = random();", after: "const u = 0.5;" },
-  { file: "uncertainty.ts", name: "missing effort silently becomes zero", pattern: "unknown estimates and their downstream", before: "if (raw === undefined || raw === null) return null;", after: 'if (raw === undefined || raw === null) return { kind: "point", minutes: 0 };' },
+  { file: "uncertainty.ts", name: "missing effort silently becomes zero", pattern: "unknown estimates and their downstream", before: "if (task.estimate === null || task.prerequisites.some((dep) => unknown.has(dep))) unknown.add(id);", after: "if (task.prerequisites.some((dep) => unknown.has(dep))) unknown.add(id);" },
   { file: "uncertainty.ts", name: "sensitivity loses estimate association", pattern: "sensitivity ranks the dominating", before: "return xx === 0 || yy === 0 ? 0 : Math.max(-1, Math.min(1, xy / (Math.sqrt(xx) * Math.sqrt(yy))));", after: "return 0;" },
   { file: "uncertainty.ts", name: "seed assignment uses host locale", pattern: "portable receipts and sensitivity ties", before: ".sort((a, b) => compareIds(a.id, b.id));", after: ".sort((a, b) => a.id.localeCompare(b.id));" },
   { file: "uncertainty.ts", name: "issue 167 Unicode row reversal changes per-ID quantiles", pattern: "issue 167: composed and decomposed Unicode ids", before: ".sort((a, b) => compareIds(a.id, b.id));", after: ".sort((a, b) => a.id.localeCompare(b.id));" },

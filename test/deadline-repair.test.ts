@@ -195,15 +195,15 @@ for (const invalid of [
   { capacityShifts: [{ itemId: "missing", minutesPerDay: 960 }] }, { deferrableIds: ["missing"] }, { forbiddenIds: ["missing"] },
   { capacityShifts: [{ itemId: "a", minutesPerDay: 480 }] }, { capacityShifts: [{ itemId: "a", minutesPerDay: 4801 }] }, { capacityShifts: [{ itemId: "a", minutesPerDay: 960.5 }] },
 ] satisfies Partial<DeadlineRepairOptions>[]) {
-  test(`minimal repairs: invalid scenario ${JSON.stringify(invalid)}`, () => refusal(proposeDeadlineRepairs([task("a")], { ...scenario, ...invalid }), "invalid_scenario"));
+  test(`minimal repairs: invalid scenario ${JSON.stringify(invalid)}`, () => refusal(proposeDeadlineRepairs([task("a")], { ...scenario, ...invalid }), ("deferrableIds" in invalid || "forbiddenIds" in invalid || ("capacityShifts" in invalid && invalid.capacityShifts?.[0]?.itemId === "missing")) ? "invalid_scenario" : "invalid_estimate"));
 }
 
 test("minimal repairs: incomplete, cyclic and malformed source data is refused", () => {
   for (const items of [
     [task("a"), task("a")], [task("")], [task("a".repeat(129))], [task("a", 1, ["missing"])],
-    [{ ...task("a"), deadline: "bad" }], [{ ...task("a"), deadline: "2026-02-30" }], [{ ...task("a"), deadline: "2026-10-21Tinvalid" }],
-    [task("a", -1)], [task("a", Infinity)], [task("a", 366)], [task("a", 1, ["b"]), task("b", 1, ["a"])],
+    [task("a", 1, ["b"]), task("b", 1, ["a"])],
   ]) refusal(proposeDeadlineRepairs(items, scenario), "invalid_graph");
+  for (const item of [{ ...task("a"), deadline: "bad" }, { ...task("a"), deadline: "2026-02-30" }, { ...task("a"), deadline: "2026-10-21Tinvalid" }, task("a", -1), task("a", Infinity), task("a", 366)]) refusal(proposeDeadlineRepairs([item], scenario), "invalid_estimate");
   refusal(proposeDeadlineRepairs([task("a")], scenario, new Map()), "invalid_graph");
   refusal(proposeDeadlineRepairs([{ ...task("a"), estimated_minutes: undefined }], { ...scenario, capacityShifts: [{ itemId: "a", minutesPerDay: 960 }] }), "invalid_scenario");
   refusal(proposeDeadlineRepairs(Array.from({ length: 201 }, (_, i) => task(String(i))), scenario), "scenario_too_large");
@@ -242,13 +242,13 @@ test("minimal repairs: real no-git tracker, installed JSON/TOON CLI, typed refus
   try {
     const harness = await createExtensionTestHarness(extension, { capabilities: ["commands", "schema", "importers", "preflight"] });
     const limitKeys = ["max-changes", "maxChanges", "max-proposals", "maxProposals", "max-evaluations", "maxEvaluations", "default-duration", "defaultDuration"];
-    const cases: Array<[Record<string, string>, "ok" | "invalid_scenario" | "no_allowed_repair"]> = [
+    const cases: Array<[Record<string, string>, "ok" | "invalid_estimate" | "no_allowed_repair"]> = [
       [{ from: scenario.from, deadline: scenario.deadline, capacity: "repair-a=960", maxChanges: "2", maxProposals: "1", maxEvaluations: "20", defaultDuration: "1" }, "ok"],
       [{ from: scenario.from, deadline: scenario.deadline, defer: "repair-b", forbid: "repair-a", "max-changes": "2" }, "ok"],
-      [{ from: scenario.from, deadline: scenario.deadline, capacity: "repair-a=960=extra" }, "invalid_scenario"],
+      [{ from: scenario.from, deadline: scenario.deadline, capacity: "repair-a=960=extra" }, "invalid_estimate"],
       [{ from: scenario.from, deadline: scenario.deadline, capacity: "repair-a=960", forbid: "repair-a" }, "no_allowed_repair"],
-      [{}, "invalid_scenario"],
-      ...limitKeys.map((key): [Record<string, string>, "invalid_scenario"] => [{ from: scenario.from, deadline: scenario.deadline, capacity: "repair-a=960", [key]: "0" }, "invalid_scenario"]),
+      [{}, "invalid_estimate"],
+      ...limitKeys.map((key): [Record<string, string>, "invalid_estimate"] => [{ from: scenario.from, deadline: scenario.deadline, capacity: "repair-a=960", [key]: "0" }, "invalid_estimate"]),
     ];
     for (const [options, expected] of cases) {
       const receipt = await harness.runCommand({ command: "gantt repair", pmRoot, options });

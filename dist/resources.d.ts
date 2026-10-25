@@ -25,7 +25,7 @@ export interface ResourceScenarioOptions {
     limit?: number;
 }
 /** Actionable failures keep invalid/unknown input separate from measured capacity shortfalls. */
-export type ResourceRefusalCode = "invalid_scenario" | "invalid_graph" | "missing_work" | "scenario_too_large" | "selection_required" | "revision_conflict" | "infeasible_selection" | "application_refused";
+export type ResourceRefusalCode = "invalid_estimate" | "invalid_scenario" | "invalid_graph" | "missing_work" | "scenario_too_large" | "selection_required" | "revision_conflict" | "infeasible_selection" | "application_refused";
 /** All refusal results include a concrete way to proceed. */
 export interface ResourceRefusal {
     ok: false;
@@ -76,7 +76,9 @@ export type ResourceScenarioResult = ResourceScenarioSuccess | ResourceRefusal;
  * is a reproducible heuristic, not an optimal resource-leveling claim. Capacity
  * witnesses are necessary bounds; exhaustion alone is not an impossibility proof.
  */
-export declare function computeResourceScenarios(corpus: readonly PmItem[], options: ResourceScenarioOptions, graph: PrerequisiteGraph): ResourceScenarioResult;
+export declare function computeResourceScenarios(rawCorpus: readonly PmItem[], rawOptions: ResourceScenarioOptions, suppliedGraph?: PrerequisiteGraph): ResourceScenarioResult;
+/** Internal command adapter consumes the same immutable validation receipt as the public SDK. */
+export declare function runValidatedResources(receipt: unknown, suppliedGraph?: PrerequisiteGraph): ResourceScenarioResult;
 /** Explicit selection binds both the current source snapshot and the target item's optimistic revision. */
 export interface ResourceSelection {
     scenarioId: string;

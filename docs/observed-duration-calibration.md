@@ -80,7 +80,7 @@ remains a throughput/cycle-time summary.
 
 | Code | Remedy |
 | --- | --- |
-| `invalid_calibration` | Supply exact type, optional nonblank tag, minimum 1..2000, limit 1..200 and increasing SDK quantiles (1..9 probabilities in [0,1]). |
+| `invalid_estimate` | Supply exact type, optional nonblank tag, minimum 1..2000, limit 1..200 and increasing SDK quantiles (1..9 probabilities in [0,1]). |
 | `insufficient_samples` | Inspect exclusion counts, collect verified starts/completions and estimates, or deliberately choose another evidence floor. No distribution or quantiles are returned. |
 | `calibration_too_large` | Narrow the cohort: at most 2000 selected items, 10000 history entries per item, 100000 entries total. Preserve original histories. |
 | `corpus_unavailable` | Restore tracker readability and complete SDK reads; retry a stable copy. |
@@ -107,3 +107,5 @@ idempotency key or journaled plan. Existing resource selection remains separate.
 tracker data into a non-git scratch project, removes git from PATH, runs each
 cohort twice, and checks durable tracker hashes before/after. Original tracker
 files are never mutated. Measured counts and gate results are reported in the PR.
+
+See the shared [strict duration input contract](duration-input-contract.md) for boundary validation, malformed-input refusals and seeded fuzz evidence.

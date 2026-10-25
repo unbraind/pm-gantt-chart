@@ -2,10 +2,11 @@ import { brandCss, brandStatus, brandStatuses, brandValue, mermaidBrand } from "
 import { certifyCompleteListResult, EXIT_CODE, inspectCompleteListResult, PmClient, resolveAuthor, readSettings } from "@unbrained/pm-cli/sdk";
 import { resolveWorkspaceRelationshipKindRegistry } from "@unbrained/pm-cli/sdk/graph";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
+import { durationFlagNumber, durationFlagQuantiles, durationInputGraph, validateDurationInput } from "./duration-input.js";
 import { calibrateObservedDurations } from "./calibration.js";
 export { calibrateObservedDurations } from "./calibration.js";
-import { simulateCompletionIntervals } from "./uncertainty.js";
-import { computeResourceScenarios, applyResourceSelection } from "./resources.js";
+import { runValidatedIntervals, simulateCompletionIntervals } from "./uncertainty.js";
+import { runValidatedResources, computeResourceScenarios, applyResourceSelection } from "./resources.js";
 export { applyResourceSelection } from "./resources.js";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -774,13 +775,8 @@ function repairRefusal(code, message, remedy) {
     return { ok: false, code, message, remedy };
 }
 /** Compute seeded completion intervals without changing estimates, items or history. */
-export function completionIntervals(items, options, graph = buildPrerequisiteGraph(items)) {
+export function completionIntervals(items, options, graph) {
     return simulateCompletionIntervals(items, options, graph);
-}
-/** Accept real calendar days only, avoiding date rollover and timezone ambiguity. */
-function repairDate(value) {
-    const date = parseDate(value);
-    return /^\d{4}-\d{2}-\d{2}$/.test(value) && date && isoDay(date) === value ? date : null;
 }
 /**
  * Evaluate earliest possible completion, then enforce unchanged real deadlines.
@@ -816,26 +812,30 @@ function repairSchedule(items, anchor, horizon, duration, graph) {
  * exhausting a budget refuses instead of making an unproved minimality claim.
  * Neither input items, graph, nor tracker state is modified.
  */
-export function proposeDeadlineRepairs(corpus, options, graph = buildPrerequisiteGraph(corpus)) {
-    const anchor = repairDate(options.from);
-    const horizon = repairDate(options.deadline);
+export function proposeDeadlineRepairs(rawCorpus, rawOptions, suppliedGraph) {
+    const validated = validateDurationInput("repair", { corpus: rawCorpus, options: rawOptions, graph: suppliedGraph });
+    if (!validated.ok)
+        return validated;
+    return runValidatedRepairs(validated.value);
+}
+/** Internal command adapter consumes immutable schema data before planning. */
+function runValidatedRepairs({ corpus, options, graph: storedGraph }, suppliedGraph) {
+    const canonicalGraph = durationInputGraph(storedGraph, undefined);
+    // This private adapter receives only schema-produced entries and SDK-generated graphs.
+    const graph = suppliedGraph ?? canonicalGraph.value ?? buildPrerequisiteGraph(corpus);
+    const anchor = parseDate(options.from);
+    const horizon = parseDate(options.deadline);
     const duration = options.defaultDuration ?? 5;
     const maxChanges = options.maxChanges ?? 3;
     const maxProposals = options.maxProposals ?? 5;
     const maxEvaluations = options.maxEvaluations ?? 5000;
-    const limits = [[duration, 365], [maxChanges, 3], [maxProposals, 10], [maxEvaluations, 10000]];
-    if (!anchor || !horizon || horizon < anchor || limits.some(([value, max]) => !Number.isInteger(value) || value < 1 || value > max)) {
-        return repairRefusal("invalid_scenario", "Invalid dates or search limits.", "Use real YYYY-MM-DD days with from <= deadline; duration 1..365, changes 1..3, proposals 1..10, evaluations 1..10000.");
-    }
     const byId = new Map(corpus.map((item) => [item.id, item]));
     const items = corpus.filter((item) => item.status !== "closed" && item.status !== "canceled").sort((a, b) => a.id.localeCompare(b.id));
     if (corpus.length > 200 || [...graph.values()].reduce((sum, deps) => sum + deps.length, 0) > 2000) {
         return repairRefusal("scenario_too_large", "Scenario exceeds 200 items or 2000 ordering edges.", "Select a complete dependency-closed scenario within these limits.");
     }
-    if (byId.size !== corpus.length || corpus.some((item) => !item.id || item.id.length > 128) || items.some((item) => !graph.has(item.id) || graph.get(item.id).some((id) => !byId.has(id)) ||
-        (itemDueDate(item) !== undefined && (!repairDate(itemDueDate(item).slice(0, 10)) || !parseDate(itemDueDate(item)))) ||
-        (item.estimated_minutes !== undefined && (!Number.isFinite(item.estimated_minutes) || item.estimated_minutes < 0 || item.estimated_minutes > 175200)))) {
-        return repairRefusal("invalid_graph", "Duplicate ids, missing prerequisites, invalid deadlines or estimates.", "Supply unique ids (1..128 characters), complete ordering edges, real ISO deadlines and finite estimates of 0..175200 minutes.");
+    if (byId.size !== corpus.length || corpus.some((item) => !item.id || item.id.length > 128) || items.some((item) => !graph.has(item.id) || graph.get(item.id).some((id) => !byId.has(id)))) {
+        return repairRefusal("invalid_graph", "Duplicate ids, missing prerequisites or unresolved ordering.", "Supply unique ids (1..128 characters) and complete ordering edges.");
     }
     const activeIds = new Set(items.map((item) => item.id));
     const activeGraph = new Map(items.map((item) => [item.id, graph.get(item.id).filter((id) => activeIds.has(id))]));
@@ -846,7 +846,7 @@ export function proposeDeadlineRepairs(corpus, options, graph = buildPrerequisit
     const deferrable = options.deferrableIds ?? [];
     const forbidden = new Set(options.forbiddenIds ?? []);
     if ([...shifts.map((shift) => shift.itemId), ...deferrable, ...forbidden].some((id) => !activeIds.has(id)) ||
-        shifts.some((shift) => !Number.isInteger(shift.minutesPerDay) || shift.minutesPerDay <= MINUTES_PER_WORKDAY || shift.minutesPerDay > 4800 || !(byId.get(shift.itemId).estimated_minutes > 0))) {
+        shifts.some((shift) => !(byId.get(shift.itemId).estimated_minutes > 0))) {
         return repairRefusal("invalid_scenario", "Moves must name active items and real capacity increases for estimated work.", "Use active ids; capacity needs a positive effort estimate and 481..4800 minutes/day. Omit forbidden moves or list them in forbiddenIds.");
     }
     const baseline = repairSchedule(items, anchor, horizon, duration, activeGraph);
@@ -2094,7 +2094,7 @@ function readBoolOption(options, ...keys) {
     return false;
 }
 /** Compare explicit assignee budgets using the package's registry-aware graph adapter. */
-export function resourceScenarios(items, options, graph = buildPrerequisiteGraph(items)) {
+export function resourceScenarios(items, options, graph) {
     return computeResourceScenarios(items, options, graph);
 }
 /** Parse the repair command's explicit move vocabulary without inferring permissions. */
@@ -2104,13 +2104,13 @@ function deadlineRepairOptions(options) {
     /** Missing numbers use SDK defaults; malformed numbers reach typed validation. */
     const number = (key, camel) => {
         const raw = readOption(options, key, camel);
-        return raw === undefined ? undefined : Number(raw);
+        return durationFlagNumber(raw);
     };
     return {
-        from: String(readOption(options, "from") ?? ""), deadline: String(readOption(options, "deadline") ?? ""),
+        from: readOption(options, "from"), deadline: readOption(options, "deadline"),
         capacityShifts: ids("capacity").map((entry) => {
             const [itemId, minutes, extra] = entry.split("=");
-            return { itemId, minutesPerDay: extra === undefined ? Number(minutes) : NaN };
+            return { itemId, minutesPerDay: extra === undefined ? durationFlagNumber(minutes) : NaN };
         }),
         deferrableIds: ids("defer"), forbiddenIds: ids("forbid"),
         defaultDuration: number("default-duration", "defaultDuration"), maxChanges: number("max-changes", "maxChanges"),
@@ -2389,12 +2389,11 @@ function decodeCompleteListAll(parsed) {
         }
         if (item.meta !== undefined)
             row.meta = item.meta;
-        if (item.estimated_minutes !== undefined
-            && (typeof item.estimated_minutes !== "number" || !Number.isFinite(item.estimated_minutes) || item.estimated_minutes < 0)) {
-            throw new CommandError(`Refusing unverifiable pm list --all output: item ${item.id} estimated_minutes must be a non-negative finite number when present.`);
-        }
-        if (item.estimated_minutes !== undefined)
-            row.estimated_minutes = item.estimated_minutes;
+        const estimate = validateDurationInput("storedEstimate", item.estimated_minutes);
+        if (!estimate.ok)
+            throw new CommandError(estimate.message + " " + estimate.remedy);
+        if (estimate.value !== undefined)
+            row.estimated_minutes = estimate.value;
         if (item.dependencies !== undefined) {
             if (!Array.isArray(item.dependencies)) {
                 throw new CommandError(`Refusing unverifiable pm list --all output: item ${item.id} dependencies must be an array when present.`);
@@ -2421,6 +2420,17 @@ function decodeCompleteListAll(parsed) {
         rows.push(row);
     }
     return rows;
+}
+/** Read forecast inputs directly through the SDK, preserving native number semantics. */
+async function readDurationCorpus(pmRoot) {
+    try {
+        const items = certifyCompleteListResult(await PmClient.forActiveExtensionHost({ pmRoot }).listAllComplete()).items;
+        return { ok: true, items };
+    }
+    catch {
+        return { ok: false, code: "invalid_estimate", message: "Cannot read sampling inputs.",
+            remedy: "Read the complete tracker through the SDK and correct unreadable native estimate fields before sampling." };
+    }
 }
 /**
  * Shell out to `pm list --all --json` and return a proven-complete item list.
@@ -2679,10 +2689,10 @@ export default defineExtension({
             async run(ctx) {
                 const limit = readOption(ctx.options, "limit");
                 const result = await calibrateObservedDurations(ctx.pm_root, {
-                    type: String(readOption(ctx.options, "type") ?? ""),
+                    type: readOption(ctx.options, "type"),
                     tag: readOption(ctx.options, "tag"),
-                    minimumSamples: Number(readOption(ctx.options, "minimum-samples", "minimumSamples") ?? NaN),
-                    limit: limit === undefined ? undefined : Number(limit),
+                    minimumSamples: durationFlagNumber(readOption(ctx.options, "minimum-samples", "minimumSamples")),
+                    limit: durationFlagNumber(limit),
                 });
                 return result.ok ? result : { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
             },
@@ -2712,11 +2722,17 @@ export default defineExtension({
                 }
                 catch {
                     const remedy = "Provide --scenarios with a readable regular JSON file no larger than 256 KiB.";
-                    return { ok: false, code: "invalid_scenario", message: "Cannot read bounded scenario controls.", remedy, remediation: remedy, exit_code: EXIT_CODE.USAGE };
+                    return { ok: false, code: "invalid_estimate", message: "Cannot read bounded scenario controls.", remedy, remediation: remedy, exit_code: EXIT_CODE.USAGE };
                 }
-                const items = fetchItems(ctx.pm_root);
-                const graph = await commandPrerequisiteGraph(items, ctx.pm_root);
-                const evaluated = resourceScenarios(items, controls, graph);
+                const corpus = await readDurationCorpus(ctx.pm_root);
+                if (!corpus.ok)
+                    return { ...corpus, exit_code: EXIT_CODE.USAGE, remediation: corpus.remedy };
+                const items = corpus.items;
+                const validated = validateDurationInput("resources", { corpus: items, options: controls });
+                if (!validated.ok)
+                    return { ...validated, exit_code: EXIT_CODE.USAGE, remediation: validated.remedy };
+                const graph = await commandPrerequisiteGraph(validated.value.corpus, ctx.pm_root);
+                const evaluated = runValidatedResources(validated, graph);
                 const selectionKeys = ["select", "selection", "expect-revision", "expectRevision", "target", "target-revision", "targetRevision"];
                 const applying = selectionKeys.some((key) => readOption(ctx.options, key) !== undefined);
                 const result = applying ? await applyResourceSelection(ctx.pm_root, resolveAuthor(ctx.global.author, (await readSettings(ctx.pm_root)).author_default), evaluated, {
@@ -2752,8 +2768,6 @@ export default defineExtension({
                         if (!statSync(path).isFile() || statSync(path).size > 65536)
                             throw new Error("bounded regular file required");
                         const parsed = JSON.parse(readFileSync(path, "utf8"));
-                        if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
-                            throw new Error("map required");
                         estimates = parsed;
                     }
                     catch {
@@ -2761,19 +2775,20 @@ export default defineExtension({
                         return { ok: false, code: "invalid_estimate", message: "Cannot read a bounded estimate map.", remedy, remediation: remedy, exit_code: EXIT_CODE.USAGE };
                     }
                 }
-                /** Preserve absent defaults while sending malformed numeric flags to typed validation. */
-                const numeric = (key, camel = key) => {
-                    const raw = readOption(ctx.options, key, camel);
-                    return raw === undefined ? undefined : String(raw).trim() === "" ? NaN : Number(raw);
-                };
                 const rawQuantiles = readOption(ctx.options, "quantiles");
-                const items = fetchItems(ctx.pm_root);
-                const graph = await commandPrerequisiteGraph(items, ctx.pm_root);
-                const result = completionIntervals(items, {
-                    from: String(readOption(ctx.options, "from") ?? ""), seed: numeric("seed") ?? NaN, estimates,
-                    samples: numeric("samples"), minutesPerDay: numeric("minutes-per-day", "minutesPerDay"), limit: numeric("limit"),
-                    quantiles: rawQuantiles === undefined ? undefined : String(rawQuantiles).split(",").map((part) => part.trim() === "" ? NaN : Number(part)),
-                }, graph);
+                const corpus = await readDurationCorpus(ctx.pm_root);
+                if (!corpus.ok)
+                    return { ...corpus, exit_code: EXIT_CODE.USAGE, remediation: corpus.remedy };
+                const items = corpus.items;
+                const validated = validateDurationInput("sampling", { corpus: items, options: {
+                        from: readOption(ctx.options, "from"), seed: durationFlagNumber(readOption(ctx.options, "seed")), estimates,
+                        samples: durationFlagNumber(readOption(ctx.options, "samples")), minutesPerDay: durationFlagNumber(readOption(ctx.options, "minutes-per-day", "minutesPerDay")), limit: durationFlagNumber(readOption(ctx.options, "limit")),
+                        quantiles: durationFlagQuantiles(rawQuantiles),
+                    } });
+                if (!validated.ok)
+                    return { ...validated, exit_code: EXIT_CODE.USAGE, remediation: validated.remedy };
+                const graph = await commandPrerequisiteGraph(validated.value.corpus, ctx.pm_root);
+                const result = runValidatedIntervals(validated, graph);
                 return result.ok ? result : { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
             },
         });
@@ -2796,9 +2811,15 @@ export default defineExtension({
                 { long: "--max-evaluations", value_name: "n", description: "Search evaluations (default 5000, max 10000); exhaustion refuses." },
             ],
             async run(ctx) {
-                const items = fetchItems(ctx.pm_root);
-                const graph = await commandPrerequisiteGraph(items, ctx.pm_root);
-                const result = proposeDeadlineRepairs(items, deadlineRepairOptions(ctx.options), graph);
+                const corpus = await readDurationCorpus(ctx.pm_root);
+                if (!corpus.ok)
+                    return { ...corpus, exit_code: EXIT_CODE.USAGE, remediation: corpus.remedy };
+                const items = corpus.items;
+                const validated = validateDurationInput("repair", { corpus: items, options: deadlineRepairOptions(ctx.options) });
+                if (!validated.ok)
+                    return { ...validated, exit_code: EXIT_CODE.USAGE, remediation: validated.remedy };
+                const graph = await commandPrerequisiteGraph(validated.value.corpus, ctx.pm_root);
+                const result = runValidatedRepairs(validated.value, graph);
                 return result.ok ? result : { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
             },
         });
