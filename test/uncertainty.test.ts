@@ -259,6 +259,14 @@ test("real non-git tracker: packed JSON/TOON CLI, typed remedies, SDK harness an
       assert.equal(data.remediation, data.remedy);
       assert.equal(receipt.exitCode, 2);
     }
+    writeFileSync(file, JSON.stringify({ absent: { kind: "point", minutes: 60 } }));
+    const absent = await harness.runCommand({ command: "gantt uncertainty", pmRoot, options: { ...base, estimates: file } });
+    const refusal = absent.result as CompletionIntervalResult & { remediation: string };
+    refused(refusal, "invalid_estimate");
+    if (refusal.ok) assert.fail("expected absent-work refusal after successful input validation");
+    assert.match(refusal.message, /absent or completed work/);
+    assert.equal(refusal.remediation, refusal.remedy);
+    assert.equal(absent.exitCode, 2);
   } finally { process.env.PATH = originalPath; }
   assert.equal(snapshot(pmRoot), before, "durable items, settings, dependencies and append-only history remain byte-identical");
 });
