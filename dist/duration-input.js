@@ -128,10 +128,13 @@ function parse(rule, value, path) {
             }
             throw new DurationInputError(path);
         case "array": {
-            if (!Array.isArray(value) || value.length < rule.min || value.length > rule.max || Reflect.ownKeys(value).length !== value.length + 1)
+            if (!Array.isArray(value))
+                throw new DurationInputError(path);
+            const length = parse({ kind: "number", min: rule.min, max: rule.max, integer: true }, Object.getOwnPropertyDescriptor(value, "length").value, `${path}.length`);
+            if (Reflect.ownKeys(value).length !== length + 1)
                 throw new DurationInputError(path);
             const result = [];
-            for (let index = 0; index < value.length; index++) {
+            for (let index = 0; index < length; index++) {
                 const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
                 if (descriptor === undefined || !Object.hasOwn(descriptor, "value"))
                     throw new DurationInputError(`${path}[${index}]`);

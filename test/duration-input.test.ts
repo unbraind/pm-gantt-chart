@@ -202,3 +202,13 @@ test("graph boundary rejects extra properties and excessive maps before traversi
   invalid(validateDurationInput("graph", Object.assign(new Map(), { extra: 1 })));
   invalid(validateDurationInput("graph", new Map(Array.from({ length: 100001 }, (_, index) => [String(index), []]))));
 });
+
+test("array bounds are captured once from the own length descriptor without invoking getters", () => {
+  const values = new Proxy([60], { get(target, key, receiver) {
+    if (key === "length") assert.fail("raw array length getter must not run");
+    return Reflect.get(target, key, receiver);
+  } });
+  const result = completionIntervals([item], { ...options, estimates: { future: { kind: "empirical", values } } });
+  assert.ok(result.ok);
+  assert.deepEqual(result.project!.map((row) => row.days), [0.125, 0.125, 0.125]);
+});

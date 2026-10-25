@@ -147,9 +147,11 @@ function parse(rule: Rule, value: unknown, path: string): unknown {
       for (const choice of rule.choices) { try { const parsed = parse(choice, value, path); return rule === estimate ? canonicalDurationEstimate(parsed as UncertainEstimate) : parsed; } catch { /* Try the next closed variant. */ } }
       throw new DurationInputError(path);
     case "array": {
-      if (!Array.isArray(value) || value.length < rule.min || value.length > rule.max || Reflect.ownKeys(value).length !== value.length + 1) throw new DurationInputError(path);
+      if (!Array.isArray(value)) throw new DurationInputError(path);
+      const length = parse({ kind: "number", min: rule.min, max: rule.max, integer: true }, Object.getOwnPropertyDescriptor(value, "length")!.value, `${path}.length`) as number;
+      if (Reflect.ownKeys(value).length !== length + 1) throw new DurationInputError(path);
       const result: unknown[] = [];
-      for (let index = 0; index < value.length; index++) {
+      for (let index = 0; index < length; index++) {
         const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
         if (descriptor === undefined || !Object.hasOwn(descriptor, "value")) throw new DurationInputError(`${path}[${index}]`);
         result.push(parse(rule.tuple?.[index] ?? rule.entry, descriptor.value, `${path}[${index}]`));
