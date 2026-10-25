@@ -102,13 +102,14 @@ test("source revisions bind effort, assignees, deadlines, statuses and resolved 
 
 test("SDK runtime refuses malformed controls, work declarations and bounded-input violations", () => {
   const invalid = [null, {}, { ...controls, from: "2026-02-30" }, { ...controls, through: "2026-01-01" }, { ...controls, timeZone: "" }, { ...controls, timeZone: 1 }, { ...controls, timeZone: "Mars/Olympus" }, { ...controls, scenarios: [] }, { ...controls, scenarios: null }, { ...controls, limit: 0 }, { ...controls, limit: 201 }, { ...controls, limit: 1.5 }];
-  for (const value of invalid) refused(resourceScenarios([task("a")], value as ResourceScenarioOptions), "invalid_scenario");
+  for (const value of invalid) refused(resourceScenarios([task("a")], value as ResourceScenarioOptions), "invalid_estimate");
   const alternatives = [null, { ...controls.scenarios[0], id: "" }, { id: "base", owners: null }, { id: "base", owners: Object.fromEntries(Array.from({ length: 51 }, (_, i) => [i, calendar])) }, { id: "base", owners: { "": calendar } }, { id: "base", owners: { ["x".repeat(129)]: calendar } },
     ...[null, { ...calendar, weekdays: null }, { ...calendar, weekdays: [0] }, { ...calendar, weekdays: [8] }, { ...calendar, weekdays: [1.5] }, { ...calendar, weekdays: [1, 1] }, { ...calendar, weekdays: Array(8).fill(1) }, { ...calendar, holidays: null }, { ...calendar, holidays: Array(367).fill(controls.from) }, { ...calendar, holidays: [1] }, { ...calendar, holidays: ["bad"] }, { ...calendar, minutesPerDay: -1 }, { ...calendar, minutesPerDay: 1441 }, { ...calendar, minutesPerWeek: NaN }, { ...calendar, minutesPerWeek: 10081 }, { ...calendar, totalMinutes: 527041 }].map((value) => ({ id: "base", owners: { worker: value } })),
     ...[null, { absent: { owner: "worker", minutes: 1 } }, { a: null }, { a: { owner: 1, minutes: 1 } }, { a: { owner: "worker", minutes: -1 } }].map((work) => ({ ...controls.scenarios[0], work }))];
-  for (const alternative of alternatives) refused(resourceScenarios([task("a")], { ...controls, scenarios: [alternative] } as ResourceScenarioOptions), "invalid_scenario");
+  for (const alternative of alternatives) refused(resourceScenarios([task("a")], { ...controls, scenarios: [alternative] } as ResourceScenarioOptions), alternative !== null && "work" in alternative && alternative.work !== undefined && alternative.work !== null && "absent" in alternative.work ? "invalid_scenario" : "invalid_estimate");
   refused(resourceScenarios([], { ...controls, scenarios: [controls.scenarios[0], controls.scenarios[0]] }), "invalid_scenario");
-  for (const item of [{ ...task("a"), assignee: undefined }, { ...task("a"), assignee: "absent" }, { ...task("a"), estimated_minutes: undefined }, task("a", Infinity), task("a", -1)]) refused(resourceScenarios([item], controls), "missing_work");
+  for (const item of [{ ...task("a"), assignee: undefined }, { ...task("a"), assignee: "absent" }, { ...task("a"), estimated_minutes: undefined }]) refused(resourceScenarios([item], controls), "missing_work");
+  for (const minutes of [Infinity, -1]) refused(resourceScenarios([task("a", minutes)], controls), "invalid_estimate");
   for (const options of [{ ...controls, through: "2028-01-01" }, { ...controls, scenarios: Array.from({ length: 6 }, (_, i) => ({ ...controls.scenarios[0], id: String(i) })) }]) refused(resourceScenarios([], options), "scenario_too_large");
   refused(resourceScenarios(Array.from({ length: 201 }, (_, i) => task(String(i))), controls), "scenario_too_large");
   refused(resourceScenarios(Array.from({ length: 2001 }, (_, i) => ({ ...task(String(i)), status: "closed" })), controls), "scenario_too_large");
@@ -139,14 +140,14 @@ test("review: dangling forward relationships refuse before adaptation can erase 
   assert.equal(compute(resolved).scenarios[0].feasible, true);
 });
 
-test("review: non-string horizon values return invalid_scenario without coercion", () => {
+test("review: non-string horizon values return invalid_estimate without coercion", () => {
   for (const field of ["from", "through"]) {
     for (const value of [null, undefined, 20261023, false, [], [controls.from], {}, { toString: null }, Symbol("day")]) {
-      assert.doesNotThrow(() => refused(resourceScenarios([task("a")], { ...controls, [field]: value } as ResourceScenarioOptions), "invalid_scenario"));
+      assert.doesNotThrow(() => refused(resourceScenarios([task("a")], { ...controls, [field]: value } as ResourceScenarioOptions), "invalid_estimate"));
     }
     /** A runtime caller's conversion hook must never execute during validation. */
     const hostile = { toString() { assert.fail("horizon values must not be coerced"); } };
-    refused(resourceScenarios([task("a")], { ...controls, [field]: hostile } as ResourceScenarioOptions), "invalid_scenario");
+    refused(resourceScenarios([task("a")], { ...controls, [field]: hostile } as ResourceScenarioOptions), "invalid_estimate");
   }
 });
 
@@ -243,7 +244,7 @@ test("review: no-git CLI refuses dangling forward edges and malformed horizon ob
     writeFileSync(file, JSON.stringify({ ...options, [field]: { toString: null } }));
     const run = invoke(["gantt", "resources", "--scenarios", file, "--json"]);
     assert.equal(run.status, 2, run.stderr);
-    assert.match(run.stdout + run.stderr, /invalid_scenario/);
+    assert.match(run.stdout + run.stderr, /invalid_estimate/);
     assert.doesNotMatch(run.stdout + run.stderr, /TypeError/);
   }
   writeFileSync(file, JSON.stringify(options));

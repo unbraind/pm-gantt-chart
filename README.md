@@ -208,7 +208,7 @@ Bounds: 200 corpus items, 2000 ordering edges, 24 effective offers, 1..3 moves
 (`--max-changes`, default 3), 1..10 results (`--max-proposals`, default 5), and
 1..10000 evaluations (`--max-evaluations`, default 5000). Missing estimates use
 `--default-duration` (default 5 calendar days, 1..365); they cannot receive a
-capacity offer. Estimates must be finite, nonnegative and at most 175200 minutes.
+capacity offer. Estimates must be zero or finite values from one second (1/60 minute) through 175200 minutes.
 Cycles, missing prerequisites, malformed dates, invalid offers, oversized
 scenarios, exhausted search and unavailable repairs return typed refusals with
 `code`, `message`, `remedy` (CLI exit 2). Search exhaustion never presents an
@@ -226,9 +226,35 @@ proposal after review. See the [worked example](docs/deadline-repair.md).
 
 ### Without git
 
-Rendering, scheduling, exports, uncertainty intervals and deadline repair proposals work in plain
+Rendering, scheduling, exports, duration calibration, uncertainty intervals and deadline repair proposals work in plain
 trackers without git installed. This package's runtime commands do not require
 a git repository. Repository release/changelog tooling needs git history.
+
+Forecast and calibration APIs share one [strict duration input contract](docs/duration-input-contract.md).
+Malformed estimates, sampling controls, calibration controls and native effort
+fields return `invalid_estimate` with remedies before numerical work. Sparse
+arrays, nonfinite numbers, negative zero, invalid dates and extra keys in closed
+objects are refused.
+
+Successful calibration and forecast results pass a numeric/date output contract
+before SDK return or CLI serialization. Invalid computed fields return
+`invalid_estimate` naming the field; ratios are never emitted as Infinity or null.
+See the [documented domain and output ranges](docs/duration-input-contract.md).
+
+### Observed-duration calibration
+
+`pm gantt calibrate --type Task --minimum-samples 10 --json` compares elapsed
+calendar minutes with planned effort at verified start, for an exact task class
+and optional `--tag`. Default output is compact TOON. Canceled, reopened,
+incomplete and unverifiable histories are disclosed; too few usable episodes
+returns a typed refusal with remedies and no numerical calibration.
+
+The typed SDK `calibrateObservedDurations(pmRoot, options)` returns deterministic
+nearest-rank quantiles, complete sample counts, bounded diagnostics and an
+explicit `{kind: "empirical", values: [...]}` duration population. Callers can
+choose to pass it to `completionIntervals` with `minutesPerDay: 1440` for calendar
+time. Estimates stay unchanged; elapsed time includes waits and makes no causal
+productivity claim. See the [worked SDK/CLI example and evidence rules](docs/observed-duration-calibration.md).
 
 ### Resource-constrained schedule scenarios
 
@@ -286,7 +312,7 @@ zero correlation. Monte Carlo quantiles and sensitivity are approximate.
 Bounds: 200 corpus items, 2000 ordering edges, 100..10000 samples, at most
 5,000,000 sample × (item + edge) operations, 1..200 output rows and 1..9 strictly
 increasing probabilities in [0,1]. Effort is finite, ordered and within
-0..175200 minutes; effort per day is 1..1440. `--estimates` must be a regular JSON
+zero or 1/60..175200 minutes; effort per day is 1..1440. `--estimates` must be a regular JSON
 object file no larger than 64 KiB. Cycles, missing prerequisites, invalid inputs
 and exceeded bounds return typed `code`, `message`, `remedy` refusals (exit 2).
 The command does not mutate tracker documents or write the receipt implicitly.

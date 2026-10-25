@@ -1,6 +1,8 @@
 import type { ExtensionApi } from "@unbrained/pm-cli/sdk/authoring";
 import type { RelationshipKindRegistry } from "@unbrained/pm-cli/sdk";
 import type { ContractsResult } from "@unbrained/pm-cli/sdk/runtime";
+export { calibrateObservedDurations } from "./calibration.ts";
+export type { DurationCalibrationOptions, DurationCalibrationEvidence, DurationCalibrationResult, DurationCalibrationRefusalCode, DurationExclusion } from "./calibration.ts";
 import { type CompletionIntervalOptions, type CompletionIntervalResult } from "./uncertainty.ts";
 export type { CompletionIntervalOptions, CompletionIntervalResult, CompletionIntervalRefusalCode, CompletionScenarioReceipt, CompletionQuantile, UncertainEstimate, ResolvedEstimate } from "./uncertainty.ts";
 import { type ResourceScenarioOptions } from "./resources.ts";
@@ -278,7 +280,7 @@ export interface DeadlineRepairProposal {
     addedMinutesPerDay: number;
 }
 /** Stable refusal codes let agents select remedies without parsing prose. */
-export type DeadlineRepairRefusalCode = "invalid_scenario" | "invalid_graph" | "scenario_too_large" | "search_budget_exceeded" | "no_allowed_repair";
+export type DeadlineRepairRefusalCode = "invalid_estimate" | "invalid_scenario" | "invalid_graph" | "scenario_too_large" | "search_budget_exceeded" | "no_allowed_repair";
 /** Small JSON/TOON-compatible result; no titles, bodies, or full schedule dump. */
 export type DeadlineRepairResult = {
     ok: false;
@@ -310,7 +312,7 @@ export declare function completionIntervals(items: readonly PmItem[], options: C
  * exhausting a budget refuses instead of making an unproved minimality claim.
  * Neither input items, graph, nor tracker state is modified.
  */
-export declare function proposeDeadlineRepairs(corpus: readonly PmItem[], options: DeadlineRepairOptions, graph?: PrerequisiteGraph): DeadlineRepairResult;
+export declare function proposeDeadlineRepairs(rawCorpus: readonly PmItem[], rawOptions: DeadlineRepairOptions, suppliedGraph?: PrerequisiteGraph): DeadlineRepairResult;
 /**
  * Turn the fetched items into render-ready {@link GanttRow} entries.
  *

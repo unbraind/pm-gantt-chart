@@ -1,10 +1,13 @@
 import { createHash } from "node:crypto";
 import { analyzeRelationshipExecution, RelationshipGraph } from "@unbrained/pm-cli/sdk/graph";
+import { buildPrerequisiteGraph } from "./index.ts";
+import { durationInputGraph, durationValidatedValue, validateDurationInput, validateDurationOutput } from "./duration-input.ts";
 import type { PmItem, PrerequisiteGraph } from "./index.ts";
 
 /** Declared effort in minutes; a bounded pair is shorthand for uniform sampling. */
 export type UncertainEstimate = readonly [number, number]
   | { kind: "point"; minutes: number }
+  | { kind: "empirical"; values: readonly number[] }
   | { kind: "uniform"; min: number; max: number }
   | { kind: "triangular"; min: number; mode: number; max: number };
 
@@ -44,7 +47,7 @@ export interface CompletionQuantile {
 }
 
 /** Actionable refusals distinguish malformed controls, graph defects and work bounds. */
-export type CompletionIntervalRefusalCode = "invalid_scenario" | "invalid_estimate" | "invalid_graph" | "scenario_too_large";
+export type CompletionIntervalRefusalCode = "invalid_estimate" | "invalid_graph" | "scenario_too_large";
 
 /** Bounded rows plus complete replay inputs; unknown project finish has no sensitivity claim. */
 export type CompletionIntervalResult =
@@ -55,25 +58,6 @@ export type CompletionIntervalResult =
       sensitivity: { id: string; correlation: number }[]; dominantEstimate: string | null;
       sensitivityMethod: "pearson-duration-project-finish"; itemCount: number; sensitivityCount: number; truncated: boolean;
       receipt: CompletionScenarioReceipt };
-
-/** Uniform/triangular declarations are checked at runtime, including SDK callers. */
-function resolveEstimate(raw: unknown): ResolvedEstimate | undefined {
-  if (raw === undefined || raw === null) return null;
-  if (Array.isArray(raw)) {
-    if (raw.length !== 2) return undefined;
-    raw = { kind: "uniform", min: raw[0], max: raw[1] };
-  }
-  if (typeof raw !== "object") return undefined;
-  const value = raw as Record<string, unknown>;
-  const { kind, min, max, mode, minutes } = value;
-  /** Finite nonnegative effort, bounded to one 365-day working year. */
-  const valid = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 175200;
-  if (kind === "point") return valid(minutes) ? { kind, minutes } : undefined;
-  if (!valid(min) || !valid(max) || min > max) return undefined;
-  if (kind === "uniform") return { kind, min, max };
-  if (kind === "triangular" && valid(mode) && mode >= min && mode <= max) return { kind, min, mode, max };
-  return undefined;
-}
 
 /** Portable unsigned 32-bit generator; zero is a valid nondegenerate seed. */
 function generator(seed: number): () => number {
@@ -86,9 +70,10 @@ function generator(seed: number): () => number {
   };
 }
 
-/** Inverse-CDF draws; fixed distributions consume no random values. */
+/** Empirical resampling or inverse-CDF draws; fixed parametric declarations consume no random values. */
 function draw(estimate: Exclude<ResolvedEstimate, null>, random: () => number): number {
   if (estimate.kind === "point") return estimate.minutes;
+  if (estimate.kind === "empirical") return estimate.values[Math.floor(random() * estimate.values.length)];
   if (estimate.min === estimate.max) return estimate.min;
   const u = random();
   const width = estimate.max - estimate.min;
@@ -128,18 +113,23 @@ function compareIds(a: string, b: string): number {
  * prerequisites are satisfied; unknown effort propagates through every successor.
  * Sampling is O(samples * (items + edges)), with no shared-resource/calendar model.
  */
-export function simulateCompletionIntervals(corpus: readonly PmItem[], options: CompletionIntervalOptions, graph: PrerequisiteGraph): CompletionIntervalResult {
+export function simulateCompletionIntervals(rawCorpus: readonly PmItem[], rawOptions: CompletionIntervalOptions, suppliedGraph?: PrerequisiteGraph): CompletionIntervalResult {
+  const validated = validateDurationInput("sampling", { corpus: rawCorpus, options: rawOptions, graph: suppliedGraph });
+  if (!validated.ok) return validated;
+  return runValidatedIntervals(validated);
+}
+
+/** Internal CLI adapter consumes an immutable schema receipt; untrusted callers use the public sampler. */
+export function runValidatedIntervals(receipt: unknown, suppliedGraph?: PrerequisiteGraph): CompletionIntervalResult {
+  const validated = durationValidatedValue("sampling", receipt);
+  if (!validated.ok) return validated;
+  const { corpus, options } = validated.value;
   const samples = options.samples ?? 2000, minutesPerDay = options.minutesPerDay ?? 480, limit = options.limit ?? 20;
   const quantiles = [...(options.quantiles ?? [0.1, 0.5, 0.9])];
   const anchor = Date.parse(`${options.from}T00:00:00.000Z`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(options.from) || !Number.isFinite(anchor) || new Date(anchor).toISOString().slice(0, 10) !== options.from
-      || !Number.isInteger(options.seed) || options.seed < 0 || options.seed > 4294967295
-      || !Number.isInteger(samples) || samples < 100 || samples > 10000
-      || !Number.isFinite(minutesPerDay) || minutesPerDay < 1 || minutesPerDay > 1440
-      || !Number.isInteger(limit) || limit < 1 || limit > 200
-      || quantiles.length < 1 || quantiles.length > 9 || quantiles.some((q, i) => !Number.isFinite(q) || q < 0 || q > 1 || (i > 0 && q <= quantiles[i - 1]))) {
-    return refuse("invalid_scenario", "Invalid anchor, seed, sampling or output controls.", "Use a real YYYY-MM-DD day, seed 0..4294967295, samples 100..10000, minutesPerDay 1..1440, limit 1..200 and 1..9 strictly increasing quantiles in [0,1].");
-  }
+  const checkedGraph = durationInputGraph(validated.value.graph, suppliedGraph);
+  if (!checkedGraph.ok) return checkedGraph;
+  const graph = checkedGraph.value ?? buildPrerequisiteGraph(corpus);
   const edgeCount = [...graph.values()].reduce((n, deps) => n + deps.length, 0);
   if (corpus.length > 200 || edgeCount > 2000 || samples * (corpus.length + edgeCount) > 5000000) {
     return refuse("scenario_too_large", "Scenario exceeds the bounded sampling budget.", "Supply at most 200 dependency-closed items, 2000 ordering edges and samples * (items + edges) <= 5000000.");
@@ -158,11 +148,8 @@ export function simulateCompletionIntervals(corpus: readonly PmItem[], options: 
   const tasks: CompletionScenarioReceipt["tasks"] = [];
   for (const item of active) {
     const hasOverride = Object.hasOwn(overrides, item.id);
-    const raw = hasOverride ? overrides[item.id] : item.estimated_minutes === undefined ? undefined : { kind: "point", minutes: item.estimated_minutes };
-    const estimate = resolveEstimate(raw);
-    if (estimate === undefined || (hasOverride && estimate === null)) {
-      return refuse("invalid_estimate", `Invalid effort declaration for ${item.id}.`, "Use [min,max], point minutes, uniform min/max or triangular min/mode/max; all values must be finite, ordered and within 0..175200 minutes.");
-    }
+    const estimate = hasOverride ? overrides[item.id]
+      : item.estimated_minutes === undefined ? null : { kind: "point" as const, minutes: item.estimated_minutes };
     tasks.push({ id: item.id, prerequisites: [...new Set(graph.get(item.id)!.filter((id) => activeIds.has(id)))].sort(compareIds), estimate });
   }
   const kernel = new RelationshipGraph(tasks.map((task) => task.id), tasks.flatMap((task) => task.prerequisites.map((id) => ({ source: id, target: task.id, kind: "blocks" }))));
@@ -177,7 +164,7 @@ export function simulateCompletionIntervals(corpus: readonly PmItem[], options: 
     if (task.estimate === null || task.prerequisites.some((dep) => unknown.has(dep))) unknown.add(id);
   }
   const completions = new Map(tasks.map((task) => [task.id, [] as number[]]));
-  const durations = new Map(tasks.filter((task) => task.estimate !== null && task.estimate.kind !== "point" && task.estimate.min !== task.estimate.max).map((task) => [task.id, [] as number[]]));
+  const durations = new Map(tasks.filter((task) => task.estimate !== null && task.estimate.kind !== "point" && (task.estimate.kind === "empirical" ? task.estimate.values[0] !== task.estimate.values[task.estimate.values.length - 1] : task.estimate.min !== task.estimate.max)).map((task) => [task.id, [] as number[]]));
   const projects: number[] = [], random = generator(options.seed);
   for (let run = 0; run < samples; run++) {
     const ends = new Map<string, number>();
@@ -203,7 +190,7 @@ export function simulateCompletionIntervals(corpus: readonly PmItem[], options: 
   const sensitivity = unknown.size > 0 ? [] : [...durations].map(([id, values]) => ({ id, correlation: correlation(values, projects) }))
     .sort((a, b) => Math.abs(b.correlation) - Math.abs(a.correlation) || compareIds(a.id, b.id));
   const inputs = { from: options.from, seed: options.seed, samples, quantiles, minutesPerDay, tasks };
-  return {
+  return validateDurationOutput("sampling", {
     ok: true, complete: unknown.size === 0, activeCount: tasks.length, unknownCount: unknown.size,
     unknownEstimateCount: tasks.filter((task) => task.estimate === null).length,
     project: unknown.size > 0 ? null : summarize(projects),
@@ -214,5 +201,5 @@ export function simulateCompletionIntervals(corpus: readonly PmItem[], options: 
     truncated: tasks.length > limit || sensitivity.length > limit,
     receipt: { version: 1, algorithm: "mulberry32-nearest-rank-v1", inputHash: createHash("sha256").update(JSON.stringify(inputs)).digest("hex"), ...inputs,
       assumptions: ["independent effort draws", "continuous calendar days at minutesPerDay effort/day", "UTC exclusive completion", "unlimited parallel capacity", "completed prerequisites satisfied", "deadlines and created dates do not delay earliest starts", "missing estimates stay unknown", "Pearson association is not causal variance attribution"] },
-  };
+  });
 }

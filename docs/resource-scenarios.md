@@ -78,7 +78,7 @@ canceled prerequisites are satisfied. Missing references, duplicate identities
 and active ordering cycles refuse rather than inventing constraints. Every
 declared relationship target must exist in the corpus, including forward edges
 that a prerequisite adapter could otherwise omit. Non-string horizon values
-return `invalid_scenario` without invoking conversion hooks.
+return `invalid_estimate` without invoking conversion hooks.
 
 The package requires pm CLI 2026.10.20 or newer: the old 2026.10.6
 SDK transaction contract does not expose the locked target match guard. The
@@ -127,3 +127,5 @@ file of at most 256 KiB. Invalid dates/zones/calendars/overrides, incomplete gra
 missing work, exceeded bounds and unsafe selections return typed `code`,
 `message`, `remedy` refusals (CLI exit 2). Unexpected infrastructure errors remain
 errors; the command does not turn them into a successful schedule.
+
+See the shared [strict duration input contract](duration-input-contract.md) for boundary validation, malformed-input refusals and seeded fuzz evidence.

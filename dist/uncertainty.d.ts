@@ -4,6 +4,9 @@ export type UncertainEstimate = readonly [number, number] | {
     kind: "point";
     minutes: number;
 } | {
+    kind: "empirical";
+    values: readonly number[];
+} | {
     kind: "uniform";
     min: number;
     max: number;
@@ -49,7 +52,7 @@ export interface CompletionQuantile {
     finish: string;
 }
 /** Actionable refusals distinguish malformed controls, graph defects and work bounds. */
-export type CompletionIntervalRefusalCode = "invalid_scenario" | "invalid_estimate" | "invalid_graph" | "scenario_too_large";
+export type CompletionIntervalRefusalCode = "invalid_estimate" | "invalid_graph" | "scenario_too_large";
 /** Bounded rows plus complete replay inputs; unknown project finish has no sensitivity claim. */
 export type CompletionIntervalResult = {
     ok: false;
@@ -85,5 +88,7 @@ export type CompletionIntervalResult = {
  * prerequisites are satisfied; unknown effort propagates through every successor.
  * Sampling is O(samples * (items + edges)), with no shared-resource/calendar model.
  */
-export declare function simulateCompletionIntervals(corpus: readonly PmItem[], options: CompletionIntervalOptions, graph: PrerequisiteGraph): CompletionIntervalResult;
+export declare function simulateCompletionIntervals(rawCorpus: readonly PmItem[], rawOptions: CompletionIntervalOptions, suppliedGraph?: PrerequisiteGraph): CompletionIntervalResult;
+/** Internal CLI adapter consumes an immutable schema receipt; untrusted callers use the public sampler. */
+export declare function runValidatedIntervals(receipt: unknown, suppliedGraph?: PrerequisiteGraph): CompletionIntervalResult;
 //# sourceMappingURL=uncertainty.d.ts.map

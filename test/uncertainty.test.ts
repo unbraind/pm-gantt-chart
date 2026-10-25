@@ -129,8 +129,7 @@ test("point estimates, explicit zero, fixed ranges, empty scope and calendar ass
   }
   assert.equal(simulate([]).project![0].days, 0);
   assert.equal(simulate([{ ...task("a", 480), deadline: "2028-01-01", created_at: "2027-01-01" }]).project![0].days, 1);
-  const next = simulate([task("a", 480)], { ...options, from: "9999-12-31" });
-  assert.equal(next.project![0].finish, "+010000-01-01T00:00:00.000Z");
+  refused(completionIntervals([task("a", 480)], { ...options, from: "9999-12-31" }), "invalid_estimate");
 });
 
 test("unknown estimates and their downstream completion stay unknown without hiding known work", () => {
@@ -159,7 +158,7 @@ test("sensitivity ranks the dominating estimate and describes constant-output ca
   assert.equal(result.items.length, 1);
   assert.equal(result.truncated, true);
   assert.equal(result.receipt.tasks.length, 3, "output limit cannot truncate replay inputs");
-  for (const range of [[0, 1], [0, Number.MIN_VALUE]] satisfies [number, number][]) {
+  for (const range of [[0, 1], [1 / 60, 1]] satisfies [number, number][]) {
     const fixed = simulate([task("a", 48000), task("b")], { ...options, estimates: { b: range } });
     assert.equal(fixed.sensitivity[0].correlation, 0);
     assert.equal(fixed.dominantEstimate, null);
@@ -167,11 +166,11 @@ test("sensitivity ranks the dominating estimate and describes constant-output ca
   // Equal distributions can yield a stable tie at zero association.
   const tied = simulate([task("fixed", 48000), task("z"), task("a")], { ...options, estimates: { a: [0, 1], z: [0, 1] } });
   assert.deepEqual(tied.sensitivity.map((row) => row.id), ["a", "z"]);
-  const tiny = simulate([task("a"), task("b")], { ...options, estimates: { a: [0, Number.MIN_VALUE], b: [480, 960] } });
-  assert.equal(tiny.sensitivity.find((row) => row.id === "a")!.correlation, 0);
-  // Nonconstant subnormal finishes may have unmeasurably small squared deviations.
-  const subnormal = simulate([task("a")], { ...options, minutesPerDay: 1440, estimates: { a: [0, 1e-160] } });
-  assert.equal(subnormal.sensitivity[0].correlation, 0);
+  for (const max of [Number.MIN_VALUE, 1e-160]) refused(completionIntervals([task("a")], { ...options, estimates: { a: [0, max] } }), "invalid_estimate");
+  // A declared rare tail can be absent from a finite draw corpus while another task varies.
+  const fixedSample = simulate([task("a"), task("b")], { ...options, samples: 100, seed: 0,
+    estimates: { a: { kind: "empirical", values: [...new Array<number>(1999).fill(1), 2] }, b: [480, 960] } });
+  assert.equal(fixedSample.sensitivity.find((row) => row.id === "a")!.correlation, 0);
 });
 
 test("completed prerequisites are satisfied, contextual edges ignored and custom ordering honored", () => {
@@ -192,7 +191,7 @@ for (const invalid of [
   { limit: 0 }, { limit: 201 }, { quantiles: [] }, { quantiles: Array(10).fill(0) as number[] }, { quantiles: [-0.1] }, { quantiles: [1.1] },
   { quantiles: [NaN] }, { quantiles: [0.5, 0.5] }, { quantiles: [0.9, 0.1] },
 ] satisfies Partial<CompletionIntervalOptions>[]) {
-  test(`invalid uncertainty controls ${JSON.stringify(invalid)}`, () => refused(completionIntervals([task("a", 480)], { ...options, ...invalid }), "invalid_scenario"));
+  test(`invalid uncertainty controls ${JSON.stringify(invalid)}`, () => refused(completionIntervals([task("a", 480)], { ...options, ...invalid }), "invalid_estimate"));
 }
 
 test("invalid estimates, incomplete graphs and bounded work are refused", () => {
@@ -230,7 +229,7 @@ test("real non-git tracker: packed JSON/TOON CLI, typed remedies, SDK harness an
   }
   const denied = invoke([...args, "--samples", "0", "--json"]);
   assert.equal(denied.status, 2, denied.stderr);
-  assert.match(denied.stdout + denied.stderr, /invalid_scenario/);
+  assert.match(denied.stdout + denied.stderr, /invalid_estimate/);
   const originalPath = process.env.PATH;
   process.env.PATH = bin;
   try {
@@ -259,6 +258,14 @@ test("real non-git tracker: packed JSON/TOON CLI, typed remedies, SDK harness an
       assert.equal(data.remediation, data.remedy);
       assert.equal(receipt.exitCode, 2);
     }
+    writeFileSync(file, JSON.stringify({ absent: { kind: "point", minutes: 60 } }));
+    const absent = await harness.runCommand({ command: "gantt uncertainty", pmRoot, options: { ...base, estimates: file } });
+    const refusal = absent.result as CompletionIntervalResult & { remediation: string };
+    refused(refusal, "invalid_estimate");
+    if (refusal.ok) assert.fail("expected absent-work refusal after successful input validation");
+    assert.match(refusal.message, /absent or completed work/);
+    assert.equal(refusal.remediation, refusal.remedy);
+    assert.equal(absent.exitCode, 2);
   } finally { process.env.PATH = originalPath; }
   assert.equal(snapshot(pmRoot), before, "durable items, settings, dependencies and append-only history remain byte-identical");
 });

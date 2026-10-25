@@ -852,7 +852,7 @@ test("command and exporter refuse every independent incomplete or malformed enve
     ["tags not an array", completeListAllEnvelope({ items: [{ id: "fixture-1", title: "Fixture", status: "open", tags: "agent" }] }), /tags must be an array of strings/],
     ["non-string tag", completeListAllEnvelope({ items: [{ id: "fixture-1", title: "Fixture", status: "open", tags: [1] }] }), /tags must be an array of strings/],
     ["meta not an object", completeListAllEnvelope({ items: [{ id: "fixture-1", title: "Fixture", status: "open", meta: [] }] }), /meta must be an object/],
-    ["invalid estimate", completeListAllEnvelope({ items: [{ id: "fixture-1", title: "Fixture", status: "open", estimated_minutes: -1 }] }), /estimated_minutes must be a non-negative finite number/],
+    ["invalid estimate", completeListAllEnvelope({ items: [{ id: "fixture-1", title: "Fixture", status: "open", estimated_minutes: -1 }] }), /Invalid duration input at storedEstimate/],
     ["dependencies not an array", completeListAllEnvelope({ items: [{ id: "fixture-1", title: "Fixture", status: "open", dependencies: {} }] }), /dependencies must be an array/],
     ["non-object dependency", completeListAllEnvelope({ items: [{ id: "fixture-1", title: "Fixture", status: "open", dependencies: [null] }] }), /dependency 0 must have a non-empty id/],
     ["missing dependency id", completeListAllEnvelope({ items: [{ id: "fixture-1", title: "Fixture", status: "open", dependencies: [{}] }] }), /dependency 0 must have a non-empty id/],
