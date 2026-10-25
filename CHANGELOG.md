@@ -6,10 +6,6 @@
 
 - Compare resource-constrained schedule scenarios and select revision-checked plans ([pm-gantt-chart-resource-scenarios](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-resource-scenarios.toon))
 
-### Fixed
-
-- Use registry ordering semantics for Gantt schedules and inverse-edge cycle detection ([pm-gantt-chart-github-072477cd0a70-135](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-135.toon))
-
 ### Other
 
 - Reconcile stale in-progress tracker records (2026-10-23) ([pm-gantt-chart-reconcile-1023](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-reconcile-1023.toon))
@@ -23,6 +19,7 @@
 
 ### Fixed
 
+- Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-169](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-169.toon))
 - Replace non-installable README source shorthand with registry activation ([pm-gantt-chart-install-routes-1022](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-install-routes-1022.toon))
 
 ## 2026.10.23 - 2026-10-23
@@ -34,6 +31,7 @@
 
 ### Fixed
 
+- Seeded uncertainty changes per-ID quantiles when accepted Unicode IDs are reordered ([pm-gantt-chart-github-072477cd0a70-167](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-167.toon))
 - The changelog gate stamps an untagged version with the current date, so its verdict flips every midnight with no commit ([pm-gantt-chart-jv7f](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-jv7f.toon))
 - Shell scalar assignments are read from raw text, so a comment can flag an unattested publish ([pm-gantt-chart-grjk](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-grjk.toon))
 - The release job authenticated with a stored npm token that expired, so publishing stopped while every other gate stayed green ([pm-gantt-chart-mzvd](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-mzvd.toon))
@@ -55,11 +53,6 @@
 - Standalone SVG becomes solid black in Inkscape after CSS-variable paints in \#152 ([pm-gantt-chart-github-072477cd0a70-153](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-153.toon))
 
 ## 2026.10.15 - 2026-10-15
-
-### Fixed
-
-- Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-81](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-81.toon))
-- Full git history retains personal identity and redacted host-path artifacts ([pm-gantt-chart-github-072477cd0a70-71](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-71.toon))
 
 ### Other
 
@@ -121,6 +114,7 @@
 
 ### Fixed
 
+- Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-81](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-81.toon))
 - Split codeql-action bumps deadlock the codeql check, because init and analyze can only pass together ([pm-gantt-chart-vwdk](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-vwdk.toon))
 
 ## 2026.8.31 - 2026-08-31
@@ -135,6 +129,7 @@
 
 ### Fixed
 
+- Full git history retains personal identity and redacted host-path artifacts ([pm-gantt-chart-github-072477cd0a70-71](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-71.toon))
 - Adopt the canonical SDK-certified complete-list reader ([pm-gantt-chart-olgh](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-olgh.toon))
 
 ### Security
