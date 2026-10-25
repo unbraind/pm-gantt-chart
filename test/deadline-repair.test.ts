@@ -110,10 +110,10 @@ test("minimal repairs: inclusive horizon respects timestamp days and year overfl
   assert.equal(verify([timestamp], scenario).minimalChanges, 0);
   const items = [task("a", 3)];
   const options = { from: "9999-12-30", deadline: "9999-12-31", capacityShifts: [{ itemId: "a", minutesPerDay: 960 }] };
-  const result = verify(items, options);
-  assert.equal(result.baseline.finish, "10000-01-01");
-  assert.equal(result.minimalChanges, 1);
-  assert.equal(result.proposals[0].finish, "9999-12-31");
+  const result = proposeDeadlineRepairs(items, options);
+  refusal(result, "invalid_estimate");
+  if (result.ok) assert.fail("year-10000 baseline must not escape the output contract");
+  assert.match(result.message, /repair\.baseline\.finish/);
 });
 
 test("horizon comparison rejects the next local midnight when UTC day text still matches", () => {

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { writeFileSync, readFileSync, unlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
+import { setTimeout as delay } from "node:timers/promises";
 import * as sdkConcurrency from "@unbrained/pm-cli/sdk";
 import type { ExtensionApi } from "@unbrained/pm-cli/sdk/authoring";
 import { getHistoryPath, getItemPath, type ItemMetadata } from "@unbrained/pm-cli/sdk";
@@ -298,11 +299,12 @@ test("native SDK startTask and closeTask produce calibratable evidence without g
   const { sdk, pmRoot } = await calibrationTracker(t);
   await sdk.create({ id: "calibration-native", title: "Native lifecycle", description: "Public synthetic fixture", type: "Task", estimatedMinutes: "60", createMode: "progressive" });
   await sdk.startTask("calibration-native");
+  await delay(1100);
   await sdk.closeTask("calibration-native", "Synthetic fixture completed");
   const result = success(await calibrateObservedDurations(pmRoot, controls));
   assert.equal(result.evidence.sampleCount, 1);
   assert.equal(result.evidence.rows[0].plannedMinutes, 60);
-  assert.ok(result.distribution.values[0] >= 0 && result.distribution.values[0] < 60);
+  assert.ok(result.distribution.values[0] >= 1 / 60 && result.distribution.values[0] < 60);
 });
 
 
