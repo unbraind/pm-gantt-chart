@@ -122,6 +122,11 @@ test("calibration packed command emits compact TOON/JSON and typed refusals with
   const harness = await createExtensionTestHarness(extension, { capabilities: ["commands", "schema", "importers", "preflight"] });
   const bounded = await harness.runCommand({ command: "gantt calibrate", pmRoot, options: { type: "Task", minimumSamples: "1", limit: "1" } });
   assert.equal(success(bounded.result as DurationCalibrationResult).evidence.sampleCount, 1);
+  const defaults = await harness.runCommand({ command: "gantt calibrate", pmRoot, options: { type: "Task", "minimum-samples": "1" } });
+  assert.equal(success(defaults.result as DurationCalibrationResult).evidence.sampleCount, 1);
+  const invalid = await harness.runCommand({ command: "gantt calibrate", pmRoot });
+  assert.equal(invalid.exitCode, 2);
+  assertTypedRefusal(invalid.result as DurationCalibrationResult, "invalid_calibration");
 });
 
 test("500 seeded model operation sequences preserve SDK state, old-input replays, CRLF and relationships", async (t) => {
@@ -298,4 +303,26 @@ test("native SDK startTask and closeTask produce calibratable evidence without g
   assert.equal(result.evidence.sampleCount, 1);
   assert.equal(result.evidence.rows[0].plannedMinutes, 60);
   assert.ok(result.distribution.values[0] >= 0 && result.distribution.values[0] < 60);
+});
+
+
+test("a foreign writer corrupting the item after history capture is refused without repair", async (t) => {
+  const { pmRoot } = await calibrationTracker(t);
+  seedHistory(pmRoot, "calibration-foreign", [{}, { status: "in_progress" }, { status: "closed" }]);
+  const itemPath = getItemPath(pmRoot, "Task", "calibration-foreign", "toon");
+  let fired = false;
+  const hook = await createExtensionTestHarness({ name: "foreign-writer", activate(api: ExtensionApi) {
+    api.hooks.onRead((context) => {
+      if (!fired && context.path === getHistoryPath(pmRoot, "calibration-foreign")) {
+        fired = true;
+        writeFileSync(itemPath, "foreign unsupported content");
+      }
+    });
+  } }, { capabilities: ["hooks"] });
+  sdkConcurrency.setActiveExtensionHooks(hook.activation.hooks);
+  t.after(() => sdkConcurrency.resetActiveExtensionRuntimeState());
+  const result = await calibrateObservedDurations(pmRoot, controls);
+  assert.equal(fired, true);
+  assertTypedRefusal(result, "corpus_unavailable");
+  assert.equal(readFileSync(itemPath, "utf8"), "foreign unsupported content");
 });

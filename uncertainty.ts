@@ -89,7 +89,7 @@ function generator(seed: number): () => number {
   };
 }
 
-/** Inverse-CDF draws; fixed distributions consume no random values. */
+/** Empirical resampling or inverse-CDF draws; fixed parametric declarations consume no random values. */
 function draw(estimate: Exclude<ResolvedEstimate, null>, random: () => number): number {
   if (estimate.kind === "point") return estimate.minutes;
   if (estimate.kind === "empirical") return estimate.values[Math.floor(random() * estimate.values.length)];

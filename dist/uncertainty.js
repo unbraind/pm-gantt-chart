@@ -38,7 +38,7 @@ function generator(seed) {
         return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
     };
 }
-/** Inverse-CDF draws; fixed distributions consume no random values. */
+/** Empirical resampling or inverse-CDF draws; fixed parametric declarations consume no random values. */
 function draw(estimate, random) {
     if (estimate.kind === "point")
         return estimate.minutes;
