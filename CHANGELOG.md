@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-181](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-181.toon))
+
 ## 2026.10.25 - 2026-10-25
 
 ### Added

@@ -1,0 +1,21 @@
+id: pm-gantt-chart-github-072477cd0a70-182
+title: Point the npm homepage at the package's website and link the author
+description: "GH issue #182: https://github.com/unbraind/pm-gantt-chart/issues/182 · author @unbraind · created 2026-10-25T21:54:33Z · updated 2026-10-25T21:54:33Z"
+type: Issue
+status: open
+priority: 2
+tags[2]: "gh:unbraind/pm-gantt-chart#182","github_author:unbraind"
+created_at: "2026-10-25T21:54:33Z"
+updated_at: "2026-10-26T06:24:22.675Z"
+author: pm-github
+github_close_reason: ""
+github_closed_at: ""
+github_created_at: "2026-10-25T21:54:33Z"
+github_link_only: false
+github_number: 182
+github_release: ""
+github_state: open
+github_state_reason: unspecified
+github_updated_at: "2026-10-25T21:54:33Z"
+github_url: "https://github.com/unbraind/pm-gantt-chart/issues/182"
+body: "## Why\n\nOn npm, `pm-gantt-chart` links **Homepage** to `https://github.com/unbraind/pm-gantt-chart#readme`, the same place as the Repository link beside it. The package has its page in the pm cli package catalog: https://pm-cli.unbrained.dev/packages/pm-gantt-chart. Pointing npm there gives people a useful place to land and lets search engines tie the package to its website. The author field (`\"@unbraind\"`) has no link to the person behind the work.\n\n## What to change\n\nIn `package.json`:\n\n```json\n\"homepage\": \"https://pm-cli.unbrained.dev/packages/pm-gantt-chart\",\n\"author\": { \"name\": \"unbrained\", \"url\": \"https://unbrained.dev/about\" },\n```\n\n- Currently: `\"homepage\": \"https://github.com/unbraind/pm-gantt-chart#readme\"`, `\"author\": \"@unbraind\"`.\n- Keep `repository` and `bugs` as they are.\n- Set the repository's GitHub website (About → Website) to the same address (currently empty): `gh repo edit unbraind/pm-gantt-chart --homepage https://pm-cli.unbrained.dev/packages/pm-gantt-chart`.\n- npm takes the new fields with the next published version.\n\n## Acceptance\n\n- [ ] `npm view pm-gantt-chart homepage` prints `https://pm-cli.unbrained.dev/packages/pm-gantt-chart` after the next release.\n- [ ] `npm view pm-gantt-chart author` includes the url `https://unbrained.dev/about`.\n- [ ] The GitHub repository's website is `https://pm-cli.unbrained.dev/packages/pm-gantt-chart`.\n\n## Context\n\nChecked 2026-10-25 with `npm view` and the GitHub API. The same change has been filed in every published unbrained package's repository (pm-cli as unbraind/pm-cli#1594, its extensions, pm-web and the agent-ready clis), so they all link the same way: the product page as homepage, https://unbrained.dev/about as the author."
