@@ -3,14 +3,19 @@ title: Calibrate future task durations from verified observed episodes
 description: Compare planned effort at verified start with elapsed completion history for an explicitly selected task class; return an empirical sampled distribution without replacing estimates.
 type: Feature
 pm_format_version: 2
-status: in_progress
+status: closed
 priority: 2
 tags[2]: calibration,scheduling
 created_at: "2026-10-25T06:29:04.581Z"
-updated_at: "2026-10-25T14:49:39.780Z"
+updated_at: "2026-10-26T03:20:05.801Z"
+closed_at: "2026-10-26T03:19:52.401Z"
+completed_at: "2026-10-25T15:02:06.000Z"
 author: codex-agent
 acceptance_criteria: "Canceled, reopened and incomplete histories are disclosed; fewer than the declared sample minimum refuses calibration; a fixed corpus yields reproducible quantiles and sample counts."
-comments[21]{created_at,author,text}:
+resolution: "Delivered by PR #179, merge bb3180c2a1c46d451a7c70937c004fdf96b195fb, merged 2026-10-25T15:02:06Z. calibration.ts independently verifies current history, discloses canceled/reopened/incomplete exclusions, refuses insufficient_samples below the declared floor, and computes deterministic nearest-rank quantiles. test/calibration.test.ts checks all three acceptance criteria, fixed-corpus repetition, native SDK episodes and read-boundary interleavings."
+expected_result: "Verified observed episodes produce reproducible calibration only at or above the caller sample minimum, with excluded histories disclosed."
+actual_result: "The linked main regression suite passes; code inspection confirms exclusion counts, strict sample floor and deterministic quantiles. This closure makes no future productivity or probability claim."
+comments[22]{created_at,author,text}:
   "2026-10-25T06:29:08.387Z",codex-agent,"Overlap recheck: CLI source has no observed task-duration calibration; its calibration APIs concern emitted-byte budgets. Existing gantt uncertainty consumes declared point/uniform/triangular effort; pm-brief summarizeMomentum reports throughput and closed_at cycle-time summaries. This feature reads verified lifecycle episodes and compares elapsed calendar minutes with planned minutes at start. It supplies explicit empirical scenario inputs, makes no causal productivity claim, and never replaces estimates. New command has no import, sync, journal, claim, outbox or mutation path; existing export remains read-only. Model-based tests will exercise seeded SDK lifecycle histories and preservation of native state in a non-git tracker."
   "2026-10-25T06:42:34.131Z",codex-agent,"Implemented typed SDK calibrateObservedDurations and gantt calibrate, using complete-list certification, SDK current-item/history verification and SDK replay/patch primitives. Added explicit empirical scenario inputs. Evidence excludes whole reopened/canceled items, incomplete work, absent start estimates and unverified streams. Real public main 0586b6d: Task 25 selected/1 sample; Feature 17/0; Issue 42/1; Chore 27/1. Each refuses declared minimum 5; Task sample is 4.021616666666667 elapsed minutes vs 15 planned. Source copy remained unchanged without git available. Initial seeded model: 500 sequences, 2145 operations, 72 samples; repeated SDK item readback unchanged. Concurrency instrumentation now exercises 20 item/history read-boundary interleavings plus an unrelated-item revision change, preserving peer writes. Seven behavioral reverts were caught, including sample minimum, reopened/canceled exclusions, planned comparison, quantiles, revision validation and empirical sampling. No new import/sync/write journal or shared mutable state exists. Existing exporter is a schedule projection, not an item round trip. Full npm/Bun release gates will be measured in CI."
   "2026-10-25T06:44:38.398Z",codex-agent,"Local targeted verification passed: node --test test/calibration.test.ts test/uncertainty.test.ts test/smoke.test.ts reports 48 passed, 0 failed/skipped/canceled. Native SDK startTask/closeTask integration is included. npm run typecheck, npm run build:test, npm run lint, npm run docstring and npm run duplication pass with unchanged thresholds; duplication is 0 percent. Seven behavioral revert probes fail with ERR_ASSERTION when the corresponding behavior is removed. The linked pm test command also passed; this tracker has result tracking disabled, so this comment retains the measured result instead of changing project policy. CI full npm/Bun release gates are pending."
@@ -32,6 +37,7 @@ comments[21]{created_at,author,text}:
   "2026-10-25T14:36:55.571Z",codex-agent,"Round-2 class fix in duration-input.ts: positive forecast estimates/elapsed observations are 1/60..175200 minutes, zero work remains explicit, and bounded legacy rendering allows at most 10512000 minutes (20 365-day years). Closed output schemas guard calibration, sampling, resources and repairs before SDK/CLI success; resource selection checks supplied output before any note mutation. Every numeric leaf is finite and ranged, numeric nulls refuse, ISO dates remain within four-digit years, and invalid_estimate names the output field with a remedy. Ratios are 0..10512000. PM-linked node --test test/duration-output.test.ts passed serially: 4/4, zero failures/skips/cancellations; seed 1792202610, 2000 cases, 341 accepted calibrations and 1659 refusals, six SDK and four CLI routes, SDK readback plus unchanged durable hashes. 398 output-field corruption probes passed. The exact 1e-308 planned / 1440 elapsed case refuses in SDK and packed JSON CLI. The initial 120-second PM run timed out and a run overlapping the temporary revert was discarded; the isolated serial run with 300-second budget passed in 264 seconds. Separate resource/uncertainty tests passed 45/45; 300 supported scenarios retain the original digest. Public read-only corpus counts remain Task 25/1, Feature 17/0, Issue 42/1, Chore 27/1 with unchanged hashes. Typecheck, test typecheck, lint, docstrings and zero duplication pass. Revert proof: node test/revert-duration-output.ts removed only parse(outputSchemas[kind], value, kind); accepted SDK inputs emitted a year-10000 completion and the refusal assertion failed with ERR_ASSERTION. finally restored the source. CI full release gates pending."
   "2026-10-25T14:41:30.621Z",codex-agent,"CI 40203100080 measured 100 percent lines/branches/functions across all seven source modules; Node 22 passed 357/359 tests. The two failed legacy assertions expected now-unsupported behavior: an immediate native start/close under one second and a year-10000 repair baseline. Updated the actual SDK lifecycle fixture to wait 1100 milliseconds before close and assert the one-second floor; updated the repair fixture to assert invalid_estimate naming repair.baseline.finish. Both focused tests pass (2/2), with typecheck, test typecheck, lint and zero duplication passing. No production behavior or bounds changed in this follow-up. CI full npm/Bun gates rerun next."
   "2026-10-25T14:49:38.033Z",codex-agent,"Round-2 full CI passed: https://github.com/unbraind/pm-gantt-chart/actions/runs/40203455014 on 3d3087e160f9aebd296a71ee3ad391e070359b3d. Node 22.18.0 coverage, Node 26 npm run release:check, and Node 26 bun run release:check each passed 359/359 tests, zero failures/skips/cancellations, with all seven intended source modules at unchanged 100 percent lines/branches/functions. CodeQL, tracker health, committed build, lint, docstrings, zero duplication, production audit, packed npm/Bun/minimum-host acceptance and changelog/release workflow checks pass. CI confirms seed 1792202610: 2000 cases, 341 accepted / 1659 refused calibrations, 398 output corruption probes, six SDK and four CLI routes, no durable writes. Exact tiny-estimate case and output-only revert proof are recorded above; public data counts remain unchanged. Final evidence-only commit will be reverified, and the PR body will retain its exact-head receipt. No merge or release performed; item stays open for orchestrator verification."
+  "2026-10-26T03:13:37.388Z",codex-agent,"Closure audit on main bb3180c2a1c46d451a7c70937c004fdf96b195fb: merged PR #179 (bb3180c2a1c46d451a7c70937c004fdf96b195fb, merged 2026-10-25T15:02:06Z). calibration.ts independently verifies current history, discloses canceled/reopened/incomplete exclusions, refuses insufficient_samples below the declared floor, and computes deterministic nearest-rank quantiles. test/calibration.test.ts checks all three acceptance criteria, fixed-corpus repetition, native SDK episodes and read-boundary interleavings. All scoped acceptance criteria are represented by the inspected implementation and regressions. Existing behavioural revert evidence is retained; this tracker-only audit changes no runtime functions."
 files[16]{path,scope}:
   calibration.ts,project
   duration-input.ts,project
@@ -49,7 +55,7 @@ files[16]{path,scope}:
   test/uncertainty.test.ts,project
   test/validate-calibration.ts,project
   uncertainty.ts,project
-tests[3]:
+tests[4]:
   - command: node --test test/calibration.test.ts test/uncertainty.test.ts test/smoke.test.ts
     scope: project
     provenance:
@@ -74,8 +80,17 @@ tests[3]:
       source_ref: feat/observed-duration-calibration
     updated_by: codex-agent
     updated_at: "2026-10-25T14:29:10.900Z"
+  - command: node --test test/calibration.test.ts
+    scope: project
+    timeout_seconds: 600
+    provenance:
+      author: codex-agent
+      created_at: "2026-10-26T03:13:52.792Z"
+      source_kind: local_mutation
+      source_ref: chore/close-delivered-1026
 docs[3]{path,scope}:
   docs/duration-input-contract.md,project
   docs/observed-duration-calibration.md,project
   README.md,project
+close_reason: "Delivered by PR #179, merge bb3180c2a1c46d451a7c70937c004fdf96b195fb, merged 2026-10-25T15:02:06Z. calibration.ts independently verifies current history, discloses canceled/reopened/incomplete exclusions, refuses insufficient_samples below the declared floor, and computes deterministic nearest-rank quantiles. test/calibration.test.ts checks all three acceptance criteria, fixed-corpus repetition, native SDK episodes and read-boundary interleavings."
 body: ""
