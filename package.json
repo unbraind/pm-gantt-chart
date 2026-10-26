@@ -9,7 +9,7 @@
   "bugs": {
     "url": "https://github.com/unbraind/pm-gantt-chart/issues"
   },
-  "homepage": "https://github.com/unbraind/pm-gantt-chart#readme",
+  "homepage": "https://pm-cli.unbrained.dev/packages/pm-gantt-chart",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -74,7 +74,10 @@
     "project-management",
     "timeline"
   ],
-  "author": "@unbraind",
+  "author": {
+    "name": "unbrained",
+    "url": "https://unbrained.dev/about"
+  },
   "license": "MIT",
   "engines": {
     "node": ">=22.18.0"
