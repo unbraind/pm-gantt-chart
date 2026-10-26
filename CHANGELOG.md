@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Calibrate future task durations from verified observed episodes ([pm-gantt-chart-observed-duration](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-observed-duration.toon))
+
 ## 2026.10.25 - 2026-10-25
 
 ### Added
