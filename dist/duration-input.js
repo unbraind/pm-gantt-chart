@@ -279,7 +279,7 @@ const repairMove = { kind: "union", choices: [
         { kind: "object", fields: { kind: { kind: "literal", value: "scope_deferral" }, itemId: text, deferredMinutes: minutes } },
     ] };
 const driftDays = { kind: "number", min: -366, max: 366, integer: true };
-const driftChangeValue = { kind: "union", choices: [nil, text, { ...minutes, integer: true }, labels, calendar] };
+const driftChangeValue = { kind: "union", choices: [nil, text, { ...minutes, integer: true }, { ...labels, max: 2000 }, calendar] };
 const driftGap = { kind: "object", fields: { code: text, ids: { ...labels, max: 2000 }, remedy: { kind: "string", max: 1024 } } };
 const outputSchemas = {
     snapshot: { kind: "object", fields: { ok: successful, snapshot: scheduleSnapshot } },

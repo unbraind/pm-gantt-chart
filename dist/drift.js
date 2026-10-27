@@ -67,24 +67,26 @@ function evaluate(snapshot) {
 function delta(before, after) {
     return before === null || after === null ? null : (Date.parse(after) - Date.parse(before)) / 86400000;
 }
-/** Return an explicit prerequisite route or shared-resource route, including indirect contention. */
-function route(snapshot, source, goal) {
+/** Compute all causal routes once per edit; prerequisite routes precede shared-resource routes. */
+function routes(snapshot, sources) {
+    const result = new Map(), tasks = snapshot.tasks.filter((task) => task.role === "active").sort((a, b) => compareText(a.id, b.id));
     for (const contention of [false, true]) {
-        const queue = [[source]], seen = new Set([source]);
+        const roots = sources.filter((source) => tasks.some((task) => task.id === source));
+        const queue = roots.sort(compareText).map((source) => [source]), seen = new Set(roots);
         for (const path of queue) {
             const id = path[path.length - 1];
-            if (id === goal)
-                return path;
-            const task = snapshot.tasks.find((task) => task.id === id);
-            for (const next of snapshot.tasks) {
-                if (!seen.has(next.id) && (next.prerequisites.includes(id) || (contention && task.owner !== undefined && task.owner === next.owner))) {
+            if (!result.has(id))
+                result.set(id, path);
+            const task = tasks.find((task) => task.id === id);
+            for (const next of tasks) {
+                if (!seen.has(next.id) && (next.prerequisites.includes(id) || (contention && task.owner === next.owner))) {
                     seen.add(next.id);
                     queue.push([...path, next.id]);
                 }
             }
         }
     }
-    return [];
+    return result;
 }
 /** Enumerate individually reversible edits in stable order without assuming their effects add. */
 function reversals(before, after) {
@@ -166,11 +168,12 @@ export function explainScheduleDrift(rawBefore, rawAfter, rawOptions = {}) {
                 continue;
             }
             const restored = new Map(replay.scenarios[0].items.map((row) => [row.id, row]));
+            const afterRoutes = routes(after, edit.sources), beforeRoutes = routes(before, edit.sources);
             for (const row of moved) {
                 const witness = restored.get(row.id);
                 if (!witness || witness.finish === row.after)
                     continue;
-                const chain = edit.sources.flatMap((source) => [route(after, source, row.id), route(before, source, row.id)]).filter((path) => path.length > 0).sort((a, b) => a.length - b.length)[0];
+                const chain = [afterRoutes.get(row.id), beforeRoutes.get(row.id)].filter((path) => path !== undefined).sort((a, b) => a.length - b.length)[0];
                 if (chain)
                     row.causes.push({ change: edit.change.id, restoredFinish: witness.finish, effectDays: delta(witness.finish, row.after), chain });
             }

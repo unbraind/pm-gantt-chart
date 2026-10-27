@@ -295,7 +295,7 @@ const repairMove: Rule = { kind: "union", choices: [
 /** Closed success contracts check every promised numeric/date leaf before any SDK/CLI return. */
 type DurationOutputKind = "calibration" | "sampling" | "resources" | "repair" | "snapshot" | "drift";
 const driftDays: Rule = { kind: "number", min: -366, max: 366, integer: true };
-const driftChangeValue: Rule = { kind: "union", choices: [nil, text, { ...minutes, integer: true }, labels, calendar] };
+const driftChangeValue: Rule = { kind: "union", choices: [nil, text, { ...minutes, integer: true }, { ...labels, max: 2000 }, calendar] };
 const driftGap: Rule = { kind: "object", fields: { code: text, ids: { ...labels, max: 2000 }, remedy: { kind: "string", max: 1024 } } };
 const outputSchemas: Record<DurationOutputKind, Rule> = {
   snapshot: { kind: "object", fields: { ok: successful, snapshot: scheduleSnapshot } },

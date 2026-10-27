@@ -98,8 +98,8 @@ test("unsupported fields, scope, missing work, unknown status and incomplete com
   const oldPool = saved([task("a"), task("b")]);
   const separate = { ...oldPool, owners: { worker: calendar, other: calendar }, tasks: [{ ...task("a"), owner: "other" }, task("b")] };
   assert.deepEqual(compare(oldPool, separate).moved.find((row) => row.id === "b")!.causes[0].chain, ["a", "b"]);
-  const emptyTerminal = saved([{ id: "done", status: "closed", role: "terminal", prerequisites: [] }]);
-  const estimatedTerminal = saved([{ ...emptyTerminal.tasks[0], owner: "worker", minutes: 480 }]);
+  const emptyTerminal = saved([{ id: "done", status: "closed", role: "terminal", prerequisites: [] }, task("a")]);
+  const estimatedTerminal = saved([{ ...emptyTerminal.tasks[0], owner: "worker", minutes: 480 }, task("a")]);
   assert.equal(compare(emptyTerminal, estimatedTerminal).changes[0].before, null);
   assert.equal(compare(estimatedTerminal, emptyTerminal).changes[0].after, null);
   const terminal = saved([{ ...task("done"), role: "terminal" }, task("a", ["done"])]);
@@ -121,6 +121,15 @@ test("counterfactual cycles and joint interactions do not produce invented cause
   assert.ok(shiftedYears.moved[0].deltaDays! > 366); assert.equal(shiftedYears.moved[0].causes.length, 0);
   const tooMany = Array.from({ length: 33 }, (_, i) => task(`t${i}`, [], 1));
   assertTypedRefusal(explainScheduleDrift(saved(tooMany), saved(tooMany.map((row) => ({ ...row, minutes: 2 })))), "comparison_too_large");
+});
+
+test("maximum active scope shares route computation and still reports exact calendar consequences", () => {
+  const tasks = Array.from({ length: 200 }, (_, i) => task(`t${i}`, [], 1));
+  const before = { ...saved(tasks), through: "2027-10-19" };
+  const after = { ...before, owners: { worker: { ...calendar, minutesPerDay: 1 } } };
+  const result = compare(before, after, 1);
+  assert.equal(result.evaluations, 3); assert.equal(result.counts.moved, 199);
+  assert.equal(result.counts.returned, 1); assert.equal(result.moved[0].causes[0].chain.length, 1);
 });
 
 test("one strict schema rejects sparse arrays and extreme input/output numbers", () => {

@@ -11,7 +11,7 @@ export interface ScheduleTask {
     prerequisites: readonly string[];
     deadline?: string;
 }
-/** Portable saved engine inputs, without titles, bodies, paths, timestamps or cached computed dates. */
+/** Portable saved engine inputs, without titles, bodies, paths, capture times or cached computed dates. */
 export interface ScheduleSnapshot {
     version: 1;
     from: string;
