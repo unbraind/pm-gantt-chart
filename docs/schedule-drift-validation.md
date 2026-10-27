@@ -61,6 +61,7 @@ source directly, so stale compiled output cannot satisfy those proofs.
 
 The packed release acceptance matrix executes snapshot/drift with project-local
 npm/npx and Bun/bunx hosts, the minimum supported host, and isolated npm-global
-and Bun-global installations. Full npm and Bun release gate run URLs and exact
+and Bun-global installations on consumer host 2026.10.26; the development/minimum
+host remains pinned at 2026.10.20. Full npm and Bun release gate run URLs and exact
 suite counts are recorded in the PR after CI completes. Local work uses targeted
 tests, typecheck, lint, docstrings and duplication checks to limit host CPU load.

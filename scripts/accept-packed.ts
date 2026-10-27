@@ -34,6 +34,8 @@ const packageJson = JSON.parse(
 ) as PackageContract;
 const cliPackage = "@unbrained/pm-cli";
 const developmentVersion = packageJson.devDependencies[cliPackage];
+/** Exercise the deployed consumer separately while retaining the repository's development SDK pin. */
+const consumerVersion = "2026.10.26";
 const minimumMatch = packageJson.peerDependencies[cliPackage]?.match(/^>=\s*(\d+\.\d+\.\d+)$/u);
 const minimumVersion = minimumMatch?.[1];
 if (!developmentVersion || !/^\d+\.\d+\.\d+$/u.test(developmentVersion) || !minimumVersion) {
@@ -163,8 +165,8 @@ try {
     { name: "npm-current", manager: "npm", hostVersion: developmentVersion },
     { name: "bun-current", manager: "bun", hostVersion: developmentVersion },
     { name: "npm-minimum", manager: "npm", hostVersion: minimumVersion },
-    { name: "npm-global", manager: "npm", hostVersion: developmentVersion, global: true },
-    { name: "bun-global", manager: "bun", hostVersion: developmentVersion, global: true },
+    { name: "npm-global", manager: "npm", hostVersion: consumerVersion, global: true },
+    { name: "bun-global", manager: "bun", hostVersion: consumerVersion, global: true },
   ];
   const receipts: AcceptanceReceipt[] = [];
 
