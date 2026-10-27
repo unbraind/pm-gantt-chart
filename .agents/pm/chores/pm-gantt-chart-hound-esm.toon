@@ -6,7 +6,7 @@ status: closed
 priority: 2
 tags[2]: ci,review-bots
 created_at: "2026-10-17T11:40:05.388Z"
-updated_at: "2026-10-27T09:09:18.553Z"
+updated_at: "2026-10-27T09:38:07.471Z"
 closed_at: "2026-10-27T09:09:17.480Z"
 completed_at: "2026-10-27T07:14:35.000Z"
 author: codex-agent
@@ -14,7 +14,7 @@ acceptance_criteria: Hound no longer lints generated dist/ output; no other lint
 resolution: "Merged PR #189 at 9857eb2c8242c060a21f67153906983e5f80ca88; inspected .hound.yml and ran node -e \"require('node:assert/strict').match(require('node:fs').readFileSync('.hound.yml','utf8'), /^jshint:\\n  enabled: false\\s*$/m)\" on main. Hound JSHint is explicitly disabled for generated ES2022 output. The merged configuration leaves package lint and release gates unchanged."
 expected_result: Hound no longer lints generated dist/ output; no other lint or gate changes
 actual_result: Hound JSHint is explicitly disabled for generated ES2022 output. The merged configuration leaves package lint and release gates unchanged.
-comments[8]{created_at,author,text}:
+comments[9]{created_at,author,text}:
   "2026-10-17T12:20:07.761Z",codex-agent,Verified all 19 Hound threads target generated ESM in dist. Match the sibling pm-graph .jshintignore exclusions for dist and node_modules; source ESLint and TypeScript checks remain active. No source syntax change is needed.
   "2026-10-17T12:39:38.205Z",codex-agent,"Round 1 verification: .jshintignore is byte-identical to the sibling pm-graph policy and excludes only dist and node_modules. Canonical source ESLint passes. npm run release:check and bun run release:check each pass 249/249 tests, zero failures/skips, 100% lines/branches/functions for all three gated runtime sources, zero duplication, production audit, and all three packed acceptance scenarios. No runtime source or generated output changed. After the configuration push, reply and resolve only the 19 Hound parser-mode threads."
   "2026-10-23T15:27:11.672Z",codex-agent,"STALE-CLAIM: audited main 9c887a56a99c7108591d9f223d09e3937ecf3e55; no open PR or recently pushed live branch references this record. Inspected: .jshintignore. Remaining: Generated-output exclusions are present, but retained local lint/full-gate results do not prove the external Hound parser acceptance after the config push. Verify the actual service outcome before declaring this integration delivered. Release historical contention and retain real work as open; no delivery/cancellation is claimed."
@@ -23,6 +23,7 @@ comments[8]{created_at,author,text}:
   "2026-10-27T04:19:35.047Z",codex-agent,"Validation complete: focused configuration assertion and both unchanged release:check gates passed under isolated Git identity with at most two test workers. Changelog regenerated from fetched tags; final changelog:check follows all tracker writes. No lint, gate, source, dependency or generated dist changes. Hound service behavior will be observable on the PR; no merge authorized. Measured test counts: npm: 363 tests in each full suite; gate exit 0; bun: 363 tests in each full suite; gate exit 0. Reused the existing Hound item as a Chore under the same ID; the original history remains a byte-identical prefix and existing exclusions and lint configuration are preserved."
   "2026-10-27T09:09:09.519Z",codex-agent,"Closure audit: verify every acceptance criterion on current main against merged PR #189 (9857eb2c8242c060a21f67153906983e5f80ca88), inspect .hound.yml, and run the focused linked check before closing. Completion will be the merge timestamp 2026-10-27T07:14:35Z."
   "2026-10-27T09:09:16.422Z",codex-agent,"Merged PR #189 at 9857eb2c8242c060a21f67153906983e5f80ca88; inspected .hound.yml and ran node -e \"require('node:assert/strict').match(require('node:fs').readFileSync('.hound.yml','utf8'), /^jshint:\\n  enabled: false\\s*$/m)\" on main. Hound JSHint is explicitly disabled for generated ES2022 output. The merged configuration leaves package lint and release gates unchanged. Full unchanged npm and Bun release gates run in CI for this tracker-only closure PR; prior behavioral revert evidence remains in the merged implementation history."
+  "2026-10-27T09:38:07.468Z",codex-agent,"Bounded CI watch: required checks at 063d2d5815d1bc9a08f163f9d3205d53c80b54c8 remain pending after approximately 27 minutes: test (22.18.0), test (26). Runs: https://github.com/unbraind/pm-gantt-chart/actions/runs/40478869989. No red check was reported; runner scheduling has not completed these jobs. This append-only receipt changes tracker evidence only. The final receipt commit will have its own CI; no full release-gate pass is claimed for a pending head, and the orchestrator pipeline must wait before merging."
 files[4]{path,scope}:
   .hound.yml,project
   .jshintignore,project
