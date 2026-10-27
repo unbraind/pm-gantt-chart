@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import type { TestContext } from "node:test";
@@ -55,4 +55,12 @@ export async function packedTracker(t: TestContext, prefix: string) {
   /** Execute the installed command without a git executable available. */
   const invoke = (args: string[]) => spawnSync(process.execPath, [cli, ...args], { cwd: root, env: noGit, encoding: "utf8" });
   return { root, cli, pmRoot, sdk, bin, noGit, invoke };
+}
+
+/** Make archived public evidence read-only while allowing disposable SDK read caches. */
+export function protectPublicTracker(root: string): void {
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) protectPublicTracker(path); else chmodSync(path, 0o444);
+  }
 }

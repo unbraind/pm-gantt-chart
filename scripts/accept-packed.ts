@@ -1,7 +1,9 @@
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { devNull, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import type { ScheduleSnapshot } from "../index.ts";
+import { wideScheduleSnapshot } from "../test/schedule-adversaries.ts";
 
 /** Package fields that define the installed-extension acceptance matrix. */
 interface PackageContract {
@@ -14,6 +16,7 @@ interface AcceptanceScenario {
   readonly name: string;
   readonly manager: "npm" | "bun";
   readonly hostVersion: string;
+  readonly global?: true;
 }
 
 /** Machine-readable proof emitted for one successful packed extension. */
@@ -24,6 +27,10 @@ interface AcceptanceReceipt {
   readonly export_stdout_bytes: number;
   readonly stderr_bytes: number;
   readonly fixture_present: true;
+  readonly drift_delta_days: 1;
+  readonly replay_items: 2000;
+  readonly replay_bytes: number;
+  readonly prototype_calendars: true;
 }
 
 const repoRoot = resolve(import.meta.dirname, "..");
@@ -32,6 +39,8 @@ const packageJson = JSON.parse(
 ) as PackageContract;
 const cliPackage = "@unbrained/pm-cli";
 const developmentVersion = packageJson.devDependencies[cliPackage];
+/** Exercise the deployed consumer separately while retaining the repository's development SDK pin. */
+const consumerVersion = "2026.10.26";
 const minimumMatch = packageJson.peerDependencies[cliPackage]?.match(/^>=\s*(\d+\.\d+\.\d+)$/u);
 const minimumVersion = minimumMatch?.[1];
 if (!developmentVersion || !/^\d+\.\d+\.\d+$/u.test(developmentVersion) || !minimumVersion) {
@@ -67,11 +76,11 @@ const commandTimeoutMs = 5 * 60 * 1000;
  * @param cwd - Fresh scenario directory or the package root.
  * @returns Captured UTF-8 process output.
  */
-function run(command: string, args: string[], cwd: string): SpawnSyncReturns<string> {
+function run(command: string, args: string[], cwd: string, environment = cleanEnvironment): SpawnSyncReturns<string> {
   const result = spawnSync(command, args, {
     cwd,
     encoding: "utf8",
-    env: cleanEnvironment,
+    env: environment,
     maxBuffer: 64 * 1024 * 1024,
     timeout: commandTimeoutMs,
   });
@@ -94,6 +103,11 @@ function run(command: string, args: string[], cwd: string): SpawnSyncReturns<str
  * @returns Captured pm output.
  */
 function runPm(scenario: AcceptanceScenario, cwd: string, args: string[]): SpawnSyncReturns<string> {
+  if (scenario.global) {
+    const prefix = join(cwd, "global");
+    const launcher = process.platform === "win32" && scenario.manager === "npm" ? join(prefix, "pm.cmd") : join(prefix, "bin", process.platform === "win32" ? "pm.exe" : "pm");
+    return run(launcher, args, cwd);
+  }
   return scenario.manager === "npm"
     ? run(npxCommand, ["--no-install", "pm", ...args], cwd)
     : run(bunxCommand, ["--no-install", "pm", ...args], cwd);
@@ -156,13 +170,19 @@ try {
     { name: "npm-current", manager: "npm", hostVersion: developmentVersion },
     { name: "bun-current", manager: "bun", hostVersion: developmentVersion },
     { name: "npm-minimum", manager: "npm", hostVersion: minimumVersion },
+    { name: "npm-global", manager: "npm", hostVersion: consumerVersion, global: true },
+    { name: "bun-global", manager: "bun", hostVersion: consumerVersion, global: true },
   ];
   const receipts: AcceptanceReceipt[] = [];
 
   for (const scenario of scenarios) {
     const scenarioRoot = join(temporaryRoot, scenario.name);
     mkdirSync(scenarioRoot);
-    if (scenario.manager === "npm") {
+    if (scenario.global) {
+      const prefix = join(scenarioRoot, "global");
+      if (scenario.manager === "npm") run(npmCommand, ["install", "--global", "--prefix", prefix, "--ignore-scripts", `${cliPackage}@${scenario.hostVersion}`, tarball], scenarioRoot);
+      else run(bunCommand, ["add", "--global", "--ignore-scripts", `${cliPackage}@${scenario.hostVersion}`, tarball], scenarioRoot, { ...cleanEnvironment, BUN_INSTALL: prefix });
+    } else if (scenario.manager === "npm") {
       run(npmCommand, ["init", "-y"], scenarioRoot);
       run(npmCommand, ["install", "--ignore-scripts", `${cliPackage}@${scenario.hostVersion}`, tarball], scenarioRoot);
     } else {
@@ -179,7 +199,8 @@ try {
       "--status",
       "open",
       "--create-mode",
-      "progressive",
+      "progressive", "--assignee", "worker", "--estimate", "480",
+      "--unset", "parent", "--unset", "goal", "--unset", "objective", "--unset", "sprint", "--unset", "release",
     ]);
     runPm(scenario, scenarioRoot, ["install", tarball, "--project"]);
 
@@ -208,6 +229,28 @@ try {
     ) {
       throw new Error(`${scenario.name} pm gantt export omitted the real tracker fixture`);
     }
+    const fixture = (exportedItems as Record<string, unknown>[]).find((item) => item.title === fixtureTitle)!;
+    const controlsFile = join(scenarioRoot, "controls.json"), beforeFile = join(scenarioRoot, "before.json"), afterFile = join(scenarioRoot, "after.json");
+    writeFileSync(controlsFile, JSON.stringify({ from: "2026-10-19", through: "2026-10-30", timeZone: "UTC", scenarios: [{ id: "saved", owners: {
+      worker: { weekdays: [1, 2, 3, 4, 5, 6, 7], holidays: [], minutesPerDay: 480, minutesPerWeek: 3360, totalMinutes: 10000 },
+    } }] }));
+    const captureArgs = ["gantt", "snapshot", "--scenarios", controlsFile, "--json"];
+    const beforeEnvelope = requireJsonObject(runPm(scenario, scenarioRoot, captureArgs).stdout, `${scenario.name} capture`);
+    runPm(scenario, scenarioRoot, ["update", String(fixture.id), "--estimate", "960"]);
+    const afterEnvelope = requireJsonObject(runPm(scenario, scenarioRoot, captureArgs).stdout, `${scenario.name} capture`);
+    const savedBefore = beforeEnvelope.snapshot as ScheduleSnapshot, savedAfter = afterEnvelope.snapshot as ScheduleSnapshot;
+    const context = wideScheduleSnapshot().tasks.slice(1);
+    writeFileSync(beforeFile, JSON.stringify({ ...beforeEnvelope, snapshot: { ...savedBefore, tasks: [...savedBefore.tasks, ...context] } }, null, 2));
+    const calendars = new Map(Object.entries(savedAfter.owners));
+    for (const name of ["constructor", "__proto__"]) calendars.set(name, savedAfter.owners.worker);
+    const replay = JSON.stringify({ ...afterEnvelope, snapshot: { ...savedAfter, owners: Object.fromEntries(calendars), tasks: [...savedAfter.tasks, ...context] } }, null, 4);
+    writeFileSync(afterFile, replay);
+    if (Buffer.byteLength(replay) <= 262144) throw new Error("Packed replay must exceed the former 256 KiB limit");
+    const driftArgs = ["gantt", "drift", "--before", beforeFile, "--after", afterFile];
+    const drift = requireJsonObject(runPm(scenario, scenarioRoot, [...driftArgs, "--json"]).stdout, `${scenario.name} drift`);
+    if (drift.ok !== true || !Array.isArray(drift.moved) || drift.moved[0]?.deltaDays !== 1) throw new Error(`${scenario.name} must report exactly one day of estimate drift`);
+    if ((drift.counts as Record<string, unknown>).tasks !== 2000 || !Array.isArray(drift.changes) || drift.changes.length !== 3) throw new Error(`${scenario.name} lost saved context or prototype-named calendars`);
+    if (!runPm(scenario, scenarioRoot, driftArgs).stdout.includes("deltaDays")) throw new Error(`${scenario.name} drift TOON is missing its delta`);
     const stderr = `${command.stderr}\n${exported.stderr}`;
     if (stderr.includes("deprecated") || stderr.includes("list-all")) {
       throw new Error(`${scenario.name} emitted a deprecated-command diagnostic: ${stderr.trim()}`);
@@ -219,6 +262,10 @@ try {
       export_stdout_bytes: Buffer.byteLength(exported.stdout),
       stderr_bytes: Buffer.byteLength(stderr),
       fixture_present: true,
+      drift_delta_days: 1,
+      replay_items: 2000,
+      replay_bytes: Buffer.byteLength(replay),
+      prototype_calendars: true,
     });
   }
 

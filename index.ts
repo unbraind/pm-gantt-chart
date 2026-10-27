@@ -8,13 +8,13 @@ import type {
 } from "@unbrained/pm-cli/sdk/authoring";
 import type { brandValues } from './brand-values.ts';
 import { brandCss, brandStatus, brandStatuses, brandValue, mermaidBrand, type BrandTheme } from "./brand.ts";
-import { certifyCompleteListResult, EXIT_CODE, inspectCompleteListResult, PmClient, resolveAuthor, readSettings } from "@unbrained/pm-cli/sdk";
+import { certifyCompleteListResult, EXIT_CODE, inspectCompleteListResult, PmClient, resolveAuthor, readSettings, resolveRuntimeStatusRegistry } from "@unbrained/pm-cli/sdk";
 import type { RelationshipKindRegistry } from "@unbrained/pm-cli/sdk";
 import type { ContractsResult } from "@unbrained/pm-cli/sdk/runtime";
 import type { GraphTraversalResult } from "@unbrained/pm-cli/sdk/graph";
 import { resolveWorkspaceRelationshipKindRegistry } from "@unbrained/pm-cli/sdk/graph";
-import { readFileSync, statSync, writeFileSync } from "node:fs";
-import { durationFlagNumber, durationFlagQuantiles, durationInputGraph, validateDurationInput, validateDurationOutput, type ValidatedInputs } from "./duration-input.ts";
+import { writeFileSync } from "node:fs";
+import { ownDurationValue, durationFlagNumber, durationFlagQuantiles, durationInputGraph, validateDurationInput, validateDurationOutput, type ValidatedInputs } from "./duration-input.ts";
 import { calibrateObservedDurations } from "./calibration.ts";
 export { calibrateObservedDurations } from "./calibration.ts";
 export type { DurationCalibrationOptions, DurationCalibrationEvidence, DurationCalibrationResult, DurationCalibrationRefusalCode, DurationExclusion } from "./calibration.ts";
@@ -23,6 +23,11 @@ export type { CompletionIntervalOptions, CompletionIntervalResult, CompletionInt
 import { runValidatedResources, computeResourceScenarios, applyResourceSelection, type ResourceScenarioOptions } from "./resources.ts";
 export { applyResourceSelection } from "./resources.ts";
 export type { ResourceCalendar, ResourceAlternative, ResourceScenarioOptions, ResourceRefusalCode, ResourceRefusal, ResourceScheduleRow, ResourceWitness, ResourceScenarioSuccess, ResourceScenarioResult, ResourceSelection } from "./resources.ts";
+import { readScheduleFile } from "./schedule-files.ts";
+import { captureScheduleScenario, explainScheduleDrift, type ScheduleSnapshot } from "./drift.ts";
+export { SCHEDULE_SNAPSHOT_MAX_BYTES, SCHEDULE_FILE_MAX_BYTES } from "./duration-input.ts";
+export { captureScheduleScenario, explainScheduleDrift, validateScheduleSnapshot } from "./drift.ts";
+export type { ScheduleTask, ScheduleSnapshot, ScheduleDriftOptions, ScheduleDriftRefusal, ScheduleGap, ScheduleChange, ScheduleCause, ScheduleMovedRow, ScheduleDriftSuccess, ScheduleDriftResult } from "./drift.ts";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -2444,7 +2449,7 @@ function renderSvg(rows: GanttRow[], opts: GanttOptions, windowStart: Date): str
  */
 function readOption(options: Record<string, unknown>, ...keys: string[]): unknown {
   for (const key of keys) {
-    const value = options[key];
+    const value = ownDurationValue(options, key);
     if (value !== undefined && value !== null) return value;
   }
   return undefined;
@@ -2471,7 +2476,7 @@ function readOption(options: Record<string, unknown>, ...keys: string[]): unknow
  */
 function readBoolOption(options: Record<string, unknown>, ...keys: string[]): boolean {
   for (const key of keys) {
-    if (options[key] !== undefined) return Boolean(options[key]);
+    if (Object.hasOwn(options, key) && options[key] !== undefined) return Boolean(options[key]);
   }
   return false;
 }
@@ -2855,6 +2860,25 @@ function decodeCompleteListAll(parsed: unknown): PmItem[] {
   return rows;
 }
 
+/** Preserve typed refusal details while giving every scheduling command the same usage status. */
+function scheduleUsage<T extends { ok: false; remedy: string }>(result: T) {
+  return { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
+}
+
+/** Resource capture and evaluation share bounded controls and one certified native corpus read. */
+async function withResourceInputs<T>(ctx: CommandHandlerContext, consume: (items: PmItem[], controls: ResourceScenarioOptions) => Promise<T>) {
+  const input = readScheduleFile(readOption(ctx.options, "scenarios"));
+  if (!input.ok) return scheduleUsage(input);
+  const corpus = await readDurationCorpus(ctx.pm_root);
+  if (!corpus.ok) return scheduleUsage(corpus);
+  return consume(corpus.items, input.value as ResourceScenarioOptions);
+}
+
+/** Accept either the producer's snapshot envelope or its bare snapshot value. */
+function scheduleFileValue(value: unknown): ScheduleSnapshot {
+  return (isRecord(value) && Object.hasOwn(value, "snapshot") ? value.snapshot : value) as ScheduleSnapshot;
+}
+
 /** Read forecast inputs directly through the SDK, preserving native number semantics. */
 async function readDurationCorpus(pmRoot: string) {
   try {
@@ -3160,6 +3184,39 @@ export default defineExtension({
       },
     });
     api.registerCommand({
+      name: "gantt snapshot",
+      description: "Save replayable scheduling inputs from one explicit resource alternative.",
+      read_output: { row_keys: [] },
+      flags: [{ long: "--scenarios", value_name: "file", description: "Resource controls containing exactly one alternative (256 KiB maximum)." }],
+      async run(ctx: CommandHandlerContext) {
+        return withResourceInputs(ctx, async (items, controls) => {
+          const graph = await commandPrerequisiteGraph(items, ctx.pm_root);
+          const registry = resolveRuntimeStatusRegistry((await readSettings(ctx.pm_root)).schema);
+          const result = captureScheduleScenario(items, controls, registry, graph);
+          return result.ok ? result : scheduleUsage(result);
+        });
+      },
+    });
+    api.registerCommand({
+      name: "gantt drift",
+      description: "Explain goal-date changes between two saved resource schedules with counterfactual evidence.",
+      read_output: { row_keys: ["moved"] },
+      flags: [
+        { long: "--before", value_name: "file", description: "Earlier saved snapshot or snapshot command JSON envelope (16 MiB maximum)." },
+        { long: "--after", value_name: "file", description: "Later saved snapshot or snapshot command JSON envelope (16 MiB maximum)." },
+        { long: "--limit", value_name: "n", description: "Moved goal rows to return, 1..200 (default 20)." },
+      ],
+      run(ctx: CommandHandlerContext) {
+        const before = readScheduleFile(readOption(ctx.options, "before"), "snapshot"), after = readScheduleFile(readOption(ctx.options, "after"), "snapshot");
+        if (!before.ok) return { ...before, exit_code: EXIT_CODE.USAGE, remediation: before.remedy };
+        if (!after.ok) return { ...after, exit_code: EXIT_CODE.USAGE, remediation: after.remedy };
+        const result = explainScheduleDrift(scheduleFileValue(before.value), scheduleFileValue(after.value), {
+          limit: durationFlagNumber(readOption(ctx.options, "limit")) as number | undefined,
+        });
+        return result.ok ? result : { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
+      },
+    });
+    api.registerCommand({
       name: "gantt resources",
       description: "Compare resource-constrained alternatives and explicitly record a revision-checked selection.",
       intent: "Expose owner capacity and calendar consequences without editing item dates.",
@@ -3175,30 +3232,20 @@ export default defineExtension({
         { long: "--target-revision", value_name: "updated_at", description: "Expected target revision, checked under the core item lock." },
       ],
       async run(ctx: CommandHandlerContext) {
-        let controls: ResourceScenarioOptions;
-        try {
-          const file = resolve(String(readOption(ctx.options, "scenarios") ?? ""));
-          if (!statSync(file).isFile() || statSync(file).size > 262144) throw new Error("bounded file required");
-          controls = JSON.parse(readFileSync(file, "utf8")) as ResourceScenarioOptions;
-        } catch {
-          const remedy = "Provide --scenarios with a readable regular JSON file no larger than 256 KiB.";
-          return { ok: false, code: "invalid_estimate", message: "Cannot read bounded scenario controls.", remedy, remediation: remedy, exit_code: EXIT_CODE.USAGE };
-        }
-        const corpus = await readDurationCorpus(ctx.pm_root);
-        if (!corpus.ok) return { ...corpus, exit_code: EXIT_CODE.USAGE, remediation: corpus.remedy };
-        const items = corpus.items;
-        const validated = validateDurationInput("resources", { corpus: items, options: controls });
-        if (!validated.ok) return { ...validated, exit_code: EXIT_CODE.USAGE, remediation: validated.remedy };
-        const graph = await commandPrerequisiteGraph(validated.value.corpus, ctx.pm_root);
-        const evaluated = runValidatedResources(validated, graph);
-        const selectionKeys = ["select", "selection", "expect-revision", "expectRevision", "target", "target-revision", "targetRevision"];
-        const applying = selectionKeys.some((key) => readOption(ctx.options, key) !== undefined);
-        const result = applying ? await applyResourceSelection(ctx.pm_root, resolveAuthor(ctx.global.author, (await readSettings(ctx.pm_root)).author_default), evaluated, {
-          scenarioId: String(readOption(ctx.options, "select") ?? ""), selection: String(readOption(ctx.options, "selection") ?? ""),
-          expectedRevision: String(readOption(ctx.options, "expect-revision", "expectRevision") ?? ""),
-          targetId: String(readOption(ctx.options, "target") ?? ""), targetRevision: String(readOption(ctx.options, "target-revision", "targetRevision") ?? ""),
-        }) : evaluated;
-        return result.ok ? result : { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
+        return withResourceInputs(ctx, async (items, controls) => {
+          const validated = validateDurationInput("resources", { corpus: items, options: controls });
+          if (!validated.ok) return { ...validated, exit_code: EXIT_CODE.USAGE, remediation: validated.remedy };
+          const graph = await commandPrerequisiteGraph(validated.value.corpus, ctx.pm_root);
+          const evaluated = runValidatedResources(validated, graph);
+          const selectionKeys = ["select", "selection", "expect-revision", "expectRevision", "target", "target-revision", "targetRevision"];
+          const applying = selectionKeys.some((key) => readOption(ctx.options, key) !== undefined);
+          const result = applying ? await applyResourceSelection(ctx.pm_root, resolveAuthor(ctx.global.author, (await readSettings(ctx.pm_root)).author_default), evaluated, {
+            scenarioId: String(readOption(ctx.options, "select") ?? ""), selection: String(readOption(ctx.options, "selection") ?? ""),
+            expectedRevision: String(readOption(ctx.options, "expect-revision", "expectRevision") ?? ""),
+            targetId: String(readOption(ctx.options, "target") ?? ""), targetRevision: String(readOption(ctx.options, "target-revision", "targetRevision") ?? ""),
+          }) : evaluated;
+          return result.ok ? result : { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
+        });
       },
     });
     api.registerCommand({
@@ -3221,15 +3268,9 @@ export default defineExtension({
         let estimates: Record<string, UncertainEstimate> | undefined;
         const file = readOption(ctx.options, "estimates");
         if (file !== undefined) {
-          try {
-            const path = resolve(String(file));
-            if (!statSync(path).isFile() || statSync(path).size > 65536) throw new Error("bounded regular file required");
-            const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
-            estimates = parsed as Record<string, UncertainEstimate>;
-          } catch {
-            const remedy = "Provide a readable JSON object file no larger than 64 KiB, keyed by active item id.";
-            return { ok: false, code: "invalid_estimate", message: "Cannot read a bounded estimate map.", remedy, remediation: remedy, exit_code: EXIT_CODE.USAGE };
-          }
+          const input = readScheduleFile(file, "estimates");
+          if (!input.ok) return { ...input, exit_code: EXIT_CODE.USAGE, remediation: input.remedy };
+          estimates = input.value as Record<string, UncertainEstimate>;
         }
         const rawQuantiles = readOption(ctx.options, "quantiles");
         const corpus = await readDurationCorpus(ctx.pm_root);
@@ -3504,7 +3545,7 @@ export default defineExtension({
     // (empty delta).
     // -----------------------------------------------------------------------
     api.registerPreflight({
-      commands: ["gantt", "gantt export", "gantt repair", "gantt uncertainty", "gantt resources", "gantt calibrate"],
+      commands: ["gantt", "gantt export", "gantt repair", "gantt uncertainty", "gantt resources", "gantt calibrate", "gantt snapshot", "gantt drift"],
       run: () => {
         // Intentionally no enforcement here (runtime swallows throws); the real
         // data-sanity gate is enforced in the command and exporter handlers

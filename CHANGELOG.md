@@ -6,6 +6,10 @@
 
 - Calibrate future task durations from verified observed episodes ([pm-gantt-chart-observed-duration](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-observed-duration.toon))
 
+### Other
+
+- Stop Hound from linting generated dist/ output ([pm-gantt-chart-hound-esm](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-hound-esm.toon))
+
 ## 2026.10.25 - 2026-10-25
 
 ### Added
@@ -25,8 +29,11 @@
 
 ### Fixed
 
-- Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-169](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-169.toon))
 - Replace non-installable README source shorthand with registry activation ([pm-gantt-chart-install-routes-1022](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-install-routes-1022.toon))
+
+### Closed
+
+- Closed: Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-169](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-169.toon))
 
 ## 2026.10.23 - 2026-10-23
 
@@ -37,9 +44,7 @@
 
 ### Fixed
 
-- Seeded uncertainty changes per-ID quantiles when accepted Unicode IDs are reordered ([pm-gantt-chart-github-072477cd0a70-167](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-167.toon))
 - The changelog gate stamps an untagged version with the current date, so its verdict flips every midnight with no commit ([pm-gantt-chart-jv7f](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-jv7f.toon))
-- Shell scalar assignments are read from raw text, so a comment can flag an unattested publish ([pm-gantt-chart-grjk](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-grjk.toon))
 - The release job authenticated with a stored npm token that expired, so publishing stopped while every other gate stayed green ([pm-gantt-chart-mzvd](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-mzvd.toon))
 - A release run bumped and committed a new version every night while publishing was impossible, because the only externally-failable step runs last ([pm-gantt-chart-71s4](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-71s4.toon))
 
@@ -51,6 +56,11 @@
 
 - Enable GitHub CodeQL code scanning ([pm-gantt-chart-tpgu](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-tpgu.toon))
 - Render package visuals with build-time Triplicate tokens ([pm-gantt-chart-triplicate](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-triplicate.toon))
+
+### Closed
+
+- Closed: Seeded uncertainty changes per-ID quantiles when accepted Unicode IDs are reordered ([pm-gantt-chart-github-072477cd0a70-167](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-167.toon))
+- Closed: Shell scalar assignments are read from raw text, so a comment can flag an unattested publish ([pm-gantt-chart-grjk](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-grjk.toon))
 
 ## 2026.10.19 - 2026-10-19
 
@@ -120,8 +130,11 @@
 
 ### Fixed
 
-- Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-81](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-81.toon))
 - Split codeql-action bumps deadlock the codeql check, because init and analyze can only pass together ([pm-gantt-chart-vwdk](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-vwdk.toon))
+
+### Closed
+
+- Closed: Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-81](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-81.toon))
 
 ## 2026.8.31 - 2026-08-31
 
@@ -129,22 +142,25 @@
 
 - A failed provenance publish silently falls back to an unattested one ([pm-gantt-chart-8e6f](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-8e6f.toon))
 - Rebase the attested-publish release fix onto current main ([pm-gantt-chart-tk14](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-tk14.toon))
-- Pin pm-changelog 2026.8.30 before the next release ([pm-gantt-chart-kn18](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-kn18.toon))
+
+### Closed
+
+- Closed: Pin pm-changelog 2026.8.30 before the next release ([pm-gantt-chart-kn18](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-kn18.toon))
 
 ## 2026.8.28 - 2026-08-28
 
 ### Fixed
 
-- Full git history retains personal identity and redacted host-path artifacts ([pm-gantt-chart-github-072477cd0a70-71](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-71.toon))
 - Adopt the canonical SDK-certified complete-list reader ([pm-gantt-chart-olgh](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-olgh.toon))
-
-### Security
-
-- The identity gate deadlocks the one remediation its own failure message prescribes ([pm-gantt-chart-l6m0](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-l6m0.toon))
 
 ### Other
 
 - Alert on daily release failure and require merge drivers in CI ([pm-gantt-chart-wo9g](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-wo9g.toon))
+
+### Closed
+
+- Closed: Full git history retains personal identity and redacted host-path artifacts ([pm-gantt-chart-github-072477cd0a70-71](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-71.toon))
+- Closed: The identity gate deadlocks the one remediation its own failure message prescribes ([pm-gantt-chart-l6m0](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-l6m0.toon))
 
 ## 2026.8.18 - 2026-08-18
 
@@ -247,23 +263,23 @@
 
 ## 2026.7.25 - 2026-07-25
 
-### Fixed
-
-- pm item reads are capped at Node's 1 MiB spawnSync default, so a mature tracker fails with no diagnosis ([pm-gantt-chart-b0hm](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-b0hm.toon))
-
 ### Other
 
 - Adopt --respect-item-release in changelog scripts and bump pm-changelog to 2026.7.24 ([pm-gantt-chart-596n](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-596n.toon))
 
+### Closed
+
+- Closed: pm item reads are capped at Node's 1 MiB spawnSync default, so a mature tracker fails with no diagnosis ([pm-gantt-chart-b0hm](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-b0hm.toon))
+
 ## 2026.7.23 - 2026-07-23
-
-### Fixed
-
-- Recommend pm merge reconcile (2026.7.22) over raw history-repair in Multi-agent merge safety docs ([pm-gantt-chart-6vw2](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-6vw2.toon))
 
 ### Other
 
 - Adopt pm field-aware merge driver for multi-agent branch-merge safety ([pm-gantt-chart-xcqd](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-xcqd.toon))
+
+### Closed
+
+- Closed: Recommend pm merge reconcile (2026.7.22) over raw history-repair in Multi-agent merge safety docs ([pm-gantt-chart-6vw2](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-6vw2.toon))
 
 ## 2026.7.10-1 - 2026-07-10
 
@@ -379,13 +395,13 @@
 
 - Hands-on functional test pass 2026-05-29 (real data) ([pm-gantt-chart-35p0](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-35p0.toon))
 
-### Fixed
+### Closed
 
-- gantt: extension name typo pm-gantt-chart-chart ([pm-gantt-chart-dorh](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-dorh.toon))
-- gantt: returns {error} (exit 0) on fetch failure + pollutes --json stdout ([pm-gantt-chart-80dm](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-80dm.toon))
-- gantt: milestone grouping empty (pm has no milestone field; use sprint/release) ([pm-gantt-chart-f9cv](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-f9cv.toon))
-- gantt: due dates ignored (read item.due_date, pm uses deadline) ([pm-gantt-chart-v0ry](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-v0ry.toon))
-- gantt: --group-by ignored (kebab vs camelCase option key) ([pm-gantt-chart-76at](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-76at.toon))
+- Closed: gantt: extension name typo pm-gantt-chart-chart ([pm-gantt-chart-dorh](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-dorh.toon))
+- Closed: gantt: returns {error} (exit 0) on fetch failure + pollutes --json stdout ([pm-gantt-chart-80dm](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-80dm.toon))
+- Closed: gantt: milestone grouping empty (pm has no milestone field; use sprint/release) ([pm-gantt-chart-f9cv](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-f9cv.toon))
+- Closed: gantt: due dates ignored (read item.due_date, pm uses deadline) ([pm-gantt-chart-v0ry](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-v0ry.toon))
+- Closed: gantt: --group-by ignored (kebab vs camelCase option key) ([pm-gantt-chart-76at](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-76at.toon))
 
 ## 2026.5.28 - 2026-05-28
 
