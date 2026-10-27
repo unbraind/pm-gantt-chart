@@ -253,13 +253,18 @@ test("packed CLI snapshot/drift work without git and leave the SDK tracker uncha
   Object.assign(process.env, { PATH: bin, GIT_CEILING_DIRECTORIES: dirname(root) });
   try {
     const harness = await createExtensionTestHarness(extension, { capabilities: ["commands", "schema", "importers", "preflight"] });
+    const captured = (await harness.runCommand({ command: "gantt snapshot", pmRoot, options: { scenarios: file } })).result as { ok: boolean };
+    assert.equal(captured.ok, true);
+    const compared = (await harness.runCommand({ command: "gantt drift", pmRoot, options: { before: beforeFile, after: afterFile, limit: "1" } })).result as ScheduleDriftResult;
+    assert.ok(compared.ok); assert.equal(compared.moved[0].deltaDays, 1);
     for (const options of [{ before: "", after: afterFile }, {}, { before: beforeFile }, { before: root, after: afterFile }, { before: beforeFile, after: afterFile, limit: "Infinity" }]) {
       const value = (await harness.runCommand({ command: "gantt drift", pmRoot, options })).result as ScheduleDriftResult;
       assertTypedRefusal(value, "invalid_estimate");
     }
-    writeFileSync(afterFile, "x".repeat(262145)); assert.equal(invoke(args).status, 2);
-    writeFileSync(afterFile, "null"); assert.equal(invoke(args).status, 2);
-    writeFileSync(afterFile, "{broken"); assert.equal(invoke(args).status, 2);
+    for (const contents of ["x".repeat(262145), "null", "{broken"]) {
+      writeFileSync(afterFile, contents); assert.equal(invoke(args).status, 2);
+      assertTypedRefusal((await harness.runCommand({ command: "gantt drift", pmRoot, options: { before: beforeFile, after: afterFile } })).result as ScheduleDriftResult, "invalid_estimate");
+    }
     assert.equal(((await harness.runCommand({ command: "gantt snapshot", pmRoot, options: {} })).result as ScheduleDriftResult).ok, false);
     writeFileSync(file, JSON.stringify(controls));
     assertTypedRefusal((await harness.runCommand({ command: "gantt snapshot", pmRoot: join(root, "absent"), options: { scenarios: file } })).result as ScheduleDriftResult, "invalid_estimate");
