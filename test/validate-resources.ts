@@ -1,21 +1,12 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdtempSync, mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { PmClient } from "@unbrained/pm-cli/sdk";
 import { createExtensionTestHarness } from "@unbrained/pm-cli/sdk/testing";
 import extension, { type ResourceScenarioResult, type ResourceScenarioOptions } from "../index.ts";
-import { snapshot } from "./tracker-fixture.ts";
-
-/** Protect every archived source document; derived caches remain disposable. */
-function protect(root: string): void {
-  for (const entry of readdirSync(root, { withFileTypes: true })) {
-    const path = join(root, entry.name);
-    if (entry.isDirectory()) protect(path);
-    else chmodSync(path, 0o444);
-  }
-}
+import { protectPublicTracker, snapshot } from "./tracker-fixture.ts";
 
 const source = execFileSync("git", ["rev-parse", process.argv[2] ?? "origin/main"], { encoding: "utf8" }).trim();
 const scratch = mkdtempSync(join(tmpdir(), "gantt-resource-public-"));
@@ -24,7 +15,7 @@ try {
   const archived = execFileSync("git", ["archive", source, ".agents/pm"], { maxBuffer: 64 * 1024 * 1024 });
   execFileSync("tar", ["-xf", "-", "-C", scratch], { input: archived });
   const pmRoot = join(scratch, ".agents", "pm");
-  protect(pmRoot);
+  protectPublicTracker(pmRoot);
   const bin = join(scratch, "bin"); mkdirSync(bin);
   const cli = join(import.meta.dirname, "..", "node_modules", "@unbrained", "pm-cli", "dist", "cli.js");
   for (const [name, executable] of [["node", process.execPath], ["pm", cli]]) symlinkSync(executable, join(bin, name));
