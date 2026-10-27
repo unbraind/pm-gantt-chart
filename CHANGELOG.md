@@ -6,6 +6,10 @@
 
 - Calibrate future task durations from verified observed episodes ([pm-gantt-chart-observed-duration](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-observed-duration.toon))
 
+### Other
+
+- Stop Hound from linting generated dist/ output ([pm-gantt-chart-hound-esm](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-hound-esm.toon))
+
 ## 2026.10.25 - 2026-10-25
 
 ### Added
