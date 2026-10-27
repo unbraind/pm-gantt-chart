@@ -81,7 +81,9 @@ test("unsupported fields, scope, missing work, unknown status and incomplete com
   assert.equal(shifted.gaps[0].code, "different_horizon"); assert.ok(shifted.moved.every((row) => row.causes.length === 0));
   const absent = compare(before, saved([task("b"), task("c", ["b"])]));
   assert.equal(absent.gaps[0].code, "scope_or_role_changed");
-  assert.equal(compare(saved([{ ...task("a"), role: "unknown" }]), saved([{ ...task("a"), role: "unknown" }])).gaps[0].code, "unknown_status_role");
+  const unknownRoles = compare(saved([{ ...task("a"), role: "unknown" }]), saved([{ ...task("a", [], 960), role: "unknown" }]));
+  assert.equal(unknownRoles.gaps[0].code, "unknown_status_role"); assert.equal(unknownRoles.moved.length, 0);
+  assert.deepEqual(unknownRoles.gaps[0].ids, ["a"]);
   for (const tasks of [[{ ...task("a"), minutes: undefined }], [{ ...task("a"), owner: undefined }], [task("a", ["absent"])], [task("a", ["a"])], [task("a"), task("a")]]) {
     assert.ok(compare(saved(tasks), before).gaps.length > 0);
     assert.ok(compare(before, saved(tasks)).gaps.length > 0);

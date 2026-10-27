@@ -6,14 +6,15 @@ status: in_progress
 priority: 2
 tags: []
 created_at: "2026-10-27T05:27:45.157Z"
-updated_at: "2026-10-27T05:47:06.332Z"
+updated_at: "2026-10-27T05:49:00.593Z"
 author: codex-agent
 acceptance_criteria: "One estimate change yields exact downstream civil-day delta and causal chain; unchanged rows collapse to references; unsupported inputs remain gaps rather than blamed causes; typed SDK and CLI, bounded TOON/JSON, no-git and public read-only validation."
-comments[4]{created_at,author,text}:
+comments[5]{created_at,author,text}:
   "2026-10-27T05:27:48.588Z",codex-agent,"Overlap rechecked against current CLI declarations and sibling README surfaces: core owns complete reads, status/relationship registries and serialization; pm-graph snapshot-impact compares topology/frontiers but no calendar allocation or computed schedule dates. Reuse resourceScenarios and its strict duration schema; no new scheduler. Saved snapshots are read-only values, no importer/sync, journal, mutation or shared checkpoint. Attribution uses individual counterfactual reversals; interactions without an individually witnessed effect remain gaps. Native statuses resolve through SDK registry roles before engine projection."
   "2026-10-27T05:40:46.512Z",codex-agent,"Implemented typed snapshot capture, strict snapshot validation and drift SDK plus gantt snapshot/drift CLI commands. Existing engine supplies all dates. One estimate regression proves exact one-day downstream movement and full prerequisite chain. Public origin/main validation: 117 items, 8 active, 9 relationships, 5 missing estimates, 8 missing owners; explicit hypothetical overrides only. Estimate 60 to 540 minutes moved 8 dates, 3 returned, 3 evaluations, zero gaps, 1160 JSON bytes and 1221 TOON bytes. Read-only non-git archive and deterministic replay preserve durable source hashes. Seeded model now varies all native scheduling fields and random custom SDK role registries; read-only feature introduces no mutations, plans, locks, idempotency keys or shared drainer state."
   "2026-10-27T05:44:54.352Z",codex-agent,"Verification: pinned pm linked test runner passed 9/9 tests, including 500 seeded sequences; drift.ts measured 100% lines, branches and functions. Typecheck, lint, zero-duplication and docstring gates pass. Four behavioral reversions were caught: unsupported-baseline comparison, causal replays removed, unchanged collapse removed, and SDK roles replaced by status-name guessing. Source bytes restored after each proof. Inherited resource self-edge throw is tracked separately as pm-gantt-chart-resource-self-prerequisite; drift guards it as an invalid_graph gap. Full npm and Bun release gates will run in CI at unchanged 100/100/100 thresholds."
   "2026-10-27T05:47:06.332Z",codex-agent,"PR 190 is ready for review. Updated the existing exact preflight-owned-command inventory assertion for the two new commands; targeted smoke tests pass. Full release gates are running in CI, and final handoff will cite exact-head results rather than queued or skipped checks."
+  "2026-10-27T05:48:58.353Z",codex-agent,"Final input audit tightened unknown-status handling: unresolved SDK roles now stop date replay for that snapshot entirely and retain the exact item ids as gaps. They are never projected to active work, even for a non-attributed date. Focused regressions pass. The existing exact command-scope smoke test also passes 5/5."
 files[7]{path,scope}:
   drift.ts,project
   duration-input.ts,project

@@ -52,6 +52,9 @@ function reference(snapshot) {
 }
 /** Reconstruct only interpreted fields and delegate every computed date to the existing engine. */
 function evaluate(snapshot) {
+    if (snapshot.tasks.some((task) => task.role === "unknown"))
+        return { ok: false, code: "unknown_status_role",
+            message: "A saved status has no scheduling role.", remedy: "Configure active or terminal roles in the SDK status registry and capture again; no dates were inferred for unknown roles." };
     if (snapshot.tasks.some((task) => task.prerequisites.includes(task.id)))
         return { ok: false, code: "invalid_graph",
             message: "A saved task is its own prerequisite.", remedy: "Remove the self-ordering constraint and capture the complete scenario again." };
@@ -124,11 +127,6 @@ export function explainScheduleDrift(rawBefore, rawAfter, rawOptions = {}) {
         gap("different_horizon", [], "Capture both scenarios with the same horizon and civil time zone for causal attribution.");
     if (canonical(before.tasks.map((row) => ({ id: row.id, role: row.role }))) !== canonical(after.tasks.map((row) => ({ id: row.id, role: row.role }))))
         gap("scope_or_role_changed", [], "Keep item scope and resolved status roles fixed when attributing scheduling inputs.");
-    for (const side of [before, after]) {
-        const ids = side.tasks.filter((task) => task.role === "unknown").map((task) => task.id);
-        if (ids.length > 0)
-            gap("unknown_status_role", ids, "Configure active or terminal roles in the SDK status registry and capture again.");
-    }
     for (const task of after.tasks) {
         const previous = before.tasks.find((row) => row.id === task.id);
         if (previous && previous.deadline !== task.deadline)
@@ -137,9 +135,10 @@ export function explainScheduleDrift(rawBefore, rawAfter, rawOptions = {}) {
     const initial = evaluate(before), current = evaluate(after);
     let evaluations = 2;
     if (!initial.ok || !current.ok) {
-        for (const result of [initial, current])
-            if (!result.ok)
-                gap(result.code, [], result.remedy);
+        for (const [snapshot, result] of [[before, initial], [after, current]])
+            if (!result.ok) {
+                gap(result.code, snapshot.tasks.filter((task) => task.role === "unknown").map((task) => task.id), result.remedy);
+            }
         return validateDurationOutput("drift", { ok: true, before: beforeRef, after: afterRef, method: "individual-reversal-v1", evaluations,
             counts: { tasks: after.tasks.length, moved: 0, unchanged: 0, gaps: gaps.length, returned: 0 }, truncated: false,
             unchanged: { snapshot: beforeRef, ids: [] }, changes: [], moved: [], gaps });
