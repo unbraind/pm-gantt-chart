@@ -1,6 +1,7 @@
 import type { PmItem, DeadlineRepairOptions, PrerequisiteGraph } from "./index.ts";
 import type { CompletionIntervalOptions, ResolvedEstimate } from "./uncertainty.ts";
 import type { ResourceScenarioOptions } from "./resources.ts";
+import type { ScheduleSnapshot, ScheduleDriftOptions } from "./drift.ts";
 import type { DurationCalibrationOptions } from "./calibration.ts";
 /** One refusal contract shared by every untrusted duration-input boundary. */
 export interface DurationInputRefusal {
@@ -24,6 +25,12 @@ export declare const DURATION_MINUTES: Readonly<{
 type ValidatedGraph = readonly (readonly [string, readonly string[]])[];
 /** Internal schema outputs; callers obtain them only from successful validation receipts. */
 export interface ValidatedInputs {
+    snapshot: ScheduleSnapshot;
+    drift: {
+        before: ScheduleSnapshot;
+        after: ScheduleSnapshot;
+        options: ScheduleDriftOptions;
+    };
     sampling: {
         graph?: ValidatedGraph;
         corpus: PmItem[];
@@ -74,7 +81,7 @@ export declare function durationFlagQuantiles(value: unknown): unknown;
 /** Decode a supplied graph once, or clone already validated detached graph entries. */
 export declare function durationInputGraph(stored: ValidatedGraph | undefined, override: PrerequisiteGraph | undefined): DurationInputResult<PrerequisiteGraph | undefined>;
 /** Closed success contracts check every promised numeric/date leaf before any SDK/CLI return. */
-type DurationOutputKind = "calibration" | "sampling" | "resources" | "repair";
+type DurationOutputKind = "calibration" | "sampling" | "resources" | "repair" | "snapshot" | "drift";
 /** Fail closed on arithmetic/domain defects, identifying the output field instead of serializing a bad number/date. */
 export declare function validateDurationOutput<T>(kind: DurationOutputKind, value: T): T | DurationInputRefusal;
 export {};

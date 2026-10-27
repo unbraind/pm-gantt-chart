@@ -32,7 +32,22 @@ const calendar = { kind: "object", fields: {
         minutesPerDay: { kind: "number", min: 0, max: 1440, integer: true }, minutesPerWeek: { kind: "number", min: 0, max: 10080, integer: true }, totalMinutes: { kind: "number", min: 0, max: 527040, integer: true },
     } };
 const graph = { kind: "map", max: 100000, optional: true, entry: { kind: "array", entry: { kind: "string", max: 4096 }, min: 0, max: 10000 } };
+/** Saved scheduling evidence shares the resource engine's calendar and effort domains. */
+const snapshotTask = { kind: "object", fields: {
+        id: text, status: text, role: { kind: "union", choices: ["active", "terminal", "unknown"].map((value) => ({ kind: "literal", value })) },
+        owner: { ...text, optional: true }, minutes: { ...minutes, integer: true, optional: true },
+        prerequisites: { kind: "array", entry: text, min: 0, max: 2000, unique: true },
+        deadline: { ...item.fields.deadline, optional: true },
+    } };
+const scheduleSnapshot = { kind: "object", ordered: ["from", "through"], fields: {
+        version: { kind: "literal", value: 1 }, from: { kind: "string", max: 10, format: "day" },
+        through: { kind: "string", max: 10, format: "day" }, timeZone: { kind: "string", max: 128, format: "zone" },
+        tasks: { kind: "array", entry: snapshotTask, min: 0, max: 2000 }, owners: { kind: "dictionary", entry: calendar, max: 50, key: text },
+    } };
+const driftOptions = { kind: "object", fields: { limit: rowLimit } };
 const schemas = {
+    snapshot: scheduleSnapshot,
+    drift: { kind: "object", fields: { before: scheduleSnapshot, after: scheduleSnapshot, options: driftOptions } },
     sampling: { kind: "object", fields: { corpus, graph, options: { kind: "object", fields: {
                     from: { kind: "string", max: 10, format: "day" }, seed: { kind: "number", min: 0, max: 4294967295, integer: true },
                     samples: { kind: "number", min: 100, max: 10000, integer: true, optional: true },
@@ -263,7 +278,22 @@ const repairMove = { kind: "union", choices: [
         { kind: "object", fields: { kind: { kind: "literal", value: "capacity_shift" }, itemId: text, beforeDays: { kind: "number", min: 1, max: 365, integer: true }, afterDays: { kind: "number", min: 1, max: 365, integer: true }, minutesPerDay: { kind: "number", min: 481, max: 4800, integer: true }, addedMinutesPerDay: { kind: "number", min: 1, max: 4320, integer: true } } },
         { kind: "object", fields: { kind: { kind: "literal", value: "scope_deferral" }, itemId: text, deferredMinutes: minutes } },
     ] };
+const driftDays = { kind: "number", min: -366, max: 366, integer: true };
+const driftChangeValue = { kind: "union", choices: [nil, text, { ...minutes, integer: true }, labels, calendar] };
+const driftGap = { kind: "object", fields: { code: text, ids: { ...labels, max: 2000 }, remedy: { kind: "string", max: 1024 } } };
 const outputSchemas = {
+    snapshot: { kind: "object", fields: { ok: successful, snapshot: scheduleSnapshot } },
+    drift: { kind: "object", fields: { ok: successful, before: text, after: text,
+            counts: { kind: "object", fields: { tasks: populationCount, moved: count, unchanged: populationCount, gaps: { ...populationCount, max: 5000 }, returned: count } },
+            truncated: flag, unchanged: { kind: "object", fields: { snapshot: text, ids: { ...labels, max: 2000 } } },
+            changes: { kind: "array", min: 0, max: 32, entry: { kind: "object", fields: { id: text, kind: text, target: text, before: driftChangeValue, after: driftChangeValue } } },
+            moved: { kind: "array", min: 0, max: 200, entry: { kind: "object", fields: { id: text, before: nullableDay, after: nullableDay,
+                        deltaDays: { kind: "nullable", entry: { ...driftDays, min: -3652424, max: 3652424 } }, causes: { kind: "array", min: 0, max: 32, entry: { kind: "object", fields: {
+                                    change: text, restoredFinish: nullableDay, effectDays: { kind: "nullable", entry: driftDays }, chain: { ...labels, max: 2000 },
+                                } } }, gaps: { kind: "array", min: 0, max: 32, entry: text } } } },
+            gaps: { kind: "array", min: 0, max: 5000, entry: driftGap },
+            method: { kind: "literal", value: "individual-reversal-v1" }, evaluations: { kind: "number", min: 0, max: 34, integer: true },
+        } },
     calibration: { kind: "object", fields: { ok: successful,
             evidence: { kind: "object", fields: { selectedCount: populationCount, sampleCount: populationCount, minimumSamples: { ...populationCount, min: 1 },
                     excluded: { kind: "object", fields: Object.fromEntries(["unverified_history", "reopened", "canceled", "incomplete", "missing_start", "missing_estimate", "class_changed", "invalid_duration"].map((key) => [key, populationCount])) },

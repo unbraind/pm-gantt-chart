@@ -1,0 +1,16 @@
+id: pm-gantt-chart-resource-self-prerequisite
+title: Resource scenario SDK throws for a self prerequisite
+description: Direct resourceScenarios input with one active task whose prerequisite graph names itself throws from RelationshipGraph before cycle analysis. Schedule drift guards this inherited edge case and reports invalid_graph as a gap; the direct resource API still needs its own typed refusal.
+type: Issue
+status: open
+priority: 2
+tags: []
+created_at: "2026-10-27T05:41:46.778Z"
+updated_at: "2026-10-27T05:41:50.562Z"
+author: codex-agent
+acceptance_criteria: Direct resourceScenarios returns invalid_graph with remedy for a self edge and does not throw.
+comments[1]{created_at,author,text}:
+  "2026-10-27T05:41:48.441Z",codex-agent,"Discovered during schedule-drift malformed-graph validation. No upstream CLI defect was established: its RelationshipGraph correctly rejects a forbidden self edge. Follow up in the package resource adapter; no issue sync tag applies because no GitHub issue was filed."
+files[1]{path,scope}:
+  resources.ts,project
+body: ""

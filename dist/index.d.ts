@@ -8,6 +8,8 @@ export type { CompletionIntervalOptions, CompletionIntervalResult, CompletionInt
 import { type ResourceScenarioOptions } from "./resources.ts";
 export { applyResourceSelection } from "./resources.ts";
 export type { ResourceCalendar, ResourceAlternative, ResourceScenarioOptions, ResourceRefusalCode, ResourceRefusal, ResourceScheduleRow, ResourceWitness, ResourceScenarioSuccess, ResourceScenarioResult, ResourceSelection } from "./resources.ts";
+export { captureScheduleScenario, explainScheduleDrift, validateScheduleSnapshot } from "./drift.ts";
+export type { ScheduleTask, ScheduleSnapshot, ScheduleDriftOptions, ScheduleDriftRefusal, ScheduleGap, ScheduleChange, ScheduleCause, ScheduleMovedRow, ScheduleDriftSuccess, ScheduleDriftResult } from "./drift.ts";
 interface PmDependency {
     id: string;
     kind?: string;

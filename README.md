@@ -256,6 +256,22 @@ choose to pass it to `completionIntervals` with `minutesPerDay: 1440` for calend
 time. Estimates stay unchanged; elapsed time includes waits and makes no causal
 productivity claim. See the [worked SDK/CLI example and evidence rules](docs/observed-duration-calibration.md).
 
+### Schedule drift explanations
+
+`pm gantt snapshot --scenarios resources.json --json > before.json` saves one
+explicit resource alternative. Capture a second snapshot after reviewed changes,
+then run `pm gantt drift --before before.json --after after.json --limit 20`
+(append `--json` for JSON; default TOON). The existing resource engine replays
+estimates, calendars, shared owner capacity and prerequisites. Each moved goal
+has its exact civil-day delta, individual counterfactual witnesses and causal
+routes; unchanged finishes collapse to snapshot/id references. Missing inputs,
+unknown status roles and unsupported changes remain gaps with remedies.
+
+SDK: `captureScheduleScenario`, `validateScheduleSnapshot`,
+`explainScheduleDrift` and exported snapshot/result types. These operations are
+read-only and work without git. See the [worked example and limits](docs/schedule-drift.md)
+and [public tracker measurements](docs/schedule-drift-validation.md).
+
 ### Resource-constrained schedule scenarios
 
 `pm gantt resources --scenarios resources.json` compares explicitly named

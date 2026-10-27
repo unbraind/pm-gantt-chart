@@ -8,7 +8,7 @@ import type {
 } from "@unbrained/pm-cli/sdk/authoring";
 import type { brandValues } from './brand-values.ts';
 import { brandCss, brandStatus, brandStatuses, brandValue, mermaidBrand, type BrandTheme } from "./brand.ts";
-import { certifyCompleteListResult, EXIT_CODE, inspectCompleteListResult, PmClient, resolveAuthor, readSettings } from "@unbrained/pm-cli/sdk";
+import { certifyCompleteListResult, EXIT_CODE, inspectCompleteListResult, PmClient, resolveAuthor, readSettings, resolveRuntimeStatusRegistry } from "@unbrained/pm-cli/sdk";
 import type { RelationshipKindRegistry } from "@unbrained/pm-cli/sdk";
 import type { ContractsResult } from "@unbrained/pm-cli/sdk/runtime";
 import type { GraphTraversalResult } from "@unbrained/pm-cli/sdk/graph";
@@ -23,6 +23,9 @@ export type { CompletionIntervalOptions, CompletionIntervalResult, CompletionInt
 import { runValidatedResources, computeResourceScenarios, applyResourceSelection, type ResourceScenarioOptions } from "./resources.ts";
 export { applyResourceSelection } from "./resources.ts";
 export type { ResourceCalendar, ResourceAlternative, ResourceScenarioOptions, ResourceRefusalCode, ResourceRefusal, ResourceScheduleRow, ResourceWitness, ResourceScenarioSuccess, ResourceScenarioResult, ResourceSelection } from "./resources.ts";
+import { captureScheduleScenario, explainScheduleDrift, type ScheduleSnapshot } from "./drift.ts";
+export { captureScheduleScenario, explainScheduleDrift, validateScheduleSnapshot } from "./drift.ts";
+export type { ScheduleTask, ScheduleSnapshot, ScheduleDriftOptions, ScheduleDriftRefusal, ScheduleGap, ScheduleChange, ScheduleCause, ScheduleMovedRow, ScheduleDriftSuccess, ScheduleDriftResult } from "./drift.ts";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -2855,6 +2858,24 @@ function decodeCompleteListAll(parsed: unknown): PmItem[] {
   return rows;
 }
 
+/** Read a bounded JSON transport without acquiring a tracker or resolving an SDK installation. */
+function readScheduleFile(raw: unknown) {
+  try {
+    if (typeof raw !== "string" || raw.length === 0) throw new Error("File required");
+    const path = resolve(raw), stat = statSync(path);
+    if (!stat.isFile() || stat.size > 262144) throw new Error("Bounded regular file required");
+    return { ok: true as const, value: JSON.parse(readFileSync(path, "utf8")) as unknown };
+  } catch {
+    return { ok: false as const, code: "invalid_estimate" as const, message: "Cannot read saved schedule input.",
+      remedy: "Provide readable regular JSON files no larger than 256 KiB using the saved schedule schema." };
+  }
+}
+
+/** Accept either the producer's snapshot envelope or its bare snapshot value. */
+function scheduleFileValue(value: unknown): ScheduleSnapshot {
+  return (isRecord(value) && Object.hasOwn(value, "snapshot") ? value.snapshot : value) as ScheduleSnapshot;
+}
+
 /** Read forecast inputs directly through the SDK, preserving native number semantics. */
 async function readDurationCorpus(pmRoot: string) {
   try {
@@ -3155,6 +3176,41 @@ export default defineExtension({
           tag: readOption(ctx.options, "tag") as string | undefined,
           minimumSamples: durationFlagNumber(readOption(ctx.options, "minimum-samples", "minimumSamples")) as number,
           limit: durationFlagNumber(limit) as number | undefined,
+        });
+        return result.ok ? result : { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
+      },
+    });
+    api.registerCommand({
+      name: "gantt snapshot",
+      description: "Save replayable scheduling inputs from one explicit resource alternative.",
+      read_output: { row_keys: [] },
+      flags: [{ long: "--scenarios", value_name: "file", description: "Resource controls containing exactly one alternative (256 KiB maximum)." }],
+      async run(ctx: CommandHandlerContext) {
+        const input = readScheduleFile(readOption(ctx.options, "scenarios"));
+        if (!input.ok) return { ...input, exit_code: EXIT_CODE.USAGE, remediation: input.remedy };
+        const corpus = await readDurationCorpus(ctx.pm_root);
+        if (!corpus.ok) return { ...corpus, exit_code: EXIT_CODE.USAGE, remediation: corpus.remedy };
+        const graph = await commandPrerequisiteGraph(corpus.items, ctx.pm_root);
+        const registry = resolveRuntimeStatusRegistry((await readSettings(ctx.pm_root)).schema);
+        const result = captureScheduleScenario(corpus.items, input.value as ResourceScenarioOptions, registry, graph);
+        return result.ok ? result : { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
+      },
+    });
+    api.registerCommand({
+      name: "gantt drift",
+      description: "Explain goal-date changes between two saved resource schedules with counterfactual evidence.",
+      read_output: { row_keys: ["moved"] },
+      flags: [
+        { long: "--before", value_name: "file", description: "Earlier saved snapshot or snapshot command JSON envelope (256 KiB maximum)." },
+        { long: "--after", value_name: "file", description: "Later saved snapshot or snapshot command JSON envelope (256 KiB maximum)." },
+        { long: "--limit", value_name: "n", description: "Moved goal rows to return, 1..200 (default 20)." },
+      ],
+      run(ctx: CommandHandlerContext) {
+        const before = readScheduleFile(readOption(ctx.options, "before")), after = readScheduleFile(readOption(ctx.options, "after"));
+        if (!before.ok) return { ...before, exit_code: EXIT_CODE.USAGE, remediation: before.remedy };
+        if (!after.ok) return { ...after, exit_code: EXIT_CODE.USAGE, remediation: after.remedy };
+        const result = explainScheduleDrift(scheduleFileValue(before.value), scheduleFileValue(after.value), {
+          limit: durationFlagNumber(readOption(ctx.options, "limit")) as number | undefined,
         });
         return result.ok ? result : { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
       },
@@ -3504,7 +3560,7 @@ export default defineExtension({
     // (empty delta).
     // -----------------------------------------------------------------------
     api.registerPreflight({
-      commands: ["gantt", "gantt export", "gantt repair", "gantt uncertainty", "gantt resources", "gantt calibrate"],
+      commands: ["gantt", "gantt export", "gantt repair", "gantt uncertainty", "gantt resources", "gantt calibrate", "gantt snapshot", "gantt drift"],
       run: () => {
         // Intentionally no enforcement here (runtime swallows throws); the real
         // data-sanity gate is enforced in the command and exporter handlers
