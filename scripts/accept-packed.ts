@@ -2,6 +2,8 @@ import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { devNull, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import type { ScheduleSnapshot } from "../index.ts";
+import { wideScheduleSnapshot } from "../test/schedule-adversaries.ts";
 
 /** Package fields that define the installed-extension acceptance matrix. */
 interface PackageContract {
@@ -26,6 +28,9 @@ interface AcceptanceReceipt {
   readonly stderr_bytes: number;
   readonly fixture_present: true;
   readonly drift_delta_days: 1;
+  readonly replay_items: 2000;
+  readonly replay_bytes: number;
+  readonly prototype_calendars: true;
 }
 
 const repoRoot = resolve(import.meta.dirname, "..");
@@ -230,12 +235,21 @@ try {
       worker: { weekdays: [1, 2, 3, 4, 5, 6, 7], holidays: [], minutesPerDay: 480, minutesPerWeek: 3360, totalMinutes: 10000 },
     } }] }));
     const captureArgs = ["gantt", "snapshot", "--scenarios", controlsFile, "--json"];
-    writeFileSync(beforeFile, runPm(scenario, scenarioRoot, captureArgs).stdout);
+    const beforeEnvelope = requireJsonObject(runPm(scenario, scenarioRoot, captureArgs).stdout, `${scenario.name} capture`);
     runPm(scenario, scenarioRoot, ["update", String(fixture.id), "--estimate", "960"]);
-    writeFileSync(afterFile, runPm(scenario, scenarioRoot, captureArgs).stdout);
+    const afterEnvelope = requireJsonObject(runPm(scenario, scenarioRoot, captureArgs).stdout, `${scenario.name} capture`);
+    const savedBefore = beforeEnvelope.snapshot as ScheduleSnapshot, savedAfter = afterEnvelope.snapshot as ScheduleSnapshot;
+    const context = wideScheduleSnapshot().tasks.slice(1);
+    writeFileSync(beforeFile, JSON.stringify({ ...beforeEnvelope, snapshot: { ...savedBefore, tasks: [...savedBefore.tasks, ...context] } }, null, 2));
+    const calendars = new Map(Object.entries(savedAfter.owners));
+    for (const name of ["constructor", "__proto__"]) calendars.set(name, savedAfter.owners.worker);
+    const replay = JSON.stringify({ ...afterEnvelope, snapshot: { ...savedAfter, owners: Object.fromEntries(calendars), tasks: [...savedAfter.tasks, ...context] } }, null, 4);
+    writeFileSync(afterFile, replay);
+    if (Buffer.byteLength(replay) <= 262144) throw new Error("Packed replay must exceed the former 256 KiB limit");
     const driftArgs = ["gantt", "drift", "--before", beforeFile, "--after", afterFile];
     const drift = requireJsonObject(runPm(scenario, scenarioRoot, [...driftArgs, "--json"]).stdout, `${scenario.name} drift`);
     if (drift.ok !== true || !Array.isArray(drift.moved) || drift.moved[0]?.deltaDays !== 1) throw new Error(`${scenario.name} must report exactly one day of estimate drift`);
+    if ((drift.counts as Record<string, unknown>).tasks !== 2000 || !Array.isArray(drift.changes) || drift.changes.length !== 3) throw new Error(`${scenario.name} lost saved context or prototype-named calendars`);
     if (!runPm(scenario, scenarioRoot, driftArgs).stdout.includes("deltaDays")) throw new Error(`${scenario.name} drift TOON is missing its delta`);
     const stderr = `${command.stderr}\n${exported.stderr}`;
     if (stderr.includes("deprecated") || stderr.includes("list-all")) {
@@ -249,6 +263,9 @@ try {
       stderr_bytes: Buffer.byteLength(stderr),
       fixture_present: true,
       drift_delta_days: 1,
+      replay_items: 2000,
+      replay_bytes: Buffer.byteLength(replay),
+      prototype_calendars: true,
     });
   }
 

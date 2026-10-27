@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { buildPrerequisiteGraph } from "./index.js";
 import { computeResourceScenarios } from "./resources.js";
-import { validateDurationInput, validateDurationOutput } from "./duration-input.js";
+import { ownDurationValue, validateDurationInput, validateDurationOutput } from "./duration-input.js";
 /** Validate imported JSON values with the exact schema used by the snapshot producer. */
 export function validateScheduleSnapshot(raw) {
     return validateDurationInput("snapshot", raw);
@@ -25,7 +25,7 @@ export function captureScheduleScenario(items, options, registry, graph) {
         return { ok: false, code: "invalid_scenario",
             message: "Unresolved identities or work overrides cannot be saved.", remedy: "Read the complete corpus and resolve every relationship and work override target before capture." };
     const tasks = input.corpus.map((item) => {
-        const override = alternative.work?.[item.id];
+        const override = ownDurationValue(alternative.work, item.id);
         const owner = override?.owner ?? item.assignee, minutes = override?.minutes ?? item.estimated_minutes;
         return { id: item.id, status: item.status,
             role: registry.terminal_statuses.has(item.status) ? "terminal" : registry.active_statuses.has(item.status) ? "active" : "unknown",
@@ -105,15 +105,16 @@ function reversals(before, after) {
         }
     }
     for (const owner of [...new Set([...Object.keys(before.owners), ...Object.keys(after.owners)])].sort()) {
-        if (canonical(before.owners[owner]) === canonical(after.owners[owner]))
+        const previous = ownDurationValue(before.owners, owner), current = ownDurationValue(after.owners, owner);
+        if (canonical(previous) === canonical(current))
             continue;
-        const owners = { ...after.owners };
-        if (before.owners[owner] === undefined)
-            delete owners[owner];
+        const owners = new Map(Object.entries(after.owners));
+        if (previous === undefined)
+            owners.delete(owner);
         else
-            owners[owner] = before.owners[owner];
-        changes.push({ change: { id: `c${changes.length + 1}`, kind: "calendar", target: owner, before: before.owners[owner] ?? null, after: after.owners[owner] ?? null },
-            snapshot: { ...after, owners }, sources: after.tasks.filter((row) => row.owner === owner).map((row) => row.id) });
+            owners.set(owner, previous);
+        changes.push({ change: { id: `c${changes.length + 1}`, kind: "calendar", target: owner, before: previous ?? null, after: current ?? null },
+            snapshot: { ...after, owners: Object.fromEntries(owners) }, sources: after.tasks.filter((row) => row.owner === owner).map((row) => row.id) });
     }
     return changes;
 }

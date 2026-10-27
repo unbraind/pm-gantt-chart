@@ -74,6 +74,11 @@ null. A capacity witness can prove a capacity shortfall; a heuristic's exhaustio
 cannot prove no feasible ordering exists. Missing estimates/owners are never
 filled by default. Explicit scenario work overrides remain visible saved inputs.
 The package never changes item deadlines, estimates, relationships or statuses.
+Calendar, work and estimate dictionaries use own entries only. Names such as
+`constructor`, `toString` and `__proto__` are ordinary names, including during
+calendar addition, removal and counterfactual reconstruction. JavaScript callers
+can construct those dictionaries with `Object.fromEntries` or computed keys;
+JSON object keys already declare own entries.
 
 ## SDK
 
@@ -117,8 +122,17 @@ are inherited from resource scenarios: 2000 corpus items, 200 active tasks,
 0..175200, daily budget 0..1440, weekly 0..10080, total 0..527040 minutes.
 At most 32 reversible edits are compared (34 engine evaluations). `--limit` is
 1..200, default 20; it limits moved output rows, never the evaluated graph.
-Unchanged references and exact totals survive truncation. Each input file must
-be regular JSON at most 256 KiB. Output numbers are validated before success. Date deltas span at most +/-3652424 civil days (the four-digit ISO date domain); individual effects stay within +/-366 days.
+Unchanged references and exact totals survive truncation. Saved snapshot files
+are bounded UTF-8 JSON at most **16 MiB**, including the CLI envelope and
+whitespace. Each snapshot's canonical pretty JSON is capped at **4 MiB by the
+shared schema**, in capture output, SDK validation and drift input alike. This
+leaves transport headroom for host metadata, indentation and CRLF without
+accepting successful captures that their consumer cannot read. Oversized
+snapshots return `invalid_estimate` with a dependency-complete scoping remedy;
+no evidence is truncated. Resource control files retain their 256 KiB limit;
+uncertainty estimate maps retain 64 KiB. All three readers use the same bounded
+open-descriptor reader, reject malformed UTF-8, enforce the cap again while
+reading a growing file, and close the descriptor on success or refusal. Output numbers are validated before success. Date deltas span at most +/-3652424 civil days (the four-digit ISO date domain); individual effects stay within +/-366 days.
 Typed refusals contain `code`, `message`, `remedy`; CLI refusals exit 2.
 `comparison_too_large` asks for intermediate snapshots; `invalid_scenario`
 asks for one alternative or a complete graph; `invalid_estimate` identifies

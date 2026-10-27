@@ -108,3 +108,11 @@ leaf of representative successful results, including numeric nulls.
 `node test/revert-duration-output.ts` removes only the output check, runs a public
 SDK regression with accepted inputs that compute a year-10000 completion, and
 requires its assertion to fail. Source restoration runs in `finally`.
+
+Saved schedule snapshots also share a 4 MiB canonical pretty JSON budget between
+capture, SDK validation and output validation. Their CLI replay transport allows
+16 MiB for host envelopes and indentation. Controls (256 KiB) and estimate maps
+(64 KiB) keep their smaller limits. One bounded UTF-8 descriptor reader enforces
+all file limits, including growth between stat and read. Dictionary membership
+always means own entries; prototype names are valid values and never defaults.
+Unknown schema-dispatch names refuse instead of resolving Object.prototype.

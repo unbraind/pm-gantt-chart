@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { resolveRuntimeStatusRegistry } from "@unbrained/pm-cli/sdk";
 import { buildPrerequisiteGraph, type PmItem, type PrerequisiteGraph } from "./index.ts";
 import { computeResourceScenarios, type ResourceCalendar, type ResourceScenarioOptions, type ResourceScheduleRow } from "./resources.ts";
-import { validateDurationInput, validateDurationOutput } from "./duration-input.ts";
+import { ownDurationValue, validateDurationInput, validateDurationOutput } from "./duration-input.ts";
 
 /** Scheduling projection only: native status roles are resolved by the SDK at capture time. */
 export interface ScheduleTask {
@@ -55,7 +55,7 @@ export function captureScheduleScenario(items: readonly (Omit<PmItem, "status"> 
     || Object.keys(alternative.work ?? {}).some((id) => !ids.has(id))) return { ok: false, code: "invalid_scenario",
     message: "Unresolved identities or work overrides cannot be saved.", remedy: "Read the complete corpus and resolve every relationship and work override target before capture." };
   const tasks = input.corpus.map((item): ScheduleTask => {
-    const override = alternative.work?.[item.id];
+    const override = ownDurationValue(alternative.work, item.id);
     const owner = override?.owner ?? item.assignee, minutes = override?.minutes ?? item.estimated_minutes;
     return { id: item.id, status: item.status,
       role: registry.terminal_statuses.has(item.status) ? "terminal" : registry.active_statuses.has(item.status) ? "active" : "unknown",
@@ -138,11 +138,12 @@ function reversals(before: ScheduleSnapshot, after: ScheduleSnapshot): Reversal[
     }
   }
   for (const owner of [...new Set([...Object.keys(before.owners), ...Object.keys(after.owners)])].sort()) {
-    if (canonical(before.owners[owner]) === canonical(after.owners[owner])) continue;
-    const owners = { ...after.owners };
-    if (before.owners[owner] === undefined) delete owners[owner]; else owners[owner] = before.owners[owner];
-    changes.push({ change: { id: `c${changes.length + 1}`, kind: "calendar", target: owner, before: before.owners[owner] ?? null, after: after.owners[owner] ?? null },
-      snapshot: { ...after, owners }, sources: after.tasks.filter((row) => row.owner === owner).map((row) => row.id) });
+    const previous = ownDurationValue(before.owners, owner), current = ownDurationValue(after.owners, owner);
+    if (canonical(previous) === canonical(current)) continue;
+    const owners = new Map(Object.entries(after.owners));
+    if (previous === undefined) owners.delete(owner); else owners.set(owner, previous);
+    changes.push({ change: { id: `c${changes.length + 1}`, kind: "calendar", target: owner, before: previous ?? null, after: current ?? null },
+      snapshot: { ...after, owners: Object.fromEntries(owners) }, sources: after.tasks.filter((row) => row.owner === owner).map((row) => row.id) });
   }
   return changes;
 }

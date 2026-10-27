@@ -1,3 +1,11 @@
+/** Canonical pretty JSON budget shared by saved-snapshot producers and validators. */
+export const SCHEDULE_SNAPSHOT_MAX_BYTES = 4 * 1024 * 1024;
+/** File budget leaves room for the host envelope and additional pretty-print indentation. */
+export const SCHEDULE_FILE_MAX_BYTES = 4 * SCHEDULE_SNAPSHOT_MAX_BYTES;
+/** Read only an explicitly declared dictionary entry, including names inherited from Object.prototype. */
+export function ownDurationValue(record, key) {
+    return record !== undefined && Object.hasOwn(record, key) ? record[key] : undefined;
+}
 /** Positive forecast effort/observations span one second through 120 elapsed days; zero is explicit no work. */
 export const DURATION_MINUTES = Object.freeze({ minimumPositive: 1 / 60, maximum: 175200, legacyMaximum: 20 * 365 * 1440 });
 const minutes = { kind: "number", min: 0, max: DURATION_MINUTES.maximum, positiveMin: DURATION_MINUTES.minimumPositive };
@@ -39,7 +47,7 @@ const snapshotTask = { kind: "object", fields: {
         prerequisites: { kind: "array", entry: text, min: 0, max: 2000, unique: true },
         deadline: { ...item.fields.deadline, optional: true },
     } };
-const scheduleSnapshot = { kind: "object", ordered: ["from", "through"], fields: {
+const scheduleSnapshot = { kind: "object", maxJsonBytes: SCHEDULE_SNAPSHOT_MAX_BYTES, ordered: ["from", "through"], fields: {
         version: { kind: "literal", value: 1 }, from: { kind: "string", max: 10, format: "day" },
         through: { kind: "string", max: 10, format: "day" }, timeZone: { kind: "string", max: 128, format: "zone" },
         tasks: { kind: "array", entry: snapshotTask, min: 0, max: 2000 }, owners: { kind: "dictionary", entry: calendar, max: 50, key: text },
@@ -81,7 +89,7 @@ export class DurationInputError extends Error {
         super(`Invalid duration input at ${path}.`);
         this.path = path;
         this.refusal = { ok: false, code: "invalid_estimate", message: this.message,
-            remedy: "Use dense own-index arrays, finite nonnegative numbers (not negative zero) within declared bounds, real ISO dates, and only declared keys in closed estimate/control objects. Positive duration estimates must be at least one second and at most the documented minute ceiling. See the duration input contract." };
+            remedy: path.endsWith(".encoded_bytes") ? "Keep each saved snapshot within 4 MiB of canonical pretty JSON; reduce a dependency-complete scope or oversized labels without truncating evidence." : "Use dense own-index arrays, finite nonnegative numbers (not negative zero) within declared bounds, real ISO dates, and only declared keys in closed estimate/control objects. Positive duration estimates must be at least one second and at most the documented minute ceiling. See the duration input contract." };
     }
 }
 /** Validate bounded date, timestamp, zone and identifier text without coercion or date rollover. */
@@ -207,6 +215,8 @@ function parse(rule, value, path, budget = { remaining: 1000000 }) {
                     if (result[rule.ordered[i]] < result[rule.ordered[i - 1]])
                         throw new DurationInputError(path);
                 }
+            if (rule.maxJsonBytes !== undefined && Buffer.byteLength(JSON.stringify(result, null, 2)) > rule.maxJsonBytes)
+                throw new DurationInputError(`${path}.encoded_bytes`);
             return Object.freeze(result);
         }
     }
@@ -229,7 +239,10 @@ export function durationValidatedValue(kind, token) {
 /** Boundary for SDK values, decoded CLI files/flags and SDK-read native fields; never throws. */
 export function validateDurationInput(kind, input) {
     try {
-        const value = parse(schemas[kind], input, kind);
+        const rule = ownDurationValue(schemas, kind);
+        if (rule === undefined)
+            throw new DurationInputError(String(kind));
+        const value = parse(rule, input, kind);
         const result = Object.freeze({ ok: true, value });
         receipts.set(result, { kind, value });
         return result;
@@ -323,10 +336,15 @@ const outputSchemas = {
 /** Fail closed on arithmetic/domain defects, identifying the output field instead of serializing a bad number/date. */
 export function validateDurationOutput(kind, value) {
     try {
-        parse(outputSchemas[kind], value, kind);
+        const rule = ownDurationValue(outputSchemas, kind);
+        if (rule === undefined)
+            throw new DurationInputError(String(kind));
+        parse(rule, value, kind);
         return value;
     }
     catch (error) {
+        if (error instanceof DurationInputError && error.path.endsWith(".encoded_bytes"))
+            return error.refusal;
         const path = error instanceof DurationInputError ? error.path : kind;
         return { ok: false, code: "invalid_estimate", message: `Duration output at ${path} violates its finite numeric/date contract.`,
             remedy: `Review ${path}, use documented bounded duration inputs and a representable ISO horizon, and retry. No successful numerical result was produced.` };

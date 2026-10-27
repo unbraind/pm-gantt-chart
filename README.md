@@ -266,6 +266,9 @@ estimates, calendars, shared owner capacity and prerequisites. Each moved goal
 has its exact civil-day delta, individual counterfactual witnesses and causal
 routes; unchanged finishes collapse to snapshot/id references. Missing inputs,
 unknown status roles and unsupported changes remain gaps with remedies.
+Complete saved snapshots replay through a 16 MiB file transport, with a shared
+4 MiB canonical JSON budget enforced by capture and validation. Calendar names
+including `constructor` and `__proto__` remain ordinary own entries.
 
 SDK: `captureScheduleScenario`, `validateScheduleSnapshot`,
 `explainScheduleDrift` and exported snapshot/result types. These operations are

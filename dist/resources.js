@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { analyzeRelationshipExecution, RelationshipGraph } from "@unbrained/pm-cli/sdk/graph";
 import { commitItemMutations, isPmCliExpectedError } from "@unbrained/pm-cli/sdk";
 import { buildPrerequisiteGraph } from "./index.js";
-import { durationInputGraph, durationValidatedValue, validateDurationInput, validateDurationOutput } from "./duration-input.js";
+import { ownDurationValue, durationInputGraph, durationValidatedValue, validateDurationInput, validateDurationOutput } from "./duration-input.js";
 /** Exact content hashes are portable and contain no tracker paths or wall clock. */
 function digest(value) {
     return createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -86,13 +86,13 @@ export function runValidatedResources(receipt, suppliedGraph) {
         scenarioIds.add(alternative.id);
         const tasks = [];
         for (const item of active) {
-            const override = alternative.work?.[item.id], owner = override?.owner ?? item.assignee, minutes = override?.minutes ?? item.estimated_minutes;
+            const override = ownDurationValue(alternative.work, item.id), owner = override?.owner ?? item.assignee, minutes = override?.minutes ?? item.estimated_minutes;
             if (owner === undefined || !Object.hasOwn(alternative.owners, owner) || minutes === undefined) {
                 return refuse("missing_work", `Missing declared owner capacity or effort for ${item.id}.`, "Declare its assignee calendar and integer estimated minutes, or provide an explicit scenario work override; no estimates are invented.");
             }
             tasks.push({ id: item.id, owner, minutes, allocatedMinutes: 0, start: null, finish: null });
         }
-        const capacity = new Map(Object.keys(alternative.owners).sort().map((owner) => [owner, budgets(alternative.owners[owner], horizon)]));
+        const capacity = new Map(Object.keys(alternative.owners).sort().map((owner) => [owner, budgets(ownDurationValue(alternative.owners, owner), horizon)]));
         const witnesses = [];
         for (const [owner, available] of capacity) {
             const requiredMinutes = tasks.filter((task) => task.owner === owner).reduce((n, task) => n + task.minutes, 0);
@@ -107,7 +107,7 @@ export function runValidatedResources(receipt, suppliedGraph) {
             const ready = tasks.filter((task) => !completed.has(task.id) && prerequisites.get(task.id).every((id) => completed.has(id)));
             const doneToday = [];
             for (const task of ready) {
-                const calendar = alternative.owners[task.owner], date = horizon[i];
+                const calendar = ownDurationValue(alternative.owners, task.owner), date = horizon[i];
                 const weekKey = `${task.owner}:${date.week}`;
                 const available = calendar.weekdays.includes(date.weekday) && !calendar.holidays.includes(date.date)
                     ? Math.min(calendar.minutesPerDay - (dailyUsed.get(task.owner) ?? 0), calendar.minutesPerWeek - (weeklyUsed.get(weekKey) ?? 0), calendar.totalMinutes - (totalUsed.get(task.owner) ?? 0)) : 0;
@@ -129,7 +129,7 @@ export function runValidatedResources(receipt, suppliedGraph) {
         }
         const remainingMinutes = tasks.reduce((n, task) => n + task.minutes - task.allocatedMinutes, 0);
         const feasible = completed.size === tasks.length;
-        const selection = digest([revision, options.from, options.through, options.timeZone, alternative.id, [...capacity.keys()].map((owner) => [owner, alternative.owners[owner]]), tasks.map(({ id, owner, minutes }) => [id, owner, minutes])]);
+        const selection = digest([revision, options.from, options.through, options.timeZone, alternative.id, [...capacity.keys()].map((owner) => [owner, ownDurationValue(alternative.owners, owner)]), tasks.map(({ id, owner, minutes }) => [id, owner, minutes])]);
         scenarios.push({ id: alternative.id, selection, feasible, outcome: feasible ? "feasible" : witnesses.length > 0 ? "capacity_infeasible" : "allocation_exhausted", remainingMinutes, itemCount: tasks.length, truncated: tasks.length > limit, items: tasks.slice(0, limit), witnesses });
     }
     return validateDurationOutput("resources", { ok: true, revision, activeCount: active.length, assumptions: ["civil-day-v1", `timeZone=${options.timeZone}`, "inclusive-horizon", "preemptive-minute-budgets", "successors-next-day", "stable-id-heuristic", "deadlines-observational; horizon-is-hard-limit"], scenarios });

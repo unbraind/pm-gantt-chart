@@ -65,3 +65,12 @@ and Bun-global installations on consumer host 2026.10.26; the development/minimu
 host remains pinned at 2026.10.20. Full npm and Bun release gate run URLs and exact
 suite counts are recorded in the PR after CI completes. Local work uses targeted
 tests, typecheck, lint, docstrings and duplication checks to limit host CPU load.
+
+Review regressions additionally round-trip a complete 2000-item capture larger
+than 256 KiB through compact/pretty/CRLF JSON and TOON, and verify all prototype
+property names across calendar addition/removal/replacement, work overrides and
+schema dispatch. The five packed npm/Bun scenarios replay 2000-item envelopes
+and preserve added `constructor` and `__proto__` calendars. Bounded file-reader
+regressions append data after stat for every command transport. The script
+`node test/revert-schedule-boundaries.ts` must catch all six targeted behavioral
+reversions, restoring original source bytes after each proof.

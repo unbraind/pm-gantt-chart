@@ -15,6 +15,12 @@ export type DurationInputResult<T> = {
     ok: true;
     value: T;
 } | DurationInputRefusal;
+/** Canonical pretty JSON budget shared by saved-snapshot producers and validators. */
+export declare const SCHEDULE_SNAPSHOT_MAX_BYTES: number;
+/** File budget leaves room for the host envelope and additional pretty-print indentation. */
+export declare const SCHEDULE_FILE_MAX_BYTES: number;
+/** Read only an explicitly declared dictionary entry, including names inherited from Object.prototype. */
+export declare function ownDurationValue<T>(record: Readonly<Record<string, T>> | undefined, key: string): T | undefined;
 /** Positive forecast effort/observations span one second through 120 elapsed days; zero is explicit no work. */
 export declare const DURATION_MINUTES: Readonly<{
     minimumPositive: number;
