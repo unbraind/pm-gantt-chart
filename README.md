@@ -294,6 +294,31 @@ or capacity refuses with a typed remedy. The typed SDK exports
 result, refusal and selection types. Everything works without git. See the
 [worked example, bounds and selection semantics](docs/resource-scenarios.md).
 
+### Effort and external waiting
+
+`pm gantt waiting --waits waits.json` previews declared external waits separately
+from native estimated effort. Default output is compact TOON; append `--json`
+for JSON. A task with 120 minutes of effort and a 2880-minute external wait
+consumes **120 capacity minutes** and spans **3000 elapsed minutes** in the
+continuous-minute model. Previews preserve ownership, claims and all native data.
+
+```json
+{"waits":{"project-task":{"minMinutes":2880,"maxMinutes":2880}},"limit":20}
+```
+
+Bounds omitted inside a declared wait stay `null` (unknown), including downstream
+completion bounds. An absent declaration means zero *declared* wait, not evidence
+that a task has no real-world delays. Counts and total effort cover the complete
+scope; `limit` bounds only returned rows. Configured SDK status roles and ordering
+relationships govern the projection. Use `pm next` for core readiness and
+`gantt resources` for shared owner calendars/capacity. This preview models one
+serial wait after effort, with unlimited parallel effort and elapsed minute
+offsets; it does not forecast calendar dates or manage reservations/reminders.
+
+The typed SDK exports `effortWaitingPreview` for an already certified corpus and
+`previewEffortWaiting` for a fresh SDK read. Both use the same strict boundary and
+finite output contract. See the [worked SDK/CLI example and refusal remedies](docs/effort-waiting.md).
+
 ### Completion intervals for agent plans
 
 `pm gantt uncertainty` samples declared effort uncertainty over the existing

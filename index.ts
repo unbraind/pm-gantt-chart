@@ -24,6 +24,9 @@ import { runValidatedResources, computeResourceScenarios, applyResourceSelection
 export { applyResourceSelection } from "./resources.ts";
 export type { ResourceCalendar, ResourceAlternative, ResourceScenarioOptions, ResourceRefusalCode, ResourceRefusal, ResourceScheduleRow, ResourceWitness, ResourceScenarioSuccess, ResourceScenarioResult, ResourceSelection } from "./resources.ts";
 import { readScheduleFile } from "./schedule-files.ts";
+import { previewEffortWaiting, type EffortWaitingOptions } from "./waiting.ts";
+export { effortWaitingPreview, previewEffortWaiting } from "./waiting.ts";
+export type { ExternalWait, EffortWaitingOptions, EffortWaitingItem, EffortWaitingRow, EffortWaitingRefusal, EffortWaitingResult } from "./waiting.ts";
 import { captureScheduleScenario, explainScheduleDrift, type ScheduleSnapshot } from "./drift.ts";
 export { SCHEDULE_SNAPSHOT_MAX_BYTES, SCHEDULE_FILE_MAX_BYTES } from "./duration-input.ts";
 export { captureScheduleScenario, explainScheduleDrift, validateScheduleSnapshot } from "./drift.ts";
@@ -1793,7 +1796,7 @@ function customOrderingContracts(contracts: ContractsResult, registry: Relations
 async function commandPrerequisiteGraph(items: PmItem[], pmRoot: string): Promise<PrerequisiteGraph> {
   const registry = resolveWorkspaceRelationshipKindRegistry();
   const graph = buildPrerequisiteGraph(items, registry);
-  const client = new PmClient({ pmRoot });
+  const client = PmClient.forActiveExtensionHost({ pmRoot });
   const contracts = await client.run("contracts", { options: {
     runtimeOnly: true, outputInclude: "full", outputBudget: "unbounded", outputLimit: "unbounded",
   } }) as ContractsResult;
@@ -3161,6 +3164,21 @@ export default defineExtension({
 
   activate(api: ExtensionApi) {
     api.registerCommand({
+      name: "gantt waiting",
+      description: "Preview active effort separately from explicitly declared external waits.",
+      intent: "Expose elapsed bounds and free capacity while preserving ownership and core readiness.",
+      read_output: { row_keys: [] },
+      examples: ["pm gantt waiting --waits waits.json --json"],
+      failure_hints: ["Supply a bounded JSON object with waits keyed by exact nonterminal ids; missing bounds remain unknown."],
+      flags: [{ long: "--waits", value_name: "file", description: "Required EffortWaitingOptions JSON file (maximum 256 KiB); default row limit 20, maximum 200." }],
+      async run(ctx: CommandHandlerContext) {
+        const input = readScheduleFile(readOption(ctx.options, "waits"));
+        if (!input.ok) return scheduleUsage(input);
+        const result = await previewEffortWaiting(ctx.pm_root, input.value as EffortWaitingOptions);
+        return result.ok ? result : scheduleUsage(result);
+      },
+    });
+    api.registerCommand({
       name: "gantt calibrate",
       description: "Calibrate empirical calendar durations from verified task episodes.",
       intent: "Compare observed elapsed duration with planned effort without changing estimates.",
@@ -3545,7 +3563,7 @@ export default defineExtension({
     // (empty delta).
     // -----------------------------------------------------------------------
     api.registerPreflight({
-      commands: ["gantt", "gantt export", "gantt repair", "gantt uncertainty", "gantt resources", "gantt calibrate", "gantt snapshot", "gantt drift"],
+      commands: ["gantt", "gantt export", "gantt repair", "gantt uncertainty", "gantt resources", "gantt calibrate", "gantt snapshot", "gantt drift", "gantt waiting"],
       run: () => {
         // Intentionally no enforcement here (runtime swallows throws); the real
         // data-sanity gate is enforced in the command and exporter handlers
