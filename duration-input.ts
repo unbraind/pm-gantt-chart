@@ -3,6 +3,7 @@ import type { CompletionIntervalOptions, ResolvedEstimate, UncertainEstimate } f
 import type { ResourceScenarioOptions } from "./resources.ts";
 import type { ScheduleSnapshot, ScheduleDriftOptions } from "./drift.ts";
 import type { DurationCalibrationOptions } from "./calibration.ts";
+import type { EffortWaitingItem, EffortWaitingOptions } from "./waiting.ts";
 
 /** One refusal contract shared by every untrusted duration-input boundary. */
 export interface DurationInputRefusal { ok: false; code: "invalid_estimate"; message: string; remedy: string }
@@ -79,11 +80,25 @@ const scheduleSnapshot: Rule = { kind: "object", maxJsonBytes: SCHEDULE_SNAPSHOT
   tasks: { kind: "array", entry: snapshotTask, min: 0, max: 2000 }, owners: { kind: "dictionary", entry: calendar, max: 50, key: text },
 } };
 const driftOptions: Rule = { kind: "object", fields: { limit: rowLimit } };
+const waitMinutes: Rule = { kind: "number", min: 0, max: 525600, integer: true };
+const legacyMinutes: Rule = { ...minutes, max: DURATION_MINUTES.legacyMaximum };
 
 /** Detached graph entries keep mutable Map objects outside validation receipts. */
 type ValidatedGraph = readonly (readonly [string, readonly string[]])[];
 
 const schemas = {
+  waiting: { kind: "object", fields: {
+    corpus: { ...corpus, max: 2000, entry: { kind: "object", open: true, fields: {
+      id: item.fields.id, status: item.fields.status, dependencies: item.fields.dependencies,
+      estimated_minutes: { ...legacyMinutes, optional: true },
+    } } }, graph,
+    options: { kind: "object", fields: { limit: rowLimit, waits: { kind: "dictionary", max: 200, key: item.fields.id,
+      entry: { kind: "object", ordered: ["minMinutes", "maxMinutes"], fields: {
+        minMinutes: { ...waitMinutes, optional: true },
+        maxMinutes: { ...waitMinutes, optional: true },
+      } },
+    } } },
+  } },
   snapshot: scheduleSnapshot,
   drift: { kind: "object", fields: { before: scheduleSnapshot, after: scheduleSnapshot, options: driftOptions } },
   sampling: { kind: "object", fields: { corpus, graph, options: { kind: "object", fields: {
@@ -114,6 +129,7 @@ const schemas = {
 
 /** Internal schema outputs; callers obtain them only from successful validation receipts. */
 export interface ValidatedInputs {
+  waiting: { corpus: EffortWaitingItem[]; graph?: ValidatedGraph; options: EffortWaitingOptions };
   snapshot: ScheduleSnapshot;
   drift: { before: ScheduleSnapshot; after: ScheduleSnapshot; options: ScheduleDriftOptions };
   sampling: { graph?: ValidatedGraph; corpus: PmItem[]; options: Omit<CompletionIntervalOptions, "estimates"> & { estimates?: Record<string, Exclude<ResolvedEstimate, null>> } };
@@ -306,11 +322,23 @@ const repairMove: Rule = { kind: "union", choices: [
 ] };
 
 /** Closed success contracts check every promised numeric/date leaf before any SDK/CLI return. */
-type DurationOutputKind = "calibration" | "sampling" | "resources" | "repair" | "snapshot" | "drift";
+type DurationOutputKind = "calibration" | "sampling" | "resources" | "repair" | "snapshot" | "drift" | "waiting";
 const driftDays: Rule = { kind: "number", min: -366, max: 366, integer: true };
 const driftChangeValue: Rule = { kind: "union", choices: [nil, text, { ...minutes, integer: true }, { ...labels, max: 2000 }, calendar] };
 const driftGap: Rule = { kind: "object", fields: { code: text, ids: { ...labels, max: 2000 }, remedy: { kind: "string", max: 1024 } } };
 const outputSchemas: Record<DurationOutputKind, Rule> = {
+  waiting: { kind: "object", fields: { ok: successful, activeCount: count, waitingCount: count, unknownCount: count,
+    knownEffortMinutes: { kind: "number", min: 0, max: 200 * DURATION_MINUTES.legacyMaximum },
+    totalEffortMinutes: { kind: "nullable", entry: { kind: "number", min: 0, max: 200 * DURATION_MINUTES.legacyMaximum } },
+    ...Object.fromEntries(["finishMinMinutes", "finishMaxMinutes"].map((key) => [key, { kind: "nullable", entry: { kind: "number", min: 0, max: 200 * (DURATION_MINUTES.legacyMaximum + 525600) } } satisfies Rule])),
+    truncated: flag, assumptions: strings,
+    items: { kind: "array", min: 0, max: 200, entry: { kind: "object", fields: { id: item.fields.id, declaredWait: flag,
+      role: { kind: "union", choices: ["active", "blocked", "unknown"].map((value) => ({ kind: "literal", value })) },
+      effortMinutes: { kind: "nullable", entry: legacyMinutes },
+      ...Object.fromEntries(["waitMinMinutes", "waitMaxMinutes"].map((key) => [key, { kind: "nullable", entry: waitMinutes } satisfies Rule])),
+      ...Object.fromEntries(["elapsedMinMinutes", "elapsedMaxMinutes", "finishMinMinutes", "finishMaxMinutes"].map((key) => [key, { kind: "nullable", entry: { kind: "number", min: 0, max: (key.startsWith("finish") ? 200 : 1) * (DURATION_MINUTES.legacyMaximum + 525600) } } satisfies Rule])),
+    } } },
+  } },
   snapshot: { kind: "object", fields: { ok: successful, snapshot: scheduleSnapshot } },
   drift: { kind: "object", fields: { ok: successful, before: text, after: text,
     counts: { kind: "object", fields: { tasks: populationCount, moved: count, unchanged: populationCount, gaps: { ...populationCount, max: 5000 }, returned: count } },

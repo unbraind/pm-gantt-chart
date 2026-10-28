@@ -64,3 +64,16 @@ export function protectPublicTracker(root: string): void {
     if (entry.isDirectory()) protectPublicTracker(path); else chmodSync(path, 0o444);
   }
 }
+
+/** Archive public evidence into a disposable non-git tracker with read-only native documents. */
+export function archivePublicTracker(prefix: string, ref = "origin/main") {
+  const source = execFileSync("git", ["rev-parse", ref], { encoding: "utf8" }).trim();
+  const root = mkdtempSync(join(tmpdir(), prefix));
+  try {
+    const bytes = execFileSync("git", ["archive", source, ".agents/pm"], { maxBuffer: 64 * 1024 * 1024 });
+    execFileSync("tar", ["-xf", "-", "-C", root], { input: bytes });
+    const pmRoot = join(root, ".agents", "pm");
+    protectPublicTracker(pmRoot);
+    return { source, root, pmRoot };
+  } catch (error) { rmSync(root, { recursive: true, force: true }); throw error; }
+}

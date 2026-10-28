@@ -9,6 +9,8 @@ import { runValidatedIntervals, simulateCompletionIntervals } from "./uncertaint
 import { runValidatedResources, computeResourceScenarios, applyResourceSelection } from "./resources.js";
 export { applyResourceSelection } from "./resources.js";
 import { readScheduleFile } from "./schedule-files.js";
+import { previewEffortWaiting } from "./waiting.js";
+export { effortWaitingPreview, previewEffortWaiting } from "./waiting.js";
 import { captureScheduleScenario, explainScheduleDrift } from "./drift.js";
 export { SCHEDULE_SNAPSHOT_MAX_BYTES, SCHEDULE_FILE_MAX_BYTES } from "./duration-input.js";
 export { captureScheduleScenario, explainScheduleDrift, validateScheduleSnapshot } from "./drift.js";
@@ -2697,6 +2699,22 @@ export default defineExtension({
     version: "2026.10.28",
     activate(api) {
         api.registerCommand({
+            name: "gantt waiting",
+            description: "Preview active effort separately from explicitly declared external waits.",
+            intent: "Expose elapsed bounds and free capacity while preserving ownership and core readiness.",
+            read_output: { row_keys: [] },
+            examples: ["pm gantt waiting --waits waits.json --json"],
+            failure_hints: ["Supply a bounded JSON object with waits keyed by exact nonterminal ids; missing bounds remain unknown."],
+            flags: [{ long: "--waits", value_name: "file", description: "Required EffortWaitingOptions JSON file (maximum 256 KiB); default row limit 20, maximum 200." }],
+            async run(ctx) {
+                const input = readScheduleFile(readOption(ctx.options, "waits"));
+                if (!input.ok)
+                    return scheduleUsage(input);
+                const result = await previewEffortWaiting(ctx.pm_root, input.value);
+                return result.ok ? result : scheduleUsage(result);
+            },
+        });
+        api.registerCommand({
             name: "gantt calibrate",
             description: "Calibrate empirical calendar durations from verified task episodes.",
             intent: "Compare observed elapsed duration with planned effort without changing estimates.",
@@ -3057,7 +3075,7 @@ export default defineExtension({
         // (empty delta).
         // -----------------------------------------------------------------------
         api.registerPreflight({
-            commands: ["gantt", "gantt export", "gantt repair", "gantt uncertainty", "gantt resources", "gantt calibrate", "gantt snapshot", "gantt drift"],
+            commands: ["gantt", "gantt export", "gantt repair", "gantt uncertainty", "gantt resources", "gantt calibrate", "gantt snapshot", "gantt drift", "gantt waiting"],
             run: () => {
                 // Intentionally no enforcement here (runtime swallows throws); the real
                 // data-sanity gate is enforced in the command and exporter handlers

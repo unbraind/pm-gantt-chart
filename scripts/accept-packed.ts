@@ -31,6 +31,8 @@ interface AcceptanceReceipt {
   readonly replay_items: 2000;
   readonly replay_bytes: number;
   readonly prototype_calendars: true;
+  readonly waiting_effort_minutes: 120;
+  readonly waiting_elapsed_minutes: 3000;
 }
 
 const repoRoot = resolve(import.meta.dirname, "..");
@@ -40,7 +42,7 @@ const packageJson = JSON.parse(
 const cliPackage = "@unbrained/pm-cli";
 const developmentVersion = packageJson.devDependencies[cliPackage];
 /** Exercise the deployed consumer separately while retaining the repository's development SDK pin. */
-const consumerVersion = "2026.10.26";
+const consumerVersion = "2026.10.28";
 const minimumMatch = packageJson.peerDependencies[cliPackage]?.match(/^>=\s*(\d+\.\d+\.\d+)$/u);
 const minimumVersion = minimumMatch?.[1];
 if (!developmentVersion || !/^\d+\.\d+\.\d+$/u.test(developmentVersion) || !minimumVersion) {
@@ -64,7 +66,7 @@ delete cleanEnvironment.PM_PATH;
 delete cleanEnvironment.PM_SOURCE_PM_PATH;
 delete cleanEnvironment.PM_SOURCE_WORKSPACE_ROOT;
 for (const key of Object.keys(cleanEnvironment)) {
-  if (key.toLowerCase() === "npm_config_allow_scripts") delete cleanEnvironment[key];
+  if (key.toLowerCase() === "npm_config_allow_scripts" || /token|secret|password|credential|npm_media_server/i.test(key)) delete cleanEnvironment[key];
 }
 /** Maximum time allowed for one install, pack, or pm subprocess. */
 const commandTimeoutMs = 5 * 60 * 1000;
@@ -199,7 +201,7 @@ try {
       "--status",
       "open",
       "--create-mode",
-      "progressive", "--assignee", "worker", "--estimate", "480",
+      "progressive", "--assignee", "worker", "--estimate", "120",
       "--unset", "parent", "--unset", "goal", "--unset", "objective", "--unset", "sprint", "--unset", "release",
     ]);
     runPm(scenario, scenarioRoot, ["install", tarball, "--project"]);
@@ -230,6 +232,12 @@ try {
       throw new Error(`${scenario.name} pm gantt export omitted the real tracker fixture`);
     }
     const fixture = (exportedItems as Record<string, unknown>[]).find((item) => item.title === fixtureTitle)!;
+    const waitsFile = join(scenarioRoot, "waits.json");
+    writeFileSync(waitsFile, JSON.stringify({ waits: { [String(fixture.id)]: { minMinutes: 2880, maxMinutes: 2880 } } }));
+    const waitingArgs = ["gantt", "waiting", "--waits", waitsFile];
+    const waiting = requireJsonObject(runPm(scenario, scenarioRoot, [...waitingArgs, "--json"]).stdout, `${scenario.name} waiting`);
+    if (waiting.ok !== true || waiting.totalEffortMinutes !== 120 || waiting.finishMinMinutes !== 3000) throw new Error(`${scenario.name} did not separate 120 effort from 2880 waiting minutes`);
+    if (!runPm(scenario, scenarioRoot, waitingArgs).stdout.includes("effortMinutes")) throw new Error(`${scenario.name} waiting TOON is missing effort`);
     const controlsFile = join(scenarioRoot, "controls.json"), beforeFile = join(scenarioRoot, "before.json"), afterFile = join(scenarioRoot, "after.json");
     writeFileSync(controlsFile, JSON.stringify({ from: "2026-10-19", through: "2026-10-30", timeZone: "UTC", scenarios: [{ id: "saved", owners: {
       worker: { weekdays: [1, 2, 3, 4, 5, 6, 7], holidays: [], minutesPerDay: 480, minutesPerWeek: 3360, totalMinutes: 10000 },
@@ -266,6 +274,8 @@ try {
       replay_items: 2000,
       replay_bytes: Buffer.byteLength(replay),
       prototype_calendars: true,
+      waiting_effort_minutes: 120,
+      waiting_elapsed_minutes: 3000,
     });
   }
 

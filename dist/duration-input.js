@@ -53,7 +53,21 @@ const scheduleSnapshot = { kind: "object", maxJsonBytes: SCHEDULE_SNAPSHOT_MAX_B
         tasks: { kind: "array", entry: snapshotTask, min: 0, max: 2000 }, owners: { kind: "dictionary", entry: calendar, max: 50, key: text },
     } };
 const driftOptions = { kind: "object", fields: { limit: rowLimit } };
+const waitMinutes = { kind: "number", min: 0, max: 525600, integer: true };
+const legacyMinutes = { ...minutes, max: DURATION_MINUTES.legacyMaximum };
 const schemas = {
+    waiting: { kind: "object", fields: {
+            corpus: { ...corpus, max: 2000, entry: { kind: "object", open: true, fields: {
+                        id: item.fields.id, status: item.fields.status, dependencies: item.fields.dependencies,
+                        estimated_minutes: { ...legacyMinutes, optional: true },
+                    } } }, graph,
+            options: { kind: "object", fields: { limit: rowLimit, waits: { kind: "dictionary", max: 200, key: item.fields.id,
+                        entry: { kind: "object", ordered: ["minMinutes", "maxMinutes"], fields: {
+                                minMinutes: { ...waitMinutes, optional: true },
+                                maxMinutes: { ...waitMinutes, optional: true },
+                            } },
+                    } } },
+        } },
     snapshot: scheduleSnapshot,
     drift: { kind: "object", fields: { before: scheduleSnapshot, after: scheduleSnapshot, options: driftOptions } },
     sampling: { kind: "object", fields: { corpus, graph, options: { kind: "object", fields: {
@@ -295,6 +309,18 @@ const driftDays = { kind: "number", min: -366, max: 366, integer: true };
 const driftChangeValue = { kind: "union", choices: [nil, text, { ...minutes, integer: true }, { ...labels, max: 2000 }, calendar] };
 const driftGap = { kind: "object", fields: { code: text, ids: { ...labels, max: 2000 }, remedy: { kind: "string", max: 1024 } } };
 const outputSchemas = {
+    waiting: { kind: "object", fields: { ok: successful, activeCount: count, waitingCount: count, unknownCount: count,
+            knownEffortMinutes: { kind: "number", min: 0, max: 200 * DURATION_MINUTES.legacyMaximum },
+            totalEffortMinutes: { kind: "nullable", entry: { kind: "number", min: 0, max: 200 * DURATION_MINUTES.legacyMaximum } },
+            ...Object.fromEntries(["finishMinMinutes", "finishMaxMinutes"].map((key) => [key, { kind: "nullable", entry: { kind: "number", min: 0, max: 200 * (DURATION_MINUTES.legacyMaximum + 525600) } }])),
+            truncated: flag, assumptions: strings,
+            items: { kind: "array", min: 0, max: 200, entry: { kind: "object", fields: { id: item.fields.id, declaredWait: flag,
+                        role: { kind: "union", choices: ["active", "blocked", "unknown"].map((value) => ({ kind: "literal", value })) },
+                        effortMinutes: { kind: "nullable", entry: legacyMinutes },
+                        ...Object.fromEntries(["waitMinMinutes", "waitMaxMinutes"].map((key) => [key, { kind: "nullable", entry: waitMinutes }])),
+                        ...Object.fromEntries(["elapsedMinMinutes", "elapsedMaxMinutes", "finishMinMinutes", "finishMaxMinutes"].map((key) => [key, { kind: "nullable", entry: { kind: "number", min: 0, max: (key.startsWith("finish") ? 200 : 1) * (DURATION_MINUTES.legacyMaximum + 525600) } }])),
+                    } } },
+        } },
     snapshot: { kind: "object", fields: { ok: successful, snapshot: scheduleSnapshot } },
     drift: { kind: "object", fields: { ok: successful, before: text, after: text,
             counts: { kind: "object", fields: { tasks: populationCount, moved: count, unchanged: populationCount, gaps: { ...populationCount, max: 5000 }, returned: count } },
