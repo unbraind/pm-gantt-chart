@@ -1796,7 +1796,7 @@ function customOrderingContracts(contracts: ContractsResult, registry: Relations
 async function commandPrerequisiteGraph(items: PmItem[], pmRoot: string): Promise<PrerequisiteGraph> {
   const registry = resolveWorkspaceRelationshipKindRegistry();
   const graph = buildPrerequisiteGraph(items, registry);
-  const client = PmClient.forActiveExtensionHost({ pmRoot });
+  const client = new PmClient({ pmRoot });
   const contracts = await client.run("contracts", { options: {
     runtimeOnly: true, outputInclude: "full", outputBudget: "unbounded", outputLimit: "unbounded",
   } }) as ContractsResult;

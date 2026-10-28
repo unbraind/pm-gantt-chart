@@ -190,10 +190,14 @@ test("packed command and SDK preview preserve ownership without git or a git exe
     assert.deepEqual(await previewEffortWaiting(pmRoot, { waits: { "waiting-a": { minMinutes: 2880, maxMinutes: 2880 } } }), result);
     assertTypedRefusal(await previewEffortWaiting(join(root, "missing"), { waits: {} }), "corpus_unavailable");
     const harness = await createExtensionTestHarness(extension, { capabilities: ["commands", "schema", "importers", "preflight"] });
+    const source = await harness.runCommand({ command: "gantt waiting", pmRoot, options: { waits: input } });
+    assert.deepEqual(source.result, result);
     for (const options of [{}, { waits: root }, { waits: join(root, "missing.json") }]) {
       const receipt = await harness.runCommand({ command: "gantt waiting", pmRoot, options }); assert.equal(receipt.exitCode, 2);
     }
     writeFileSync(input, JSON.stringify({ waits: { "waiting-a": { minMinutes: -1 } } }));
+    const sourceDenied = await harness.runCommand({ command: "gantt waiting", pmRoot, options: { waits: input } });
+    assert.equal(sourceDenied.exitCode, 2);
     const denied = invoke([...args, "--json"]); assert.equal(denied.status, 2); assert.match(denied.stdout + denied.stderr, /invalid_estimate/);
   } finally {
     process.env.PATH = oldPath;
