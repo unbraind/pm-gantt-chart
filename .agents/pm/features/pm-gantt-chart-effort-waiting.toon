@@ -2,12 +2,18 @@ id: pm-gantt-chart-effort-waiting
 title: Separate active effort from declared external waits
 description: "Acceptance: a two-hour task plus a two-day external wait consumes 120 capacity minutes and at least 2880 elapsed minutes; missing wait bounds remain unknown; previews never change ownership. Deliver typed SDK and CLI surfaces, compact TOON/JSON, typed refusals and remedies, README/example, non-git public-tracker validation, seeded state-preservation properties and npm/Bun CI evidence."
 type: Feature
-status: in_progress
+status: closed
 priority: 2
 tags: []
 created_at: "2026-10-28T20:21:52.002Z"
-updated_at: "2026-10-28T21:06:19.268Z"
+updated_at: "2026-10-30T20:14:42.178Z"
+closed_at: "2026-10-30T20:14:39.689Z"
+completed_at: "2026-10-28T21:36:11.000Z"
 author: codex-agent
+release: 2026.10.29
+resolution: "Delivered by PR #197 (d420c83): Separate active effort from external waiting in read-only previews"
+expected_result: Separate active effort from declared external waits
+actual_result: "PR #197 merged at 2026-10-28T21:36:11Z as d420c83; required CI passed on the merged head."
 comments[8]{created_at,author,text}:
   "2026-10-28T20:23:47.453Z",codex-agent,"Overlap rechecked against core SDK actionability declarations and sibling README contracts: core collectBlockedByIds/resolveItemBlockers/computeActionabilityReport decide readiness; gantt resources allocates owner capacity; pm-swarm resources owns fenced reservations; observed-duration calibration includes waits but does not declare them. This feature adds read-only explicit elapsed wait bounds, with no reservation, reminder, ownership or scheduling mutation. CLI registry version verified as 2026.10.28; retained repository development pin 2026.10.25. Plan: one boundary schema, SDK status roles and ordering kernel, bounded TOON/JSON, seeded native-state preservation, public archive validation and CI npm/Bun gates."
   "2026-10-28T20:32:37.281Z",codex-agent,"Implemented effortWaitingPreview and previewEffortWaiting plus gantt waiting. ONE shared strict duration schema covers dense inputs and finite bounded outputs; SDK runtime roles classify custom statuses, the SDK execution kernel handles ordering, and the supported active host supplies the fresh certified corpus. No import, sync, apply, journal, lease or shared write state is added. Focused validation: 500 seeded native-operation/replay sequences passed, 500 random custom registries passed, packed TOON/JSON no-git preview preserved a real claim and native SDK state. Public archive at 9d307c26e4956a5fa43c84546bb886e3cf58c7a9: 119 corpus, 9 nonterminal, 2 declared hypothetical waits, 6 missing effort, 540 known effort minutes, 7 unknown completions, 3 returned rows, 1250 JSON bytes; two previews took 7357 ms on the loaded host. SDK read-back and durable hashes unchanged. Behavioral reverts in a disposable copy each failed: ignored wait, zero substituted for unknown upper bound, status-name terminal classification. All three restored checks passed. Full release gates will run in CI under npm and Bun; local work stays focused with at most two test workers."
@@ -34,4 +40,5 @@ docs[3]{path,scope}:
   docs/effort-waiting-validation.md,project
   docs/effort-waiting.md,project
   README.md,project
+close_reason: "Delivered by PR #197 (d420c83): Separate active effort from external waiting in read-only previews"
 body: ""
