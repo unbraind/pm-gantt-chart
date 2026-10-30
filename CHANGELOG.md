@@ -1,14 +1,27 @@
 # Changelog
 
+## 2026.10.29 - 2026-10-29
+
+### Added
+
+- Separate active effort from declared external waits ([pm-gantt-chart-effort-waiting](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-effort-waiting.toon))
+
 ## 2026.10.28 - 2026-10-28
 
 ### Added
 
+- Explain moved goal dates between saved resource schedules ([pm-gantt-chart-schedule-drift](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-schedule-drift.toon))
 - Calibrate future task durations from verified observed episodes ([pm-gantt-chart-observed-duration](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-observed-duration.toon))
 
 ### Other
 
 - Stop Hound from linting generated dist/ output ([pm-gantt-chart-hound-esm](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-hound-esm.toon))
+
+## 2026.10.26 - 2026-10-26
+
+### Other
+
+- Point the npm homepage at the package catalog and link the author ([pm-gantt-chart-mmmr](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-mmmr.toon))
 
 ## 2026.10.25 - 2026-10-25
 
