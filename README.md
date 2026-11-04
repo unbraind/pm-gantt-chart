@@ -31,21 +31,21 @@ Legend: ██ in_progress/blocked  ░░ open/planned  ▓▓ critical-path (*
 ## Installation
 
 Requires pm CLI `2026.10.20` or newer for locked scenario-selection guards.
-Development and CI retain the existing exact pin at 2026.10.20;
+Development and CI use the exact SDK pin declared in `package.json`;
 the consumer floor is independently exercised by packed npm acceptance.
 
 In a plain project directory, initialize a tracker and activate the published package:
 
 ```sh
-npx -y @unbrained/pm-cli@2026.10.21 init --defaults --agent-guidance skip
-npx -y @unbrained/pm-cli@2026.10.21 install npm:pm-gantt-chart@2026.10.20 --project
+npx -y @unbrained/pm-cli@2026.10.20 init --defaults --agent-guidance skip
+npx -y @unbrained/pm-cli@2026.10.20 install npm:pm-gantt-chart@2026.10.20 --project
 ```
 
 With Bun:
 
 ```sh
-bunx @unbrained/pm-cli@2026.10.21 init --defaults --agent-guidance skip
-bunx @unbrained/pm-cli@2026.10.21 install npm:pm-gantt-chart@2026.10.20 --project
+bunx @unbrained/pm-cli@2026.10.20 init --defaults --agent-guidance skip
+bunx @unbrained/pm-cli@2026.10.20 install npm:pm-gantt-chart@2026.10.20 --project
 ```
 
 Use the explicit `npm:` source: an owner/repository shorthand is interpreted as a

@@ -41,8 +41,8 @@ const packageJson = JSON.parse(
 ) as PackageContract;
 const cliPackage = "@unbrained/pm-cli";
 const developmentVersion = packageJson.devDependencies[cliPackage];
-/** Exercise the deployed consumer separately while retaining the repository's development SDK pin. */
-const consumerVersion = "2026.10.28";
+/** Exercise global consumers with the declared development SDK pin. */
+const consumerVersion = developmentVersion;
 const minimumMatch = packageJson.peerDependencies[cliPackage]?.match(/^>=\s*(\d+\.\d+\.\d+)$/u);
 const minimumVersion = minimumMatch?.[1];
 if (!developmentVersion || !/^\d+\.\d+\.\d+$/u.test(developmentVersion) || !minimumVersion) {

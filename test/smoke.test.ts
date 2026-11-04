@@ -121,20 +121,24 @@ test("preflight override is scoped to pm-gantt-chart's owned command paths", asy
   assert.deepEqual(res.warnings, [], "no warnings from empty delta");
 });
 
-test("README installs the pinned registry package in project scope", () => {
+test("README installs the registry package with the declared minimum SDK in project scope", () => {
+  const manifest = JSON.parse(readFileSync(new URL("../manifest.json", import.meta.url), "utf8")) as { pm_min_version: string };
+  const minimum = manifest.pm_min_version;
+  assert.match(minimum, /^\d+\.\d+\.\d+$/u);
   const installation = readFileSync(new URL("../README.md", import.meta.url), "utf8")
     .split("## Installation\n")[1]?.split("\n## ")[0];
   assert.ok(installation, "installation instructions must be present");
+  assert.ok(installation.includes(`Requires pm CLI \`${minimum}\` or newer`), "installation prose must name the declared consumer minimum");
   const commandBlocks = [...installation.matchAll(/```sh\n([\s\S]*?)\n```/g)]
     .map(([, block]) => block.split("\n"));
   assert.deepEqual(commandBlocks, [
     [
-      "npx -y @unbrained/pm-cli@2026.10.21 init --defaults --agent-guidance skip",
-      "npx -y @unbrained/pm-cli@2026.10.21 install npm:pm-gantt-chart@2026.10.20 --project",
+      `npx -y @unbrained/pm-cli@${minimum} init --defaults --agent-guidance skip`,
+      `npx -y @unbrained/pm-cli@${minimum} install npm:pm-gantt-chart@2026.10.20 --project`,
     ],
     [
-      "bunx @unbrained/pm-cli@2026.10.21 init --defaults --agent-guidance skip",
-      "bunx @unbrained/pm-cli@2026.10.21 install npm:pm-gantt-chart@2026.10.20 --project",
+      `bunx @unbrained/pm-cli@${minimum} init --defaults --agent-guidance skip`,
+      `bunx @unbrained/pm-cli@${minimum} install npm:pm-gantt-chart@2026.10.20 --project`,
     ],
   ]);
   assert.doesNotMatch(installation, /pm install (?:github\.com\/)?unbraind\//);
