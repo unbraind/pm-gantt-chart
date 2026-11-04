@@ -40,7 +40,7 @@ The packed CLI test uses a git-free PATH and a real claim, checks TOON and JSON,
 and compares native state and durable tracker digests. The packed acceptance
 matrix exercises the two-hour/two-day example under npm and Bun local installs,
 npx/bunx launchers, both global installations and the minimum supported SDK host.
-The global consumers use CLI 2026.10.28; the development pin is unchanged.
+The global consumers use the development SDK pin declared in `package.json`.
 
 `node test/revert-waiting.ts` mutates only a disposable copy: ignoring a declared
 wait, replacing unknown upper bounds with zero, and classifying terminal work by

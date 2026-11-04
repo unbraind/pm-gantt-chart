@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
-import { PmClient, certifyCompleteListResult, readSettings, resolveRuntimeStatusRegistry } from "@unbrained/pm-cli/sdk";
+import { PmClient, isPmCliExpectedError, certifyCompleteListResult, readSettings, resolveRuntimeStatusRegistry } from "@unbrained/pm-cli/sdk";
 import { createExtensionTestHarness } from "@unbrained/pm-cli/sdk/testing";
 import extension, { captureScheduleScenario, explainScheduleDrift, validateScheduleSnapshot, type ScheduleSnapshot, type ScheduleTask, type ResourceScenarioOptions, type ScheduleDriftResult } from "../index.ts";
 import { validateDurationOutput } from "../duration-input.ts";
@@ -191,6 +191,7 @@ test("500 seeded operation sequences read SDK state, replay older snapshots and 
   const history: ScheduleSnapshot[] = [], model = new Map<string, ScheduleTask>([
     ["model-a", task("model-a")], ["model-b", task("model-b", ["model-a"])],
   ]);
+  let refusedStarts = 0;
   const modelControls = { ...controls, scenarios: [{ ...controls.scenarios[0], owners: { worker: calendar, other: calendar } }] };
   for (let sequence = 0; sequence < 500; sequence++) {
     if (sequence % 50 === 0) await sdk.focus((next() >>> 16) % 2 === 0 ? "model-a" : "model-b");
@@ -213,7 +214,15 @@ test("500 seeded operation sequences read SDK state, replay older snapshots and 
       await sdk.update(id, { deadline, unset }); model.set(id, { ...previous, deadline });
     } else {
       const status = next() % 2 === 0 ? "open" : "in_progress";
-      await sdk.update(id, { status, unset }); model.set(id, { ...previous, status });
+      // pm-cli 2026.11.4 (pm-urzubi) admits only unblocked transitions into work.
+      if (status === "in_progress" && previous.status !== "in_progress" && previous.prerequisites.length > 0) {
+        const before = durableSnapshot(pmRoot);
+        await assert.rejects(sdk.update(id, { status, unset }), error => isPmCliExpectedError(error) && error.code === "start_blocked_by_open_dependency");
+        assert.equal(durableSnapshot(pmRoot), before, "refused starts preserve durable state");
+        refusedStarts++;
+      } else {
+        await sdk.update(id, { status, unset }); model.set(id, { ...previous, status });
+      }
     }
     const read = certifyCompleteListResult(await sdk.listAllComplete()).items;
     const result = captureScheduleScenario(read, modelControls, registry); assert.ok(result.ok);
@@ -233,6 +242,8 @@ test("500 seeded operation sequences read SDK state, replay older snapshots and 
     const projected = captureScheduleScenario(read.map((row, i) => ({ ...row, status: i === 0 ? active : done })), controls, custom);
     assert.ok(projected.ok); assert.deepEqual(projected.snapshot.tasks.map((row) => row.role), ["active", "terminal"]);
   }
+  assert.equal(refusedStarts, 3, "seed 0x5ca1ab1e contains exactly three blocked transitions");
+  t.diagnostic("500 scheduling readbacks; 3 native blocked-start refusals; all older snapshots retained");
 });
 
 test("packed CLI snapshot/drift work without git and leave the SDK tracker unchanged", async (t) => {

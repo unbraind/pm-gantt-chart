@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
-import { certifyCompleteListResult, PmClient, readSettings, resolveRuntimeStatusRegistry } from "@unbrained/pm-cli/sdk";
+import { certifyCompleteListResult, isPmCliExpectedError, PmClient, readSettings, resolveRuntimeStatusRegistry } from "@unbrained/pm-cli/sdk";
 import { createExtensionTestHarness } from "@unbrained/pm-cli/sdk/testing";
 import extension, { buildPrerequisiteGraph, effortWaitingPreview, previewEffortWaiting, type EffortWaitingItem, type EffortWaitingOptions } from "../index.ts";
 import { DURATION_MINUTES, validateDurationOutput } from "../duration-input.ts";
@@ -134,7 +134,7 @@ test("500 seeded state sequences replay old CRLF inputs against SDK reads and an
   for (const id of ["wait-model-a", "wait-model-b"]) await sdk.create({ id, title: `  ${id} \r\n native  `, type: "Task", estimatedMinutes: "120", assignee: "fixture", description: " body \r\n whitespace ", unset });
   const nativeModel = new Map<string, EffortWaitingItem>((await sdk.listAllComplete()).items.map((item) => [item.id, item]));
   const past: EffortWaitingOptions[] = [];
-  let seed = 0xeff047;
+  let seed = 0xeff047, refusedStarts = 0;
   /** Stable replay seed makes failed random sequences reproducible. */
   function random() { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed; }
   for (let sequence = 0; sequence < 500; sequence++) {
@@ -148,9 +148,18 @@ test("500 seeded state sequences replay old CRLF inputs against SDK reads and an
       : operation === 2 ? { assignee: `worker-${random() % 5}`, unset }
       : operation === 3 ? { status: random() % 2 === 0 ? "open" : "in_progress", unset }
       : link ? { dep: ["id=wait-model-a,kind=blocked_by", "id=wait-model-a,kind=related"], unset } : { clearDeps: true, unset };
-    const updated = await sdk.update(id, options);
-    // Native write results are normalized by the SDK, never by a test-side normalizer.
-    nativeModel.set(id, updated.item as unknown as EffortWaitingItem);
+    const previous = nativeModel.get(id)!;
+    const blockedStart = options.status === "in_progress" && previous.status !== "in_progress" && previous.dependencies?.some(dep => dep.kind === "blocked_by");
+    if (blockedStart) {
+      const before = snapshot(pmRoot);
+      await assert.rejects(sdk.update(id, options), error => isPmCliExpectedError(error) && error.code === "start_blocked_by_open_dependency");
+      assert.equal(snapshot(pmRoot), before, "refused starts preserve durable state");
+      refusedStarts++;
+    } else {
+      const updated = await sdk.update(id, options);
+      // Native write results are normalized by the SDK, never by a test-side normalizer.
+      nativeModel.set(id, updated.item as unknown as EffortWaitingItem);
+    }
     const read = certifyCompleteListResult(await sdk.listAllComplete()).items;
     assert.deepEqual(new Map(read.map((item) => [item.id, item])), nativeModel);
     const min = random() % 525601, max = min + random() % (525601 - min);
@@ -172,6 +181,8 @@ test("500 seeded state sequences replay old CRLF inputs against SDK reads and an
     const after = certifyCompleteListResult(await sdk.listAllComplete()).items;
     assert.deepEqual(new Map(after.map((item) => [item.id, item])), nativeModel, "all native fields and relationships survive old-input replays");
   }
+  assert.equal(refusedStarts, 8, "seed 0xeff047 contains exactly eight blocked transitions");
+  t.diagnostic("500 elapsed-model readbacks; 8 native blocked-start refusals; CRLF replays retained");
 });
 
 test("packed command and SDK preview preserve ownership without git or a git executable", async (t) => {

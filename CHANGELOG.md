@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+No changes.
+
+## 2026.11.3 - 2026-11-03
+
+No changes.
+
+## 2026.11.1 - 2026-11-01
+
+No changes.
+
+## 2026.10.31 - 2026-10-31
+
+No changes.
+
+## 2026.10.30 - 2026-10-30
+
+No changes.
+
 ## 2026.10.29 - 2026-10-29
 
 ### Added
@@ -75,11 +95,27 @@
 - Closed: Seeded uncertainty changes per-ID quantiles when accepted Unicode IDs are reordered ([pm-gantt-chart-github-072477cd0a70-167](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-167.toon))
 - Closed: Shell scalar assignments are read from raw text, so a comment can flag an unattested publish ([pm-gantt-chart-grjk](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-grjk.toon))
 
+## 2026.10.20 - 2026-10-20
+
+No changes.
+
 ## 2026.10.19 - 2026-10-19
 
 ### Fixed
 
 - Standalone SVG becomes solid black in Inkscape after CSS-variable paints in \#152 ([pm-gantt-chart-github-072477cd0a70-153](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-153.toon))
+
+## 2026.10.18 - 2026-10-18
+
+No changes.
+
+## 2026.10.17 - 2026-10-17
+
+No changes.
+
+## 2026.10.16 - 2026-10-16
+
+No changes.
 
 ## 2026.10.15 - 2026-10-15
 
@@ -92,6 +128,14 @@
 ### Fixed
 
 - Use registry ordering semantics for Gantt schedules and inverse-edge cycle detection ([pm-gantt-chart-github-072477cd0a70-135](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-135.toon))
+
+## 2026.10.10 - 2026-10-10
+
+No changes.
+
+## 2026.10.9 - 2026-10-09
+
+No changes.
 
 ## 2026.10.5 - 2026-10-05
 
@@ -108,6 +152,10 @@
 ### Other
 
 - Certify pm CLI 2026.9.23 and adopt the guarded pm-ops merge-driver launcher ([pm-gantt-chart-ioyz](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-ioyz.toon))
+
+## 2026.9.23 - 2026-09-23
+
+No changes.
 
 ## 2026.9.18 - 2026-09-18
 
@@ -126,6 +174,10 @@
 ### Other
 
 - Certify pm CLI 2026.9.10 and pick up the canonical auditor fixes the lockfile was holding back ([pm-gantt-chart-1psl](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-1psl.toon))
+
+## 2026.9.9 - 2026-09-09
+
+No changes.
 
 ## 2026.9.8 - 2026-09-08
 
@@ -159,6 +211,10 @@
 ### Closed
 
 - Closed: Pin pm-changelog 2026.8.30 before the next release ([pm-gantt-chart-kn18](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-kn18.toon))
+
+## 2026.8.29 - 2026-08-29
+
+No changes.
 
 ## 2026.8.28 - 2026-08-28
 
@@ -239,6 +295,10 @@
 
 - Resolve pm-changelog to the release that derives release dates in UTC ([pm-gantt-chart-lfn2](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-lfn2.toon))
 
+## 2026.8.3 - 2026-08-03
+
+No changes.
+
 ## 2026.8.1 - 2026-08-01
 
 ### Fixed
@@ -294,6 +354,22 @@
 
 - Closed: Recommend pm merge reconcile (2026.7.22) over raw history-repair in Multi-agent merge safety docs ([pm-gantt-chart-6vw2](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-6vw2.toon))
 
+## 2026.7.22 - 2026-07-22
+
+No changes.
+
+## 2026.7.20 - 2026-07-20
+
+No changes.
+
+## 2026.7.13 - 2026-07-13
+
+No changes.
+
+## 2026.7.11 - 2026-07-11
+
+No changes.
+
 ## 2026.7.10-1 - 2026-07-10
 
 ### Added
@@ -324,6 +400,10 @@
 
 - Ecosystem release readiness pass 2026-07-06 ([pm-gantt-chart-f8vx](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-f8vx.toon))
 
+## 2026.7.7 - 2026-07-07
+
+No changes.
+
 ## 2026.7.6 - 2026-07-06
 
 ### Fixed
@@ -341,11 +421,27 @@
 
 - Add structured JSON output format to the gantt exporter ([pm-gantt-chart-53tr](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-53tr.toon))
 
+## 2026.6.13 - 2026-06-13
+
+No changes.
+
+## 2026.6.10-1 - 2026-06-10
+
+No changes.
+
+## 2026.6.10 - 2026-06-09
+
+No changes.
+
 ## 2026.6.9 - 2026-06-09
 
 ### Added
 
 - Add --milestones markers to gantt chart and exports ([pm-gantt-chart-xqak](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-xqak.toon))
+
+## 2026.6.8 - 2026-06-08
+
+No changes.
 
 ## 2026.6.7 - 2026-06-07
 
@@ -357,6 +453,10 @@
 
 - Harden release readiness checks ([pm-gantt-chart-ws4i](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-ws4i.toon))
 - Align package dependencies to pm CLI/SDK 2026.6.6 ([pm-gantt-chart-yv1k](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-yv1k.toon))
+
+## 2026.6.5 - 2026-06-05
+
+No changes.
 
 ## 2026.6.4-1 - 2026-06-04
 
@@ -401,6 +501,14 @@
 ### Fixed
 
 - Command handler threw plain Error (no exitCode) → runtime double-invocation ([pm-gantt-chart-hl8t](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-hl8t.toon))
+
+## 2026.5.31 - 2026-05-31
+
+No changes.
+
+## 2026.5.30 - 2026-05-30
+
+No changes.
 
 ## 2026.5.29 - 2026-05-29
 
