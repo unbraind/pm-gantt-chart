@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test, { type TestContext } from "node:test";
@@ -95,4 +95,34 @@ test("nonempty pending work and historical attribution survive; checks still rej
   assert.equal(stale.status, 1, stale.stderr);
   assert.match(stale.stderr, /out of date/);
   assert.match(readFileSync(join(f.root, "CHANGELOG.md"), "utf8"), /Stale pending work/);
+});
+
+test("checked drift preserves the normalized step summary without writing the changelog", async t => {
+  const f = await fixture(t);
+  f.commit();
+  f.runGit("tag", "v2026.11.05");
+  const generated = f.run();
+  assert.equal(generated.status, 0, generated.stderr);
+  const output = join(f.root, "CHANGELOG.md"), summary = join(f.root, "step-summary.md");
+  const expected = readFileSync(output, "utf8");
+  assert.doesNotMatch(expected, /## Unreleased/);
+  assert.equal(existsSync(summary), false, "callers without the flag do not create a summary");
+  writeFileSync(output, "Stale artifact.\n");
+  const stale = f.run("changelog:check", "--github-step-summary");
+  assert.equal(stale.status, 1, stale.stderr);
+  assert.match(stale.stderr, /out of date/);
+  assert.equal(readFileSync(output, "utf8"), "Stale artifact.\n");
+  assert.equal(existsSync(summary), true, "failed checks must still append their generated summary");
+  assert.equal(readFileSync(summary, "utf8"), expected);
+  unlinkSync(output);
+  const missing = f.run("changelog:check", "--github-step-summary");
+  assert.equal(missing.status, 1, missing.stderr);
+  assert.match(missing.stderr, /out of date/);
+  assert.equal(existsSync(output), false, "checking a missing artifact must not create it");
+  assert.equal(readFileSync(summary, "utf8"), expected.repeat(2));
+  writeFileSync(output, expected);
+  const current = f.run("changelog:check", "--github-step-summary");
+  assert.equal(current.status, 0, current.stderr);
+  assert.equal(readFileSync(output, "utf8"), expected);
+  assert.equal(readFileSync(summary, "utf8"), expected.repeat(3), "each check appends exactly once");
 });

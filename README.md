@@ -517,6 +517,8 @@ It retains the pinned generator's release selection and validation, then omits
 only an empty leading `Unreleased` placeholder. Empty dated releases remain in
 history, and pending work keeps its `Unreleased` section. Generation, stdout,
 step summaries and strict byte comparisons all use the same rendered output.
+Checks append a requested step summary even when the changelog is stale or
+missing, while preserving their failure status and leaving the artifact untouched.
 
 ## Multi-agent merge safety
 

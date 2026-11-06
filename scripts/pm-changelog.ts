@@ -32,6 +32,7 @@ export function projectChangelog(args: readonly string[], cwd = process.cwd()): 
   if (args.includes("--stdout")) process.stdout.write(markdown);
   else if (args.includes("--check")) {
     if (!existsSync(output) || readFileSync(output, "utf8") !== markdown) {
+      if (summaryPath) appendFileSync(summaryPath, markdown);
       process.stderr.write("Changelog is out of date. Run npm run changelog:full.\n");
       return 1;
     }
