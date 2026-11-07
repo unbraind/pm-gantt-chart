@@ -512,6 +512,16 @@ projects on the pinned 2026.10.20 host and into npm/npx on the declared
 once when commits exist after the latest release tag. These technical gates do
 not override repository-owned privacy or all-source coverage blockers.
 
+Changelog scripts and the release workflow share `scripts/pm-changelog.ts`.
+It retains the pinned generator's release selection and validation, then omits
+only an empty leading `Unreleased` placeholder. Empty dated releases remain in
+history, and pending work keeps its `Unreleased` section. Generation, stdout,
+step summaries and strict byte comparisons all use the same rendered output.
+Checks append a requested step summary even when the changelog is stale or
+missing, while preserving their failure status and leaving the artifact untouched.
+Output options use the pinned CLI parser: `-o` and `--output` accept split or
+equals forms, and the last option selects the destination for generation and checks.
+
 ## Multi-agent merge safety
 
 This repo tracks its project management in `.agents/pm/` and ships a committed `.gitattributes`

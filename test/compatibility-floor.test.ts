@@ -148,6 +148,7 @@ test("every whole-tracker changelog read disables both universal output bounds",
   for (const name of ["changelog", "changelog:full", "changelog:check", "release:notes"]) {
     const script = packageJson.scripts?.[name];
     assert.ok(script, `package.json must declare ${name}`);
+    assert.match(script, /^node scripts\/pm-changelog\.ts\s/u, `${name} must share the project rendering policy`);
     assert.match(script, /--pm-arg=--output-budget\s+--pm-arg=unbounded/u, `${name} must disable the token budget`);
     assert.match(script, /--pm-arg=--output-limit\s+--pm-arg=unbounded/u, `${name} must disable the row limit`);
     assert.match(script, /--pm-bin\s+\.\/node_modules\/\.bin\/pm/u, `${name} must use the pinned project pm host`);
@@ -156,8 +157,8 @@ test("every whole-tracker changelog read disables both universal output bounds",
   const invocations = releaseWorkflow
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line.startsWith("npx pm-changelog "));
-  assert.equal(invocations.length, 3, "the workflow must expose all direct pm-changelog reads to this gate");
+    .filter((line) => line.startsWith("node scripts/pm-changelog.ts "));
+  assert.equal(invocations.length, 3, "the workflow must expose all project pm-changelog reads to this gate");
   for (const invocation of invocations) {
     assert.match(invocation, /--pm-arg=--output-budget\s+--pm-arg=unbounded/u);
     assert.match(invocation, /--pm-arg=--output-limit\s+--pm-arg=unbounded/u);
