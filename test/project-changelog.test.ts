@@ -126,3 +126,64 @@ test("checked drift preserves the normalized step summary without writing the ch
   assert.equal(readFileSync(output, "utf8"), expected);
   assert.equal(readFileSync(summary, "utf8"), expected.repeat(3), "each check appends exactly once");
 });
+
+test("output overrides use generator aliases and last-option precedence without touching the default artifact", async t => {
+  const f = await fixture(t);
+  f.commit();
+  f.runGit("tag", "v2026.11.05");
+  assert.equal(f.run().status, 0);
+  const output = join(f.root, "CHANGELOG.md"), expected = readFileSync(output, "utf8");
+  writeFileSync(output, "Preserve default artifact.\n");
+  const cases = [
+    { args: ["-o", "short.md"], file: "short.md" },
+    { args: ["-o=short-equals-only.md"], file: "short-equals-only.md" },
+    { args: ["--output", "first.md", "--output", "last.md"], file: "last.md" },
+    { args: ["--output=equals-first.md", "--output", "split-last.md"], file: "split-last.md" },
+    { args: ["--output", "split-first.md", "--output=equals-last.md"], file: "equals-last.md" },
+    { args: ["--output=first-equals.md", "-o=short-equals.md", "--output=last-equals.md"], file: "last-equals.md" },
+    { args: ["-o", "-o"], file: "-o" },
+  ];
+  for (const entry of cases) {
+    const generated = f.run("changelog:full", ...entry.args);
+    assert.equal(generated.status, 0, generated.stderr);
+    assert.equal(existsSync(join(f.root, entry.file)), true, "the last output option selects the destination");
+    assert.equal(readFileSync(join(f.root, entry.file), "utf8"), expected);
+    assert.equal(readFileSync(output, "utf8"), "Preserve default artifact.\n");
+    const checked = f.run("changelog:check", ...entry.args);
+    assert.equal(checked.status, 0, checked.stderr);
+    writeFileSync(join(f.root, entry.file), "Stale override.\n");
+    const stale = f.run("changelog:check", ...entry.args);
+    assert.equal(stale.status, 1, stale.stderr);
+    assert.match(stale.stderr, /out of date/);
+    assert.equal(readFileSync(join(f.root, entry.file), "utf8"), "Stale override.\n");
+  }
+  assert.equal(existsSync(join(f.root, "first.md")), false);
+  assert.equal(existsSync(join(f.root, "first-equals.md")), false);
+  assert.equal(existsSync(join(f.root, "short-equals.md")), false);
+  assert.equal(existsSync(join(f.root, "equals-first.md")), false);
+  assert.equal(existsSync(join(f.root, "split-first.md")), false);
+  const titled = f.run("changelog:full", "--title", "-o", "--output", "titled.md");
+  assert.equal(titled.status, 0, titled.stderr);
+  assert.equal(readFileSync(join(f.root, "titled.md"), "utf8"), expected.replace(/^# [^\n]+/, "# -o"));
+  assert.equal(readFileSync(output, "utf8"), "Preserve default artifact.\n");
+  for (const args of [["--output"], ["-o"], ["--output="], ["-o="], ["--output", "--check"]]) {
+    const invalid = f.run("changelog:full", ...args);
+    assert.notEqual(invalid.status, 0);
+    assert.match(invalid.stderr, /requires a value/);
+    assert.equal(readFileSync(output, "utf8"), "Preserve default artifact.\n");
+  }
+});
+
+test("forwarded pm arguments retain flag-shaped values instead of enabling wrapper flags", async t => {
+  const f = await fixture(t);
+  f.commit();
+  f.runGit("tag", "v2026.11.05");
+  writeFileSync(join(f.root, "CHANGELOG.md"), "Preserve default artifact.\n");
+  const refused = f.run("changelog:full", "--pm-arg", "--github-step-summary");
+  assert.notEqual(refused.status, 0);
+  const diagnostic = JSON.parse(refused.stderr) as { code: string; refusal: { surface: string } };
+  assert.equal(diagnostic.code, "unknown_option");
+  assert.equal(diagnostic.refusal.surface, "--github-step-summary");
+  assert.equal(readFileSync(join(f.root, "CHANGELOG.md"), "utf8"), "Preserve default artifact.\n");
+  assert.equal(existsSync(join(f.root, "step-summary.md")), false);
+});

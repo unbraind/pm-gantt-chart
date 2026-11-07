@@ -519,6 +519,8 @@ history, and pending work keeps its `Unreleased` section. Generation, stdout,
 step summaries and strict byte comparisons all use the same rendered output.
 Checks append a requested step summary even when the changelog is stale or
 missing, while preserving their failure status and leaving the artifact untouched.
+Output options use the pinned CLI parser: `-o` and `--output` accept split or
+equals forms, and the last option selects the destination for generation and checks.
 
 ## Multi-agent merge safety
 
