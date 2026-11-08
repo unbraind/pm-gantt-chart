@@ -1,17 +1,17 @@
 id: pm-gantt-chart-mmmr
-title: Point the npm homepage at the package catalog and link the author
-description: Apply the owner-requested package homepage and linked author metadata; verify the matching GitHub repository website. Published npm metadata updates with the next release.
-type: Chore
+title: Point the npm homepage at the package's website and link the author
+description: "GH issue #182: https://github.com/unbraind/pm-gantt-chart/issues/182 · author @unbraind · state reason completed · created 2026-10-25T21:54:33Z · updated 2026-10-26T08:22:19Z"
+type: Issue
 status: closed
 priority: 2
-tags[1]: "gh:unbraind/pm-gantt-chart#182"
-created_at: "2026-10-26T06:58:45.606Z"
-updated_at: "2026-10-30T20:14:48.034Z"
-closed_at: "2026-10-30T20:14:45.893Z"
-completed_at: "2026-10-26T08:22:18.000Z"
+tags[2]: "gh:unbraind/pm-gantt-chart#182","github_author:unbraind"
+created_at: "2026-10-25T21:54:33Z"
+updated_at: "2026-11-08T07:27:29.977Z"
+closed_at: "2026-10-26T08:22:19Z"
+completed_at: "2026-10-26T08:22:19Z"
 author: codex-agent
 acceptance_criteria: Package homepage points to its catalog page; author links to the about page; repository and bugs remain unchanged; GitHub website matches; local manifest checks pass.
-release: 2026.10.26
+release: v2026.10.26
 resolution: "Delivered by PR #185 (1aa61ee): Point the npm homepage at the package catalog and link the author"
 expected_result: Package homepage points to its catalog page; author links to the about page; repository and bugs remain unchanged; GitHub website matches; local manifest checks pass.
 actual_result: "PR #185 merged at 2026-10-26T08:22:18Z as 1aa61ee; required CI passed on the merged head."
@@ -30,5 +30,15 @@ tests[4]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
   node --test test/package-metadata.test.ts,project,codex-agent,"2026-10-26T07:28:03.420Z",local_mutation,chore/npm-homepage-author
 docs[1]{path,scope}:
   CHANGELOG.md,project
-close_reason: "Delivered by PR #185 (1aa61ee): Point the npm homepage at the package catalog and link the author"
-body: ""
+close_reason: "Closed on GitHub as completed on 2026-10-26T08:22:19Z; closing PR https://github.com/unbraind/pm-gantt-chart/pull/185 (\"Point the npm homepage at the package catalog and link the author\")"
+github_close_reason: "Closed on GitHub as completed on 2026-10-26T08:22:19Z; closing PR https://github.com/unbraind/pm-gantt-chart/pull/185 (\"Point the npm homepage at the package catalog and link the author\")"
+github_closed_at: "2026-10-26T08:22:19Z"
+github_created_at: "2026-10-25T21:54:33Z"
+github_link_only: false
+github_number: 182
+github_release: v2026.10.26
+github_state: closed
+github_state_reason: completed
+github_updated_at: "2026-10-26T08:22:19Z"
+github_url: "https://github.com/unbraind/pm-gantt-chart/issues/182"
+body: "## Why\n\nOn npm, `pm-gantt-chart` links **Homepage** to `https://github.com/unbraind/pm-gantt-chart#readme`, the same place as the Repository link beside it. The package has its page in the pm cli package catalog: https://pm-cli.unbrained.dev/packages/pm-gantt-chart. Pointing npm there gives people a useful place to land and lets search engines tie the package to its website. The author field (`\"@unbraind\"`) has no link to the person behind the work.\n\n## What to change\n\nIn `package.json`:\n\n```json\n\"homepage\": \"https://pm-cli.unbrained.dev/packages/pm-gantt-chart\",\n\"author\": { \"name\": \"unbrained\", \"url\": \"https://unbrained.dev/about\" },\n```\n\n- Currently: `\"homepage\": \"https://github.com/unbraind/pm-gantt-chart#readme\"`, `\"author\": \"@unbraind\"`.\n- Keep `repository` and `bugs` as they are.\n- Set the repository's GitHub website (About → Website) to the same address (currently empty): `gh repo edit unbraind/pm-gantt-chart --homepage https://pm-cli.unbrained.dev/packages/pm-gantt-chart`.\n- npm takes the new fields with the next published version.\n\n## Acceptance\n\n- [ ] `npm view pm-gantt-chart homepage` prints `https://pm-cli.unbrained.dev/packages/pm-gantt-chart` after the next release.\n- [ ] `npm view pm-gantt-chart author` includes the url `https://unbrained.dev/about`.\n- [ ] The GitHub repository's website is `https://pm-cli.unbrained.dev/packages/pm-gantt-chart`.\n\n## Context\n\nChecked 2026-10-25 with `npm view` and the GitHub API. The same change has been filed in every published unbrained package's repository (pm-cli as unbraind/pm-cli#1594, its extensions, pm-web and the agent-ready clis), so they all link the same way: the product page as homepage, https://unbrained.dev/about as the author."
