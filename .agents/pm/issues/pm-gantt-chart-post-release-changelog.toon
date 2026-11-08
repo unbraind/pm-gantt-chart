@@ -1,13 +1,16 @@
 id: pm-gantt-chart-post-release-changelog
-title: Keep release changelogs stable after tagging an empty pending window
-description: Reproduce pre-tag versus post-tag drift with real SDK trackers; omit only the empty Unreleased placeholder while retaining historical releases and legitimate pending work.
+title: "Post-release main CI adds an empty Unreleased section and fails changelog:check"
+description: "GH issue #214: https://github.com/unbraind/pm-gantt-chart/issues/214 · author @unbraind · state reason completed · created 2026-11-05T15:16:09Z · updated 2026-11-07T02:37:33Z"
 type: Issue
-status: in_progress
+status: closed
 priority: 2
-tags[2]: "gh:unbraind/pm-gantt-chart#214","gh:unbraind/pm-gantt-chart#215"
-created_at: "2026-11-06T14:13:18.221Z"
-updated_at: "2026-11-07T01:12:07.072Z"
+tags[3]: "gh:unbraind/pm-gantt-chart#214","github_author:unbraind",release-failure
+created_at: "2026-11-05T15:16:09Z"
+updated_at: "2026-11-08T07:27:29.927Z"
+closed_at: "2026-11-07T02:37:33Z"
+completed_at: "2026-11-07T02:37:33Z"
 author: codex-sol
+release: v2026.11.07
 comments[13]{created_at,author,text}:
   "2026-11-06T14:14:04.326Z",codex-sol,"Main 58a3ceb still fails npm run changelog:check with only an empty Unreleased section added. The pinned generator applies include-empty to every release window, including the synthetic post-tag pending window. Plan: preserve upstream generation, attribution, date and lint checks; omit only its exact empty Unreleased placeholder through one shared project entrypoint used by writes, checks and release notes. Add real SDK tracker fixtures for pre/post-tag identity, historical attribution, nonempty pending work, stale-output rejection and no-git diagnostics."
   "2026-11-06T14:16:50.431Z",codex-sol,"Failing-test-first proof: node --test --test-concurrency=2 test/project-changelog.test.ts fails the matching-tag check with exactly the reported empty Unreleased diff; nonempty pending attribution and no-git refusal controls pass on main. The refined regression cases each also assert empty-window omission so behavioral reversion must fail both."
@@ -33,4 +36,15 @@ tests[2]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
   node --test --test-concurrency=2 test/project-changelog.test.ts test/compatibility-floor.test.ts test/release-workflow.test.ts test/identity-audit.test.ts,project,codex-agent,"2026-11-07T00:51:37.837Z",local_mutation,review215-output-parsing
 docs[1]{path,scope}:
   README.md,project
-body: ""
+close_reason: "Closed on GitHub as completed on 2026-11-07T02:37:33Z; closing PR https://github.com/unbraind/pm-gantt-chart/pull/215 (\"Keep post-release changelog checks stable without an empty Unreleased section\")"
+github_close_reason: "Closed on GitHub as completed on 2026-11-07T02:37:33Z; closing PR https://github.com/unbraind/pm-gantt-chart/pull/215 (\"Keep post-release changelog checks stable without an empty Unreleased section\")"
+github_closed_at: "2026-11-07T02:37:33Z"
+github_created_at: "2026-11-05T15:16:09Z"
+github_link_only: false
+github_number: 214
+github_release: v2026.11.07
+github_state: closed
+github_state_reason: completed
+github_updated_at: "2026-11-07T02:37:33Z"
+github_url: "https://github.com/unbraind/pm-gantt-chart/issues/214"
+body: "## Observed defect\n\nMain at `58a3cebbd3c41832307ce6752058c9f41d4107c8` (package `2026.11.5`) fails the generated changelog gate in both supported Node CI lanes after the release was published. The generator adds an empty Unreleased section above the committed dated release. This is confirmed by official CI logs, not a new local runtime reproduction.\n\n- [Node 22.18.0 job](https://github.com/unbraind/pm-gantt-chart/actions/runs/42027869837/job/127246515795), failure at 2026-11-05 14:16 UTC.\n- [Node 26 job](https://github.com/unbraind/pm-gantt-chart/actions/runs/42027869837/job/127246515407), failure at 2026-11-05 14:11 UTC.\n- [Exact package scripts and pins](https://github.com/unbraind/pm-gantt-chart/blob/58a3cebbd3c41832307ce6752058c9f41d4107c8/package.json): `@unbrained/pm-cli 2026.11.4`, `pm-changelog 2026.10.31`.\n- [Exact CI recipe](https://github.com/unbraind/pm-gantt-chart/blob/58a3cebbd3c41832307ce6752058c9f41d4107c8/.github/workflows/ci.yml): full-history checkout and release-tag fetch, then `npm run changelog:check`.\n\nBoth jobs report this exact diff:\n\n```diff\n # Changelog\n \n+## Unreleased\n+\n+No changes.\n+\n ## 2026.11.5 - 2026-11-05\n \n No changes.\n```\n\nThe checked generator invocation uses `--mode replace --all-release-tags --release-version-from-package --date-from-version --respect-item-release --include-empty --check`.\n\n## Expected behavior and source goal\n\nThe committed release changelog should remain valid under the project's unchanged check after the matching release tag exists. The canonical [pm-gantt-chart-kn18 record](https://github.com/unbraind/pm-gantt-chart/blob/58a3cebbd3c41832307ce6752058c9f41d4107c8/.agents/pm/issues/pm-gantt-chart-kn18.toon) explicitly requires pre-tag and post-tag generation to remain byte-identical so a release does not leave main failing changelog checks.\n\n## Impact and limits\n\nBoth main CI lanes fail at `Verify generated changelog`. Subsequent date/attestation, Bun-install and full npm/Bun release gates are skipped. Node 22 completed 384 tests with zero failures, and both lanes passed their earlier build, production audit and packed-tarball acceptance steps. Node 26's earlier coverage step is intentionally skipped by that workflow.\n\nThe [release run](https://github.com/unbraind/pm-gantt-chart/actions/runs/42027870481) already completed its publish/tag/install/release steps successfully. This finding does not retract that delivery or demonstrate a Gantt runtime defect. The exact upstream mechanism and smallest repair remain to be established; no dependency change or workflow rerun was performed for this report.\n\n## Regression criteria\n\n1. With an isolated release fixture, compare generation immediately before and after creating the matching tag while package version, tracker records and generation options remain fixed. An empty pending window must not make the committed release artifact fail its check.\n2. Cover both empty and nonempty unreleased work; preserve legitimate unreleased entries and historical release attribution.\n3. Verify `npm run changelog:check` and the unchanged Node 22/26 release gates against the resulting exact commit with full release-tag history.\n4. Retain the existing date-from-version, item-release attribution and release-note checks rather than disabling a gate.\n\n## Duplicate check\n\nReviewed all 213 existing all-status issues/PRs and all 120 canonical PM records in this repository. #211 concerns the earlier Daily Release job failure, not this later main-CI drift. The related closed pm-changelog #41 and #47 concern padded headings and duplicate release entries respectively; neither owns this observed empty-section failure. This issue tracks the affected repository's current CI regression without assuming an upstream implementation fix."

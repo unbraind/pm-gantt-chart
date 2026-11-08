@@ -2,7 +2,9 @@
 
 ## 2026.11.7 - 2026-11-07
 
-No changes.
+### Fixed
+
+- Post-release main CI adds an empty Unreleased section and fails changelog:check ([pm-gantt-chart-post-release-changelog](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-post-release-changelog.toon))
 
 ## 2026.11.5 - 2026-11-05
 
@@ -10,7 +12,9 @@ No changes.
 
 ## 2026.11.3 - 2026-11-03
 
-No changes.
+### Closed
+
+- Closed: Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-193](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-193.toon))
 
 ## 2026.11.1 - 2026-11-01
 
@@ -41,11 +45,19 @@ No changes.
 
 - Stop Hound from linting generated dist/ output ([pm-gantt-chart-hound-esm](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-hound-esm.toon))
 
+### Closed
+
+- Closed: Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-187](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-187.toon))
+
 ## 2026.10.26 - 2026-10-26
 
-### Other
+### Fixed
 
-- Point the npm homepage at the package catalog and link the author ([pm-gantt-chart-mmmr](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-mmmr.toon))
+- Point the npm homepage at the package's website and link the author ([pm-gantt-chart-mmmr](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-mmmr.toon))
+
+### Closed
+
+- Closed: Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-181](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-181.toon))
 
 ## 2026.10.25 - 2026-10-25
 

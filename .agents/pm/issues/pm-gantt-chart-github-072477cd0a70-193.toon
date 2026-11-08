@@ -1,0 +1,25 @@
+id: pm-gantt-chart-github-072477cd0a70-193
+title: Daily Release workflow is failing
+description: "GH issue #193: https://github.com/unbraind/pm-gantt-chart/issues/193 · author @github-actions[bot] · state reason completed · created 2026-10-27T10:25:28Z · updated 2026-11-02T09:26:38Z"
+type: Issue
+status: closed
+priority: 2
+tags[3]: "gh:unbraind/pm-gantt-chart#193","github_author:github-actions[bot]",release-failure
+created_at: "2026-10-27T10:25:28Z"
+updated_at: "2026-11-08T07:27:29.954Z"
+closed_at: "2026-11-02T09:26:38Z"
+completed_at: "2026-11-02T09:26:38Z"
+author: pm-github
+release: v2026.11.03
+close_reason: "Closed on GitHub as completed on 2026-11-02T09:26:38Z"
+github_close_reason: "Closed on GitHub as completed on 2026-11-02T09:26:38Z"
+github_closed_at: "2026-11-02T09:26:38Z"
+github_created_at: "2026-10-27T10:25:28Z"
+github_link_only: false
+github_number: 193
+github_release: v2026.11.03
+github_state: closed
+github_state_reason: completed
+github_updated_at: "2026-11-02T09:26:38Z"
+github_url: "https://github.com/unbraind/pm-gantt-chart/issues/193"
+body: "The `release` job of the Daily Release workflow failed.\n\n- Failing job: `release`\n- Run URL: https://github.com/unbraind/pm-gantt-chart/actions/runs/40478568016\n- Commit: 670a89f071859d1c44ff4131b7bdbf5b7815cbea\n- Date (UTC): 2026-10-27T10:25:25Z\n\n\n---\n\n### GitHub comments (7)\n\n> **@coderabbitai[bot]** (2026-10-27T10:26:38Z)\n>\n> <!-- coderabbit-ai-generated:v1 -->\n> \n> <!-- This is an auto-generated issue plan by CodeRabbit -->\n> \n> <details>\n> <summary>⚠️ Possible Duplicate Issue(s)</summary>\n> <dl>\n> <dd>\n> \n> - https://github.com/unbraind/pm-gantt-chart/issues/169\n> </dd>\n> </dl>\n> </details>\n> \n> ---\n> <details>\n> <summary>📝 Issue Planner</summary>\n> <dl>\n> <dd>\n> \n> <sub>Check the box below or use the `@coderabbitai plan` command to generate an implementation plan and prompts that you can use with your favorite coding assistant.</sub>\n> \n> - [ ] <!-- {\"checkboxId\":\"8d4f2b9c-3e1a-4f7c-a9b2-d5e8f1c4a7b9\"} --> Create Plan\n> </dd>\n> </dl>\n> </details>\n> \n> \n> ---\n> <details>\n> <summary> 🧪 Issue enrichment is currently in open beta.</summary>\n> <dl>\n> <dd>\n> \n> \n> You can configure auto-planning by selecting labels in the issue_enrichment configuration.\n> \n> To disable automatic issue enrichment, add the following to your `.coderabbit.yaml`:\n> ```yaml\n> issue_enrichment:\n>   auto_enrich:\n>     enabled: false\n> ```\n> </dd>\n> </dl>\n> </details>\n> \n> 💬 Have feedback or questions? Drop into our [discord](https://discord.gg/coderabbit)!\n\n> **@github-actions[bot]** (2026-10-28T10:30:48Z)\n>\n> The `release` job of the Daily Release workflow failed.\n> \n> - Failing job: `release`\n> - Run URL: https://github.com/unbraind/pm-gantt-chart/actions/runs/40667261684\n> - Commit: 3e32f2254e2827d04ceccfa8dd82e0777d0b73ef\n> - Date (UTC): 2026-10-28T10:30:44Z\n> \n\n> **@github-actions[bot]** (2026-10-29T12:35:38Z)\n>\n> The `release` job of the Daily Release workflow failed.\n> \n> - Failing job: `release`\n> - Run URL: https://github.com/unbraind/pm-gantt-chart/actions/runs/40855370011\n> - Commit: d420c83c13f7e41899069e3e08163b1c807a8f3e\n> - Date (UTC): 2026-10-29T12:35:35Z\n> \n\n> **@github-actions[bot]** (2026-10-30T12:52:20Z)\n>\n> The `release` job of the Daily Release workflow failed.\n> \n> - Failing job: `release`\n> - Run URL: https://github.com/unbraind/pm-gantt-chart/actions/runs/41038976800\n> - Commit: 8fa126aab6aee727fb507060bfe1f4010bb6a69c\n> - Date (UTC): 2026-10-30T12:52:19Z\n> \n\n> **@github-actions[bot]** (2026-10-31T10:55:59Z)\n>\n> The `release` job of the Daily Release workflow failed.\n> \n> - Failing job: `release`\n> - Run URL: https://github.com/unbraind/pm-gantt-chart/actions/runs/41190113898\n> - Commit: ade27fb3ecdc60f94d12c0c28fb15830dc0ed25e\n> - Date (UTC): 2026-10-31T10:55:56Z\n> \n\n> **@github-actions[bot]** (2026-11-01T11:41:29Z)\n>\n> The `release` job of the Daily Release workflow failed.\n> \n> - Failing job: `release`\n> - Run URL: https://github.com/unbraind/pm-gantt-chart/actions/runs/41298308993\n> - Commit: 48111ab2cfd388c918d9be787fafcd8e9a62fb0c\n> - Date (UTC): 2026-11-01T11:41:26Z\n> \n\n> **@unbraind** (2026-11-02T09:26:37Z)\n>\n> Closing: the latest scheduled Daily Release succeeded. Evidence: Latest scheduled Daily Release succeeded: run 41307262177 (2026-11-01T12:36Z), v2026.11.01 published via PR #206 Its release notes repeat the previous release's section; that defect is tracked separately in pm-changelog#311. (Found in the 2026-11-02 triage of issues the blind issue watch missed.)"
