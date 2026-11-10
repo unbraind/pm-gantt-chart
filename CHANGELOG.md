@@ -2,7 +2,11 @@
 
 ## 2026.11.8 - 2026-11-08
 
-No changes.
+### Dependencies
+
+- Bump the codeql-action group across 1 directory with 2 updates ([#217](https://github.com/unbraind/pm-gantt-chart/pull/217))
+- Bump unbraind/pm-github/.github/workflows/pm-github-closeout.yml ([#219](https://github.com/unbraind/pm-gantt-chart/pull/219))
+- Bump unbraind/pm-github/.github/workflows/pm-github-sync.yml ([#218](https://github.com/unbraind/pm-gantt-chart/pull/218))
 
 ## 2026.11.7 - 2026-11-07
 
@@ -12,7 +16,9 @@ No changes.
 
 ## 2026.11.5 - 2026-11-05
 
-No changes.
+### Dependencies
+
+- Bump the pm-toolchain group with 3 updates ([#212](https://github.com/unbraind/pm-gantt-chart/pull/212))
 
 ## 2026.11.3 - 2026-11-03
 
