@@ -231,8 +231,8 @@ No changes.
 
 ### Fixed
 
-- A failed provenance publish silently falls back to an unattested one ([pm-gantt-chart-8e6f](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-8e6f.toon))
 - Rebase the attested-publish release fix onto current main ([pm-gantt-chart-tk14](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-tk14.toon))
+- A failed provenance publish silently falls back to an unattested one ([pm-gantt-chart-8e6f](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-8e6f.toon))
 
 ### Closed
 
@@ -254,8 +254,8 @@ No changes.
 
 ### Closed
 
-- Closed: Full git history retains personal identity and redacted host-path artifacts ([pm-gantt-chart-github-072477cd0a70-71](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-71.toon))
 - Closed: The identity gate deadlocks the one remediation its own failure message prescribes ([pm-gantt-chart-l6m0](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-l6m0.toon))
+- Closed: Full git history retains personal identity and redacted host-path artifacts ([pm-gantt-chart-github-072477cd0a70-71](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-71.toon))
 
 ## 2026.8.18 - 2026-08-18
 
@@ -500,11 +500,11 @@ No changes.
 
 ### Added
 
-- Deepen gantt: scheduling, csv, sprint/release/status grouping, --to ([pm-gantt-chart-uscf](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-uscf.toon))
 - Add --to date-window clip ([pm-gantt-chart-fotb](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-fotb.toon))
 - Add sprint/release/status group-by keys ([pm-gantt-chart-f2mr](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-f2mr.toon))
 - Add --critical-only filter (mark already existed) ([pm-gantt-chart-xkr0](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-xkr0.toon))
 - Add CSV schedule export format (id,title,start,end,duration,deps,status) ([pm-gantt-chart-3reu](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-3reu.toon))
+- Deepen gantt: scheduling, csv, sprint/release/status grouping, --to ([pm-gantt-chart-uscf](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-uscf.toon))
 
 ### Changed
 
