@@ -55,7 +55,7 @@
     "@babel/plugin-syntax-typescript": "8.0.3",
     "@resvg/resvg-js": "2.6.2",
     "@types/node": "26.6.6",
-    "@unbrained/pm-cli": "2026.11.7",
+    "@unbrained/pm-cli": "2026.11.8",
     "eslint": "10.14.0",
     "jscpd": "5.4.2",
     "pm-brand": "github:unbraind/pm-brand#505f386aaa68c0947b9380eae9cfe74dc48e47c7",
