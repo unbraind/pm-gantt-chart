@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.11.11 - 2026-11-11
+
+### Dependencies
+
+- Bump the pm-toolchain group with 2 updates ([#223](https://github.com/unbraind/pm-gantt-chart/pull/223))
+- Bump the pm-toolchain group with 3 updates ([#222](https://github.com/unbraind/pm-gantt-chart/pull/222))
+
 ## 2026.11.8 - 2026-11-08
 
 ### Dependencies
