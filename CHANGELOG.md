@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026.11.13 - 2026-11-13
+
+### Dependencies
+
+- Bump @unbrained/pm-cli ([#229](https://github.com/unbraind/pm-gantt-chart/pull/229))
+- Bump jscpd ([#226](https://github.com/unbraind/pm-gantt-chart/pull/226))
+- Bump @unbrained/pm-cli ([#225](https://github.com/unbraind/pm-gantt-chart/pull/225))
+
 ## 2026.11.11 - 2026-11-11
 
 ### Dependencies
