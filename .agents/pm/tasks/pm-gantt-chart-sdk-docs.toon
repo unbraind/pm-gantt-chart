@@ -6,12 +6,13 @@ status: closed
 priority: 2
 tags[4]: dependencies,"gh:unbraind/pm-gantt-chart#212",migration,sdk
 created_at: "2026-10-17T10:52:10.752Z"
-updated_at: "2026-11-14T08:47:44.536Z"
+updated_at: "2026-11-14T10:01:57.992Z"
 closed_at: "2026-11-14T08:47:44.494Z"
-completed_at: "2026-11-14T08:47:44.494Z"
+completed_at: "2026-11-04T22:08:48.000Z"
 author: codex-agent
 acceptance_criteria: "Exact latest development pins; documentation/test minimum remains declared consumer floor; both 500-sequence laws model typed blocked-start refusals and preserve all readback/replay assertions; full unchanged coverage, typecheck and lint pass; empty tracker-selected release windows are explicit."
-comments[7]{created_at,author,text}:
+release: 2026.11.5
+comments[8]{created_at,author,text}:
   "2026-11-04T19:06:40.248Z",codex-toolchain-1104,"Reuse the existing SDK documentation item for PR #212. Update the declared toolchain, reproduce installed-SDK contract failures, and decouple installation prose from the development pin while retaining the declared consumer minimum. Broader dated certification remains in pm-gantt-chart-mdm1."
   "2026-11-04T19:10:43.960Z",codex-toolchain-1104,"Confirmed hosted test/coverage passed and failed only at changelog generation. Local changelog:check and changelog:full reproduce MISSING_REQUESTED_RELEASE on 2026.11.3. Root cause: pm-changelog 2026.10.31 GH-302 requires requested notes instead of returning older notes (generated-release contract). Daily empty windows now use explicit include-empty in scripts/workflow. Installation prose refers to the declared dev pin and separate consumer floor; global packed acceptance derives its host pin from package.json instead of a second stale literal."
   "2026-11-04T19:22:57.016Z",codex-toolchain-1104,"Documentation coupling fix: installation commands and prose now name the declared minimum SDK 2026.10.20, and the existing exact command test derives that value from manifest.json. The separate development pin remains exact in package.json and the global packed host derives it. Weekly development bumps no longer require editing installation expectations; the consumer minimum still changes only deliberately."
@@ -19,6 +20,7 @@ comments[7]{created_at,author,text}:
   "2026-11-04T21:08:14.638Z",codex-toolchain-1104,"New pin exposed two additional test-contract failures: SDK 2026.11.4 pm-urzubi now refuses open-to-in_progress updates with an open blocked_by prerequisite. Reproduced drift.test.ts and waiting.test.ts individually; minimal real SDK matrix confirms blocked starts refuse with start_blocked_by_open_dependency, same-active updates remain allowed, and refused writes preserve durable bytes. Keep all 500 sequences and independent readback/scheduling models. Model the denied transitions instead of forcing them: fixed seeds independently predict exactly 3 drift refusals and 8 waiting refusals; preserve state/model on refusal and all replay assertions."
   "2026-11-04T21:10:34.342Z",codex-toolchain-1104,"Both repaired seeded cases pass individually with every original assertion retained. Drift seed 0x5ca1ab1e performs all 500 scheduling readbacks and exactly 3 native blocked-start refusals; waiting seed 0xeff047 performs all 500 elapsed-model readbacks and exactly 8 refusals. Counts were computed independently from the fixed generators, then confirmed through real SDK execution. Each refusal asserts the exact typed code and unchanged durable bytes. Test compilation, lint and zero duplication pass; rerun the full unchanged coverage gate."
   "2026-11-04T21:27:14.936Z",codex-toolchain-1104,"Full rerun passed: nice -n 10 env NPM_CONFIG_USERCONFIG=/dev/null npm run coverage completed 384/384 tests; unchanged native gate reports 100% lines, branches and functions across 10 measured source files. Statements are not independently reported. Both 500-sequence models now complete with exact 3/8 typed, byte-preserving blocked-start refusals; all original scheduling/readback/replay assertions remain. Focused docs/compatibility13/13, five packed scenarios including minimum SDK20 and current/global SDK4, typecheck, test compilation, lint, zero duplication, build, docstrings, workflow, production audit, strict health and changelog checks pass. Roots: test/release-gate GH-302; docs coupling; test contract SDK4 pm-urzubi. No new upstream regression."
+  "2026-11-14T10:01:57.988Z",codex-sweep-1114,"Release-attribution correction: completed_at = 2026-11-04T22:08:48Z from https://github.com/unbraind/pm-gantt-chart/pull/212 (merge SHA d2a74d30e7e819a4f578bfa96d70312268e75c13); first containing release tag v2026.11.05, recorded release 2026.11.5."
 files[7]{path,scope}:
   .github/workflows/release.yml,project
   package-lock.json,project
