@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Other
+
+- Migrate Gantt toolchain contracts and document the declared SDK minimum ([pm-gantt-chart-sdk-docs](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-sdk-docs.toon))
+
 ## 2026.11.13 - 2026-11-13
 
 ### Dependencies

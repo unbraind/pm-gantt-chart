@@ -2,11 +2,13 @@ id: pm-gantt-chart-sdk-docs
 title: Migrate Gantt toolchain contracts and document the declared SDK minimum
 description: "For PR #212, migrate the November 4 toolchain, model native blocked-start refusals in both 500-sequence SDK laws, keep installation docs/tests on the declared consumer minimum, derive packed hosts from the development pin, and explicitly render daily empty tracker-selected release windows. https://github.com/unbraind/pm-gantt-chart/pull/212"
 type: Task
-status: in_progress
+status: closed
 priority: 2
 tags[4]: dependencies,"gh:unbraind/pm-gantt-chart#212",migration,sdk
 created_at: "2026-10-17T10:52:10.752Z"
-updated_at: "2026-11-04T21:27:16.113Z"
+updated_at: "2026-11-14T08:47:44.536Z"
+closed_at: "2026-11-14T08:47:44.494Z"
+completed_at: "2026-11-14T08:47:44.494Z"
 author: codex-agent
 acceptance_criteria: "Exact latest development pins; documentation/test minimum remains declared consumer floor; both 500-sequence laws model typed blocked-start refusals and preserve all readback/replay assertions; full unchanged coverage, typecheck and lint pass; empty tracker-selected release windows are explicit."
 comments[7]{created_at,author,text}:
@@ -33,4 +35,5 @@ docs[3]{path,scope}:
   CHANGELOG.md,project
   docs/effort-waiting-validation.md,project
   README.md,project
+close_reason: "https://github.com/unbraind/pm-gantt-chart/pull/212 merged 2026-11-04T22:08:48Z; merge SHA d2a74d30e7e819a4f578bfa96d70312268e75c13; PR head b5132d1c259f4396b431f1827a1c6b46cf6f7053. Delivered: Toolchain migration, declared consumer SDK floor, packed host selection, both 500-sequence blocked-start models and explicit empty release windows at unchanged gates. Green at that head: test (22.18.0), codeql, enable-auto-merge, test (26), CodeQL, Hound. Other check outcomes: CodeRabbit: SKIPPED; Sourcery review: SKIPPED (not counted as green)."
 body: ""
