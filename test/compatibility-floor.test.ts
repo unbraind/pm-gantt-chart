@@ -154,15 +154,7 @@ test("every whole-tracker changelog read disables both universal output bounds",
     assert.match(script, /--pm-bin\s+\.\/node_modules\/\.bin\/pm/u, `${name} must use the pinned project pm host`);
   }
 
-  const invocations = releaseWorkflow
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith("node scripts/pm-changelog.ts "));
-  assert.equal(invocations.length, 3, "the workflow must expose all project pm-changelog reads to this gate");
-  for (const invocation of invocations) {
-    assert.match(invocation, /--pm-arg=--output-budget\s+--pm-arg=unbounded/u);
-    assert.match(invocation, /--pm-arg=--output-limit\s+--pm-arg=unbounded/u);
-  }
+  assert.match(releaseWorkflow, /uses: unbraind\/pm-ops\/\.github\/workflows\/daily-release\.yml@[a-f0-9]{40}/u);
 });
 
 test("the release gate requires the packed current and minimum host matrix", () => {
