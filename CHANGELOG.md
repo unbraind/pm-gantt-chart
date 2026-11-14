@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Other
+
+- Close delivered pm items and reserve in progress for active work (2026-10-24) ([pm-gantt-chart-1j46](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-1j46.toon))
+
 ## 2026.11.13 - 2026-11-13
 
 ### Dependencies
@@ -31,9 +37,9 @@
 
 ## 2026.11.5 - 2026-11-05
 
-### Dependencies
+### Other
 
-- Bump the pm-toolchain group with 3 updates ([#212](https://github.com/unbraind/pm-gantt-chart/pull/212))
+- Migrate Gantt toolchain contracts and document the declared SDK minimum ([pm-gantt-chart-sdk-docs](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-sdk-docs.toon))
 
 ## 2026.11.3 - 2026-11-03
 
