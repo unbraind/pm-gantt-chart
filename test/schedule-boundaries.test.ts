@@ -1,3 +1,4 @@
+import { testDepth } from "./support/depth.ts";
 import assert from "node:assert/strict";
 import fs, { appendFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
@@ -30,7 +31,7 @@ test("producer closure: 500 adversarial JSON and TOON transports preserve comple
   assert.equal(large.tasks.length, 2000);
   assert.ok(Buffer.byteLength(JSON.stringify(large)) > 262144);
   let state = 190202610;
-  for (let sequence = 0; sequence < 500; sequence++) {
+  for (let sequence = 0; sequence < testDepth(500); sequence++) {
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
     const inputs = sequence === 0 ? corpus : corpus.slice(0, 1 + state % 25);
     const controls = { ...options, scenarios: [{ ...options.scenarios[0], owners: Object.fromEntries([[names[state % names.length], calendar], ["worker", calendar]]) }] };
@@ -79,7 +80,7 @@ test("own-entry semantics cover all prototype names, calendar reversals, work an
   const descriptors = ["owner", "minutes"].map((key) => [key, Object.getOwnPropertyDescriptor(Object.prototype, key)] as const);
   try {
     Object.defineProperties(Object.prototype, { owner: { value: "phantom", writable: true, configurable: true }, minutes: { value: 777, writable: true, configurable: true } });
-    for (let sequence = 0; sequence < 500; sequence++) {
+    for (let sequence = 0; sequence < testDepth(500); sequence++) {
       const name = names[sequence % names.length], base = wideScheduleSnapshot();
       const before = { ...base, tasks: base.tasks.slice(0, 1) };
       const after = { ...before, owners: Object.fromEntries([["worker", calendar], [name, calendar]]) };

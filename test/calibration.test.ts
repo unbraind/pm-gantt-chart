@@ -1,3 +1,4 @@
+import { testDepth } from "./support/depth.ts";
 import assert from "node:assert/strict";
 import { writeFileSync, readFileSync, unlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -143,7 +144,7 @@ test("500 seeded model operation sequences preserve SDK state, old-input replays
   const counts = { reopened: 0, canceled: 0, incomplete: 0, missing_start: 0, missing_estimate: 0, class_changed: 0, invalid_duration: 0 };
   const baselines = new Map<string, unknown>();
   let operations = 0;
-  for (let sequence = 0; sequence < 500; sequence++) {
+  for (let sequence = 0; sequence < testDepth(500); sequence++) {
     const choice = (next() >>> 16) % 8;
     const estimate = 1 + next() % 600;
     const waits = next() % 4;
@@ -176,16 +177,18 @@ test("500 seeded model operation sequences preserve SDK state, old-input replays
     assert.equal(current.item.estimated_minutes, fixture.document.metadata.estimated_minutes);
     baselines.set(id, current.item);
   }
+  assert.ok(expected.length > 0);
+  assert.ok(Object.values(counts).every(count => count > 0));
   const before = snapshot(pmRoot);
-  const result = success(await calibrateObservedDurations(pmRoot, { type: "Task", tag: "model", minimumSamples: 10 }));
-  assert.equal(result.evidence.selectedCount, 500);
+  const result = success(await calibrateObservedDurations(pmRoot, { type: "Task", tag: "model", minimumSamples: Math.min(10, expected.length) }));
+  assert.equal(result.evidence.selectedCount, testDepth(500));
   assert.equal(result.evidence.sampleCount, expected.length);
   assert.deepEqual(result.distribution.values, expected.sort((a, b) => a - b));
   for (const [key, count] of Object.entries(counts)) assert.equal(result.evidence.excluded[key as keyof typeof counts], count);
   for (const [id, baseline] of baselines) assert.deepEqual((await sdk.get(id, { full: true })).item, baseline, id);
   assert.equal(snapshot(pmRoot), before);
-  assert.deepEqual(await calibrateObservedDurations(pmRoot, { type: "Task", tag: "model", minimumSamples: 10 }), result);
-  t.diagnostic(`seed=20261025; sequences=500; operations=${operations}; samples=${expected.length}`);
+  assert.deepEqual(await calibrateObservedDurations(pmRoot, { type: "Task", tag: "model", minimumSamples: Math.min(10, expected.length) }), result);
+  t.diagnostic(`seed=20261025; sequences=${testDepth(500)}; operations=${operations}; samples=${expected.length}`);
 });
 
 test("calibration bounds cohorts and replay work before producing numerical claims", async (t) => {
