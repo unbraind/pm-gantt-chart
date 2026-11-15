@@ -186,6 +186,10 @@ test("500 seeded operation sequences read SDK state, replay older snapshots and 
   const unset = ["parent", "goal", "objective", "sprint", "release"];
   await sdk.create({ id: "model-a", title: " A \r\n source ", type: "Task", assignee: "worker", estimatedMinutes: "480", unset });
   await sdk.create({ id: "model-b", title: " B \r\n goal ", type: "Task", assignee: "worker", estimatedMinutes: "480", dep: ["id=model-a,kind=blocked_by"], unset });
+  const blockedBefore = durableSnapshot(pmRoot);
+  await assert.rejects(sdk.update("model-b", { status: "in_progress", unset }),
+    error => isPmCliExpectedError(error) && error.code === "start_blocked_by_open_dependency");
+  assert.equal(durableSnapshot(pmRoot), blockedBefore, "deterministic blocked start is read-only");
   let seed = 0x5ca1ab1e;
   /** Reproducible unsigned generator gives the test a stable failure receipt. */
   function next() { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed; }
@@ -244,7 +248,6 @@ test("500 seeded operation sequences read SDK state, replay older snapshots and 
     const projected = captureScheduleScenario(read.map((row, i) => ({ ...row, status: i === 0 ? active : done })), controls, custom);
     assert.ok(projected.ok); assert.deepEqual(projected.snapshot.tasks.map((row) => row.role), ["active", "terminal"]);
   }
-  assert.ok(expectedRefusals > 0);
   assert.equal(refusedStarts, expectedRefusals);
   t.diagnostic(`${testDepth(500)} scheduling readbacks; ${refusedStarts} native blocked-start refusals; all older snapshots retained`);
 });

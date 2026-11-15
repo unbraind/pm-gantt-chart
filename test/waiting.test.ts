@@ -133,6 +133,12 @@ test("500 seeded state sequences replay old CRLF inputs against SDK reads and an
   const sdk = new PmClient({ cwd: root, pmRoot, author: "fixture" });
   await sdk.init("wait-model", { defaults: true, mergeFence: false, agentGuidance: "skip" });
   for (const id of ["wait-model-a", "wait-model-b"]) await sdk.create({ id, title: `  ${id} \r\n native  `, type: "Task", estimatedMinutes: "120", assignee: "fixture", description: " body \r\n whitespace ", unset });
+  await sdk.update("wait-model-b", { dep: ["id=wait-model-a,kind=blocked_by"], unset });
+  const blockedBefore = snapshot(pmRoot);
+  await assert.rejects(sdk.update("wait-model-b", { status: "in_progress", unset }),
+    error => isPmCliExpectedError(error) && error.code === "start_blocked_by_open_dependency");
+  assert.equal(snapshot(pmRoot), blockedBefore, "deterministic blocked start is read-only");
+  await sdk.update("wait-model-b", { clearDeps: true, unset });
   const nativeModel = new Map<string, EffortWaitingItem>((await sdk.listAllComplete()).items.map((item) => [item.id, item]));
   const past: EffortWaitingOptions[] = [];
   let seed = 0xeff047, refusedStarts = 0, expectedRefusals = 0;
@@ -183,7 +189,6 @@ test("500 seeded state sequences replay old CRLF inputs against SDK reads and an
     const after = certifyCompleteListResult(await sdk.listAllComplete()).items;
     assert.deepEqual(new Map(after.map((item) => [item.id, item])), nativeModel, "all native fields and relationships survive old-input replays");
   }
-  assert.ok(expectedRefusals > 0);
   assert.equal(refusedStarts, expectedRefusals);
   t.diagnostic(`${testDepth(500)} elapsed-model readbacks; ${refusedStarts} native blocked-start refusals; CRLF replays retained`);
 });
