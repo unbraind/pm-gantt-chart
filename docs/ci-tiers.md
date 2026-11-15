@@ -46,3 +46,5 @@ measured on PR CI; full depth is not rerun on the overloaded local host.
 Publish-attestation discovery reads the first line of every tracked file for a
 shell shebang, including documentation and tracker files, so it also runs on
 the cheap path. The verifier implementation is unchanged.
+
+CodeQL filters inert tracker data by extension; executable tracker scripts remain eligible on PRs and main pushes.

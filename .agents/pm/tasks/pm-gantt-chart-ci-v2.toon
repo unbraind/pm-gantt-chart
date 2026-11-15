@@ -4,11 +4,11 @@ description: Companion pm-cli-website-dyhg. Preserve all release checks while re
 type: Task
 status: in_progress
 priority: 2
-tags[2]: ci,performance
+tags[3]: ci,"gh:unbraind/pm-gantt-chart#242",performance
 created_at: "2026-11-15T15:35:39.365Z"
-updated_at: "2026-11-15T16:16:58.849Z"
+updated_at: "2026-11-15T19:03:47.715Z"
 author: codex-sol
-comments[8]{created_at,author,text}:
+comments[11]{created_at,author,text}:
   "2026-11-15T15:35:43.011Z",codex-sol,"Plan: preserve required test (22.18.0) and test (26); audit docs and identity inputs; retain committed dist verification. Latest successful main run 43706369121 returns no combined log, so inspect job logs and seeded source. Deep tier keeps both full npm and Bun gates per Node version. Release rollout files remain owned by pm-ops#272."
   "2026-11-15T15:37:58.467Z",codex-sol,"Baseline job logs recovered through the jobs API: Node 22.18.0 executes in 4m30s; Node 26 in 8m03s, but creation-to-completion is 62m14s and 128m04s. Longest seeded suite: 68.55s; calibration 18.50s; drift 15.82s. Typecheck, test typecheck and lint passed through pm test. Strict workflow YAML parsing passed (actionlint unavailable). Quick touched suites and one quick coverage run are in progress. Local npm install required clearing an inherited user npm allow-scripts configuration; no repository configuration changed."
   "2026-11-15T15:38:52.069Z",codex-sol,"Docs gate input audit: README is read by smoke.test.ts; package dry-run includes README and CHANGELOG; identity-audit examines git identities and added lines, including tracker prose. All stay in the docs path. Seeded suites use deterministic prefixes; calibration minimum samples is derived from generated valid episodes, with explicit nonempty success and exclusion categories. Frozen compatibility digest now checks a separately recorded 30-case prefix in quick mode. No product time budget is scaled."
@@ -17,17 +17,48 @@ comments[8]{created_at,author,text}:
   "2026-11-15T15:42:21.571Z",codex-sol,"Correction to the previous receipt: the touched-files invocation reported 49 tests, 48 passed and one corrected drift-prefix failure, in 171.99 seconds. The final seeded regression rerun passed all three selected tests in 39.51 seconds. No new full-depth timing was measured."
   "2026-11-15T15:43:55.214Z",codex-sol,"Final local evidence: the pre-correction quick coverage attempt was stopped after its known drift-prefix assertion failure to avoid wasting shared capacity. Corrected seeded regression tests pass (3/3, 39.51s). No current-head aggregate coverage pass is claimed. PR #242 has queued required checks; latest observed CI run 43731375781. Follow the PR checks for superseding tracker-receipt pushes. All changes are pushed, author email verified, item released and left in_progress. Risks: pending hosted CI and deep certification; inherited provenance advisory."
   "2026-11-15T16:16:58.848Z",codex-sol,Final cross-check found that canonical publish-attestation discovery examines the first line of every tracked file for a shell shebang. Docs and tracker changes can therefore affect it. Add the existing verifier to the docs path and document that input scope; do not change verifier scripts or code-tier gates. Workflow YAML and whitespace checks pass. CI remains deferred to the orchestrator; no additional local suite is needed for this workflow-only correction.
-files[6]{path,scope}:
+  "2026-11-15T18:50:05.961Z",codex-sol,"Round C: verify the supplied review findings, repair failing checks, audit CI tier boundaries and harness controls, and run focused gates. Review threads remain untouched; no merge or closure."
+  "2026-11-15T18:56:38.273Z",codex-sol,"CodeQL finding is valid: replace blanket tracker exclusion with inert data extensions; root and nested JS/MJS/CJS/TS tracker files remain eligible, verified with glob matching. Self-review checks documentation/privacy/identity gates, unscaled product budgets, integer timeouts, validation before spawn, platform filenames and generated-only quick thresholds."
+  "2026-11-15T19:03:46.625Z",codex-sol,"Round C validation passed: typecheck, test TypeScript compilation, focused behavior and workflow/tooling suites, strict unique-key YAML parsing, and package changelog regeneration/check. Lint passed where the package provides a lint script; packages without one passed their existing docstring gate. No configured coverage source changed, so no package coverage run was added. Existing isolated coverage-tooling fixtures are part of the focused tooling suites. All supplied review findings are valid and repaired. Self-review additionally preserves executable tracker scans and all applicable docs/privacy/identity/package/attestation gates. Product budgets and coverage thresholds remain unchanged. Validation uses the local Node 24 runtime; Node 22/26, native Windows and deep runtime certification remain CI evidence. Threads untouched; no merge or item closure. Release ownership after recording this evidence."
+files[8]{path,scope}:
   .github/workflows/ci-deep.yml,project
   .github/workflows/ci.yml,project
   .github/workflows/codeql.yml,project
+  docs/ci-tiers.md,project
   scripts/accept-packed.ts,project
   test/calibration.test.ts,project
+  test/ci-codeql.test.ts,project
   test/support/depth.ts,project
-tests[3]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
-  "npm run typecheck && npm run build:test && npm run lint",project,codex-sol,"2026-11-15T15:37:17.363Z",local_mutation,ci/quick-pr-tier-deep-local-tier
-  PM_TEST_DEPTH=quick node --test --test-concurrency=2 test/calibration.test.ts test/drift.test.ts test/waiting.test.ts test/schedule-boundaries.test.ts test/duration-input.test.ts test/duration-output.test.ts,project,codex-sol,"2026-11-15T15:40:22.098Z",local_mutation,ci/quick-pr-tier-deep-local-tier
-  PM_TEST_DEPTH=quick node --test --test-concurrency=2 --test-name-pattern=seeded test/calibration.test.ts test/drift.test.ts test/waiting.test.ts,project,codex-sol,"2026-11-15T15:40:49.938Z",local_mutation,ci/quick-pr-tier-deep-local-tier
+tests[4]:
+  - command: "npm run typecheck && npm run build:test && npm run lint"
+    scope: project
+    provenance:
+      author: codex-sol
+      created_at: "2026-11-15T15:37:17.363Z"
+      source_kind: local_mutation
+      source_ref: ci/quick-pr-tier-deep-local-tier
+  - command: PM_TEST_DEPTH=quick node --test --test-concurrency=2 test/calibration.test.ts test/drift.test.ts test/waiting.test.ts test/schedule-boundaries.test.ts test/duration-input.test.ts test/duration-output.test.ts
+    scope: project
+    provenance:
+      author: codex-sol
+      created_at: "2026-11-15T15:40:22.098Z"
+      source_kind: local_mutation
+      source_ref: ci/quick-pr-tier-deep-local-tier
+  - command: PM_TEST_DEPTH=quick node --test --test-concurrency=2 --test-name-pattern=seeded test/calibration.test.ts test/drift.test.ts test/waiting.test.ts
+    scope: project
+    provenance:
+      author: codex-sol
+      created_at: "2026-11-15T15:40:49.938Z"
+      source_kind: local_mutation
+      source_ref: ci/quick-pr-tier-deep-local-tier
+  - command: "npm run typecheck && npm run lint --if-present && npm run build && npm run build:test && PM_TEST_DEPTH=quick node --test --test-concurrency=2 test/ci-codeql.test.ts test/release-workflow.test.ts && node --input-type=module -e 'import {readFileSync,readdirSync} from \"node:fs\"; import {parseDocument} from \"yaml\"; for(const file of readdirSync(\".github/workflows\").filter(f=>/\\.ya?ml$/.test(f))){ const d=parseDocument(readFileSync(\".github/workflows/\"+file,\"utf8\"),{uniqueKeys:true}); if(d.errors.length) throw new Error(file+\": \"+d.errors.join(\";\")); } console.log(\"Strict workflow YAML passed\");'"
+    scope: project
+    timeout_seconds: 900
+    provenance:
+      author: codex-sol
+      created_at: "2026-11-15T18:56:42.814Z"
+      source_kind: local_mutation
+      source_ref: ci/quick-pr-tier-deep-local-tier
 docs[1]{path,scope}:
   docs/ci-tiers.md,project
 body: ""
