@@ -3160,7 +3160,7 @@ const GANTT_EXPORT_OPTIONS = {
 
 export default defineExtension({
   name: "pm-gantt-chart",
-  version: "2026.11.14",
+  version: "2026.11.15",
 
   activate(api: ExtensionApi) {
     api.registerCommand({
