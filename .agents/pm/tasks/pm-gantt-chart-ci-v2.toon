@@ -6,9 +6,9 @@ status: in_progress
 priority: 2
 tags[2]: ci,performance
 created_at: "2026-11-15T15:35:39.365Z"
-updated_at: "2026-11-15T15:43:55.214Z"
+updated_at: "2026-11-15T16:16:58.849Z"
 author: codex-sol
-comments[7]{created_at,author,text}:
+comments[8]{created_at,author,text}:
   "2026-11-15T15:35:43.011Z",codex-sol,"Plan: preserve required test (22.18.0) and test (26); audit docs and identity inputs; retain committed dist verification. Latest successful main run 43706369121 returns no combined log, so inspect job logs and seeded source. Deep tier keeps both full npm and Bun gates per Node version. Release rollout files remain owned by pm-ops#272."
   "2026-11-15T15:37:58.467Z",codex-sol,"Baseline job logs recovered through the jobs API: Node 22.18.0 executes in 4m30s; Node 26 in 8m03s, but creation-to-completion is 62m14s and 128m04s. Longest seeded suite: 68.55s; calibration 18.50s; drift 15.82s. Typecheck, test typecheck and lint passed through pm test. Strict workflow YAML parsing passed (actionlint unavailable). Quick touched suites and one quick coverage run are in progress. Local npm install required clearing an inherited user npm allow-scripts configuration; no repository configuration changed."
   "2026-11-15T15:38:52.069Z",codex-sol,"Docs gate input audit: README is read by smoke.test.ts; package dry-run includes README and CHANGELOG; identity-audit examines git identities and added lines, including tracker prose. All stay in the docs path. Seeded suites use deterministic prefixes; calibration minimum samples is derived from generated valid episodes, with explicit nonempty success and exclusion categories. Frozen compatibility digest now checks a separately recorded 30-case prefix in quick mode. No product time budget is scaled."
@@ -16,6 +16,7 @@ comments[7]{created_at,author,text}:
   "2026-11-15T15:41:59.326Z",codex-sol,"PR #242 is published; CI run 43731128929 remains queued for both required checks, so wall time is unavailable. Final quick seeded calibration, drift and waiting regression selection passed via pm test. Earlier touched-files run passed 34 of 35 tests; the lone failure was the now-corrected zero-refusal drift prefix, separately rerun successfully. The one quick coverage run began before that correction and is not exact-head passing evidence; defer confirmation to PR CI. No full local run. Item remains in_progress and unclaimed for orchestrator review."
   "2026-11-15T15:42:21.571Z",codex-sol,"Correction to the previous receipt: the touched-files invocation reported 49 tests, 48 passed and one corrected drift-prefix failure, in 171.99 seconds. The final seeded regression rerun passed all three selected tests in 39.51 seconds. No new full-depth timing was measured."
   "2026-11-15T15:43:55.214Z",codex-sol,"Final local evidence: the pre-correction quick coverage attempt was stopped after its known drift-prefix assertion failure to avoid wasting shared capacity. Corrected seeded regression tests pass (3/3, 39.51s). No current-head aggregate coverage pass is claimed. PR #242 has queued required checks; latest observed CI run 43731375781. Follow the PR checks for superseding tracker-receipt pushes. All changes are pushed, author email verified, item released and left in_progress. Risks: pending hosted CI and deep certification; inherited provenance advisory."
+  "2026-11-15T16:16:58.848Z",codex-sol,Final cross-check found that canonical publish-attestation discovery examines the first line of every tracked file for a shell shebang. Docs and tracker changes can therefore affect it. Add the existing verifier to the docs path and document that input scope; do not change verifier scripts or code-tier gates. Workflow YAML and whitespace checks pass. CI remains deferred to the orchestrator; no additional local suite is needed for this workflow-only correction.
 files[6]{path,scope}:
   .github/workflows/ci-deep.yml,project
   .github/workflows/ci.yml,project

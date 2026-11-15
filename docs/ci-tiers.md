@@ -10,7 +10,8 @@ GitHub-hosted Ubuntu, quick depth, a 30-minute limit and PR cancellation.
 | Committed dist drift | — | yes | — | yes |
 | Brand, typecheck, lint, duplication, docstrings | — | yes | — | full npm + Bun |
 | Coverage, unchanged 100% lines/branches/functions | — | quick | — | full npm + Bun |
-| Release workflow and publish attestation verification | — | yes | — | full npm + Bun |
+| Release workflow verification | — | yes | — | full npm + Bun |
+| Publish attestation verification (all tracked shebangs) | — | yes | yes | full npm + Bun |
 | Production audit | — | yes | — | full npm + Bun |
 | Package dry-run (includes README/CHANGELOG), changelog and date | — | yes | yes | full npm + Bun |
 | Packed npm/npx, Bun/bunx, minimum/current host acceptance | — | yes | — | full npm + Bun |
@@ -41,3 +42,7 @@ Baseline successful main run 43706369121: Node 22.18.0 execution 4m30s; Node 26
 8m03s (wall time from run creation: 62m14s and 128m04s respectively). Its slowest
 seeded test took 68.55s, calibration 18.50s and drift 15.82s. Quick timing is to be
 measured on PR CI; full depth is not rerun on the overloaded local host.
+
+Publish-attestation discovery reads the first line of every tracked file for a
+shell shebang, including documentation and tracker files, so it also runs on
+the cheap path. The verifier implementation is unchanged.
