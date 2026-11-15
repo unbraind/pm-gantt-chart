@@ -53,7 +53,7 @@ jobs:
               case "$path" in
                 # Executable tracker files use the same code tier in every package.
                 .agents/pm/*.mjs|.agents/pm/*.cjs|.agents/pm/*.js|.agents/pm/*.ts) code=true ;;
-                .agents/pm/*|*.md|docs/*|CHANGELOG.md|LICENSE) ;;
+                .agents/pm/*.toon|.agents/pm/*.json|.agents/pm/*.jsonl|*.md|docs/*|CHANGELOG.md|LICENSE) ;;
                 *) code=true ;;
               esac
             done < "$RUNNER_TEMP/ci-changed-paths"
@@ -104,6 +104,10 @@ jobs:
           npm run pack:dry-run
           npm run verify:release-changelog-date
           npm run verify:release-publish-attestation
+
+      - name: Verify committed brand values
+        if: steps.changes.outputs.code == 'true'
+        run: npm run brand:check
 
       - name: Engines floor tests
         if: steps.changes.outputs.code == 'true' && matrix.node-version == '22.18.0'

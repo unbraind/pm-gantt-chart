@@ -48,3 +48,9 @@ shell shebang, including documentation and tracker files, so it also runs on
 the cheap path. The verifier implementation is unchanged.
 
 CodeQL filters inert tracker data by extension; executable tracker scripts remain eligible on PRs and main pushes.
+
+## Review round E
+
+PRRT_kwDOSYpIas63tpkT is valid: build regenerated committed brand values before validation. Both quick matrix legs now run brand:check before any build; ci-brand.test.ts asserts ordering. Brand, targeted workflow tests, typecheck, lint and strict YAML passed.
+
+The cheap tier excludes only inert tracker record formats; executable tracker changes keep product gates. `test/ci-routing.test.ts` executes each detector with inert and executable tracker paths. Product deadlines, full-depth cases and coverage thresholds are unchanged.
