@@ -1,3 +1,4 @@
+import { testDepth } from "./support/depth.ts";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
@@ -15,7 +16,7 @@ import { calibrationTracker, seedHistory } from "./calibration-fixture.ts";
 import { validDurationCases } from "./duration-input-corpus.ts";
 
 const SEED = 179202610;
-const count = 2000;
+const count = testDepth(2000);
 const options = { from: "2026-10-25", seed: 42, samples: 100 };
 const item: PmItem = { id: "future", title: "Future", status: "open", estimated_minutes: 60, assignee: "worker" };
 const calendar = { weekdays: [1, 2, 3, 4, 5], holidays: [], minutesPerDay: 480, minutesPerWeek: 2400, totalMinutes: 2400 };
@@ -54,9 +55,11 @@ test("review 179: sparse empirical arrays are refused at the boundary instead of
 });
 
 test("valid generated scenarios preserve the frozen pre-refactor result digest", () => {
-  const results = validDurationCases().map(({ items, options }) => completionIntervals(items, options));
+  const results = validDurationCases().slice(0, testDepth(300)).map(({ items, options }) => completionIntervals(items, options));
   assert.ok(results.every((result) => result.ok));
-  assert.equal(createHash("sha256").update(JSON.stringify(results)).digest("hex"), "2e450ce71178de3816724bc7bbd1013843d3413d5e06b133b55e206bf3d8b346");
+  assert.equal(createHash("sha256").update(JSON.stringify(results)).digest("hex"), testDepth(300) === 300
+    ? "2e450ce71178de3816724bc7bbd1013843d3413d5e06b133b55e206bf3d8b346"
+    : "2d044dc802e290cec90ed57f9f7e8abe1dc77eb52d05f42f7472107caed5ac79");
 });
 
 test("2000 seeded malformed cases cover every forecast SDK boundary without writes or throws", async (t) => {

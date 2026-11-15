@@ -69,7 +69,11 @@ for (const key of Object.keys(cleanEnvironment)) {
   if (key.toLowerCase() === "npm_config_allow_scripts" || /token|secret|password|credential|npm_media_server/i.test(key)) delete cleanEnvironment[key];
 }
 /** Maximum time allowed for one install, pack, or pm subprocess. */
-const commandTimeoutMs = 5 * 60 * 1000;
+const timeScale = Number(process.env.PM_TEST_TIME_SCALE ?? "1");
+if (!Number.isFinite(timeScale) || timeScale <= 0 || Math.ceil(300_000 * timeScale) > 2_147_483_647) {
+  throw new Error("PM_TEST_TIME_SCALE must be finite, positive and within the timer range");
+}
+const commandTimeoutMs = Math.ceil(300_000 * timeScale);
 
 /** Run one shell-free command and fail with bounded diagnostics.
  *

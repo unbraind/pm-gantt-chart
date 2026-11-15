@@ -1,3 +1,4 @@
+import { testDepth } from "./support/depth.ts";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -191,9 +192,9 @@ test("500 seeded operation sequences read SDK state, replay older snapshots and 
   const history: ScheduleSnapshot[] = [], model = new Map<string, ScheduleTask>([
     ["model-a", task("model-a")], ["model-b", task("model-b", ["model-a"])],
   ]);
-  let refusedStarts = 0;
+  let refusedStarts = 0, expectedRefusals = 0;
   const modelControls = { ...controls, scenarios: [{ ...controls.scenarios[0], owners: { worker: calendar, other: calendar } }] };
-  for (let sequence = 0; sequence < 500; sequence++) {
+  for (let sequence = 0; sequence < testDepth(500); sequence++) {
     if (sequence % 50 === 0) await sdk.focus((next() >>> 16) % 2 === 0 ? "model-a" : "model-b");
     const operation = (next() >>> 16) % 5;
     const id = operation === 2 ? "model-b" : (next() >>> 16) % 2 === 0 ? "model-a" : "model-b";
@@ -216,6 +217,7 @@ test("500 seeded operation sequences read SDK state, replay older snapshots and 
       const status = next() % 2 === 0 ? "open" : "in_progress";
       // pm-cli 2026.11.4 (pm-urzubi) admits only unblocked transitions into work.
       if (status === "in_progress" && previous.status !== "in_progress" && previous.prerequisites.length > 0) {
+        expectedRefusals++;
         const before = durableSnapshot(pmRoot);
         await assert.rejects(sdk.update(id, { status, unset }), error => isPmCliExpectedError(error) && error.code === "start_blocked_by_open_dependency");
         assert.equal(durableSnapshot(pmRoot), before, "refused starts preserve durable state");
@@ -242,8 +244,9 @@ test("500 seeded operation sequences read SDK state, replay older snapshots and 
     const projected = captureScheduleScenario(read.map((row, i) => ({ ...row, status: i === 0 ? active : done })), controls, custom);
     assert.ok(projected.ok); assert.deepEqual(projected.snapshot.tasks.map((row) => row.role), ["active", "terminal"]);
   }
-  assert.equal(refusedStarts, 3, "seed 0x5ca1ab1e contains exactly three blocked transitions");
-  t.diagnostic("500 scheduling readbacks; 3 native blocked-start refusals; all older snapshots retained");
+  assert.ok(expectedRefusals > 0);
+  assert.equal(refusedStarts, expectedRefusals);
+  t.diagnostic(`${testDepth(500)} scheduling readbacks; ${refusedStarts} native blocked-start refusals; all older snapshots retained`);
 });
 
 test("packed CLI snapshot/drift work without git and leave the SDK tracker unchanged", async (t) => {

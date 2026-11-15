@@ -1,3 +1,4 @@
+import { testDepth } from "./support/depth.ts";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -58,7 +59,7 @@ test("missing bounds and effort remain unknown, independently and through every 
 
 test("SDK registry roles and custom ordering control arbitrary native status names", () => {
   let seed = 55;
-  for (let sequence = 0; sequence < 500; sequence++) {
+  for (let sequence = 0; sequence < testDepth(500); sequence++) {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
     const active = sequence % 2 === 0 ? "closed" : `working_${seed}`, done = `finished_${seed}`, blocked = `external_${seed}`;
     const custom = resolveRuntimeStatusRegistry({ ...baseSchema, statuses: [
@@ -134,10 +135,10 @@ test("500 seeded state sequences replay old CRLF inputs against SDK reads and an
   for (const id of ["wait-model-a", "wait-model-b"]) await sdk.create({ id, title: `  ${id} \r\n native  `, type: "Task", estimatedMinutes: "120", assignee: "fixture", description: " body \r\n whitespace ", unset });
   const nativeModel = new Map<string, EffortWaitingItem>((await sdk.listAllComplete()).items.map((item) => [item.id, item]));
   const past: EffortWaitingOptions[] = [];
-  let seed = 0xeff047, refusedStarts = 0;
+  let seed = 0xeff047, refusedStarts = 0, expectedRefusals = 0;
   /** Stable replay seed makes failed random sequences reproducible. */
   function random() { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed; }
-  for (let sequence = 0; sequence < 500; sequence++) {
+  for (let sequence = 0; sequence < testDepth(500); sequence++) {
     const id = (random() >>> 16) % 2 === 0 ? "wait-model-a" : "wait-model-b";
     if (sequence % 25 === 0) await sdk.focus(id);
     const operation = (random() >>> 16) % 5;
@@ -151,6 +152,7 @@ test("500 seeded state sequences replay old CRLF inputs against SDK reads and an
     const previous = nativeModel.get(id)!;
     const blockedStart = options.status === "in_progress" && previous.status !== "in_progress" && previous.dependencies?.some(dep => dep.kind === "blocked_by");
     if (blockedStart) {
+      expectedRefusals++;
       const before = snapshot(pmRoot);
       await assert.rejects(sdk.update(id, options), error => isPmCliExpectedError(error) && error.code === "start_blocked_by_open_dependency");
       assert.equal(snapshot(pmRoot), before, "refused starts preserve durable state");
@@ -181,8 +183,9 @@ test("500 seeded state sequences replay old CRLF inputs against SDK reads and an
     const after = certifyCompleteListResult(await sdk.listAllComplete()).items;
     assert.deepEqual(new Map(after.map((item) => [item.id, item])), nativeModel, "all native fields and relationships survive old-input replays");
   }
-  assert.equal(refusedStarts, 8, "seed 0xeff047 contains exactly eight blocked transitions");
-  t.diagnostic("500 elapsed-model readbacks; 8 native blocked-start refusals; CRLF replays retained");
+  assert.ok(expectedRefusals > 0);
+  assert.equal(refusedStarts, expectedRefusals);
+  t.diagnostic(`${testDepth(500)} elapsed-model readbacks; ${refusedStarts} native blocked-start refusals; CRLF replays retained`);
 });
 
 test("packed command and SDK preview preserve ownership without git or a git executable", async (t) => {

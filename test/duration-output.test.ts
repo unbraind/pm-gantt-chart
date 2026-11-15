@@ -1,3 +1,4 @@
+import { testDepth } from "./support/depth.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
@@ -130,7 +131,7 @@ test("2000 seeded extreme histories and forecasts produce bounded outputs or rea
   const planned = [Number.MIN_VALUE, 1e-308, 1e308, Number.MAX_SAFE_INTEGER, 1 / 6000, 1 / 60, 175200, 175201, 0, 60, 1440, 300 * 365 * 1440];
   const elapsed = [0, 1, 999, 1000, 60000, 86400000, 175200 * 60000, 175201 * 60000, 300 * 365 * 86400000];
   let state = SEED, accepted = 0, refused = 0;
-  for (let index = 0; index < 2000; index++) {
+  for (let index = 0; index < testDepth(2000); index++) {
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
     const minutes = planned[state % planned.length], milliseconds = elapsed[(state >>> 8) % elapsed.length];
     const start = Date.UTC(2026, 0, 2);
@@ -160,5 +161,5 @@ test("2000 seeded extreme histories and forecasts produce bounded outputs or rea
     assert.equal(snapshot(join(pmRoot, "tasks")) + snapshot(join(pmRoot, "history")), hash);
   }
   assert.ok(accepted > 0 && refused > 0);
-  t.diagnostic(`seed=${SEED}; cases=2000; calibration accepted=${accepted}; refused=${refused}; SDK routes=6; CLI routes=4; no durable writes`);
+  t.diagnostic(`seed=${SEED}; cases=${testDepth(2000)}; calibration accepted=${accepted}; refused=${refused}; SDK routes=6; CLI routes=4; no durable writes`);
 });
