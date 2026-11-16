@@ -2,7 +2,9 @@
 
 ## 2026.11.16 - 2026-11-16
 
-No changes.
+### Other
+
+- Apply Fleet CI v2 quick PR and deep tiers ([pm-gantt-chart-ci-v2](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-ci-v2.toon))
 
 ## 2026.11.15 - 2026-11-15
 
