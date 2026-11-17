@@ -6,14 +6,14 @@ status: closed
 priority: 2
 tags[3]: ci,"gh:unbraind/pm-gantt-chart#242",performance
 created_at: "2026-11-15T15:35:39.365Z"
-updated_at: "2026-11-16T20:28:26.000Z"
+updated_at: "2026-11-17T02:12:32.550Z"
 closed_at: "2026-11-16T20:28:25.884Z"
 completed_at: "2026-11-16T20:28:25.884Z"
 author: codex-sol
 resolution: Implemented and merged in #242 (5068278).
 expected_result: The change described by this item is on main.
 actual_result: "Merged in #242 as 5068278; checks successful at head ca3b1ac: CodeQL, codeql, test (22.18.0), test (26)."
-comments[14]{created_at,author,text}:
+comments[15]{created_at,author,text}:
   "2026-11-15T15:35:43.011Z",codex-sol,"Plan: preserve required test (22.18.0) and test (26); audit docs and identity inputs; retain committed dist verification. Latest successful main run 43706369121 returns no combined log, so inspect job logs and seeded source. Deep tier keeps both full npm and Bun gates per Node version. Release rollout files remain owned by pm-ops#272."
   "2026-11-15T15:37:58.467Z",codex-sol,"Baseline job logs recovered through the jobs API: Node 22.18.0 executes in 4m30s; Node 26 in 8m03s, but creation-to-completion is 62m14s and 128m04s. Longest seeded suite: 68.55s; calibration 18.50s; drift 15.82s. Typecheck, test typecheck and lint passed through pm test. Strict workflow YAML parsing passed (actionlint unavailable). Quick touched suites and one quick coverage run are in progress. Local npm install required clearing an inherited user npm allow-scripts configuration; no repository configuration changed."
   "2026-11-15T15:38:52.069Z",codex-sol,"Docs gate input audit: README is read by smoke.test.ts; package dry-run includes README and CHANGELOG; identity-audit examines git identities and added lines, including tracker prose. All stay in the docs path. Seeded suites use deterministic prefixes; calibration minimum samples is derived from generated valid episodes, with explicit nonempty success and exclusion categories. Frozen compatibility digest now checks a separately recorded 30-case prefix in quick mode. No product time budget is scaled."
@@ -28,6 +28,7 @@ comments[14]{created_at,author,text}:
   "2026-11-15T22:24:02.701Z",codex-sol,"Round E: verified assigned review findings and current checks. Fix valid portability, gate-order and timeout regressions; preserve product deadlines, privacy/identity and self-host gates. Run targeted quick tests and required tooling checks before an explicit-path commit. Review threads remain untouched."
   "2026-11-15T22:37:05.698Z",codex-sol,"Round E evidence: PRRT_kwDOSYpIas63tpkT is valid: build regenerated committed brand values before validation. Both quick matrix legs now run brand:check before any build; ci-brand.test.ts asserts ordering. Brand, targeted workflow tests, typecheck, lint and strict YAML passed."
   "2026-11-15T22:49:49.767Z",codex-sol,"Round E final verification: typecheck, lint (docstring gate where no lint script exists), touched regression tests, workflow/tooling tests, strict workflow YAML and changelog:check passed. Duplication gates passed where provided. Self-review retained docs/tracker privacy and identity checks, unscaled product deadlines, integer-rounded validated harness budgets, platform filename guards and generated-only quick thresholds. No package coverage sources were edited; no package coverage run. No review thread actions or merge. Shared-runner hold and SteveBot commit identity will be checked before push. Hosted CI is intentionally not awaited."
+  "2026-11-17T02:12:32.548Z",pi-glm,"Review round AC: merged current main into the closeout branch and resolved the CHANGELOG.md conflict by regenerating with the repository's documented changelog command on the updated toolchain. The regenerated current-version section keeps this item's entry; the generator does not reproduce the toolchain-bump Dependencies entry while an item is attributed to the same section (known pm-changelog limitation, pm-changelog#362), so that unpublished bullet is not retained by regeneration. Tracker files merged losslessly through the merge driver; pm validate passes."
 files[12]{path,scope}:
   .github/workflows/ci-deep.yml,project
   .github/workflows/ci.yml,project
