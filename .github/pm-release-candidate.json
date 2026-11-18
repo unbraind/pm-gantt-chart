@@ -1,9 +1,9 @@
 {
   "schema": 1,
   "repository": "unbraind/pm-gantt-chart",
-  "baseSha": "24f838a841b599e6595aecac3f13ed33e8f0cbb1",
-  "version": "2026.11.16",
-  "runId": 44079544094,
+  "baseSha": "bd9d08030f8c04f8ddb4eff05760e4abd4c49ae8",
+  "version": "2026.11.18",
+  "runId": 44299016942,
   "runAttempt": 1,
   "configDigest": "a07e2deabf5bb731b11c2ec72a8c6cddf5521bc19863eaf74b357e59d3eead9a"
 }
