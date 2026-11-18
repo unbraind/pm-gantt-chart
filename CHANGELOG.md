@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.11.18 - 2026-11-18
+
+### Dependencies
+
+- Bump the dependencies group across 1 directory with 2 updates ([#249](https://github.com/unbraind/pm-gantt-chart/pull/249))
+- Bump @unbrained/pm-cli from 2026.11.13 to 2026.11.14 in the pm-toolchain group ([#248](https://github.com/unbraind/pm-gantt-chart/pull/248))
+
 ## 2026.11.16 - 2026-11-17
 
 ### Other
