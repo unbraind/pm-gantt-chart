@@ -1,0 +1,21 @@
+id: pm-gantt-chart-github-072477cd0a70-253
+title: gantt drift masks invalid snapshot input with a missing moved-row error
+description: "GH issue #253: https://github.com/unbraind/pm-gantt-chart/issues/253 · author @unbraind · created 2026-11-19T17:30:48Z · updated 2026-11-19T17:30:48Z"
+type: Issue
+status: open
+priority: 2
+tags[2]: "gh:unbraind/pm-gantt-chart#253","github_author:unbraind"
+created_at: "2026-11-19T17:30:48Z"
+updated_at: "2026-11-20T08:39:16.719Z"
+author: pm-github
+github_close_reason: ""
+github_closed_at: ""
+github_created_at: "2026-11-19T17:30:48Z"
+github_link_only: false
+github_number: 253
+github_release: ""
+github_state: open
+github_state_reason: unspecified
+github_updated_at: "2026-11-19T17:30:48Z"
+github_url: "https://github.com/unbraind/pm-gantt-chart/issues/253"
+body: "**Published native reproduction:** official `pm-gantt-chart@2026.11.18` with `@unbrained/pm-cli@2026.11.14` and `2026.11.19`, Node 24.22.3, in disposable no-Git trackers. Activate pm-gantt-chart in an initialized tracker, then run:\n\n```sh\nprintf '{broken' > broken.json\npm gantt drift --before broken.json --after broken.json --json\n```\n\nBoth hosts exit 2 with `extension_read_output_invalid` rather than the invalid-snapshot diagnostic. The .19 response tells the caller to return a `moved` collection, although the requested repair is to supply valid snapshot JSON. As a control, a valid version-1 snapshot compared against itself succeeds on both hosts (`ok: true`, `moved: []`). This is a misleading refusal, not evidence of a successful comparison or data loss, and it predates the dependency bump in [#251](https://github.com/unbraind/pm-gantt-chart/pull/251). Its [CI](https://github.com/unbraind/pm-gantt-chart/actions/runs/44573342418/job/135734079527) also exposes the missing-row refusal in the direct SDK harness.\n\nThe [shipped handler](https://github.com/unbraind/pm-gantt-chart/blob/v2026.11.18/index.ts#L3219-L3235) declares `moved` on the read output but returns a different shape for invalid inputs. The [typed input loader](https://github.com/unbraind/pm-gantt-chart/blob/v2026.11.18/schedule-files.ts) provides `invalid_estimate` and a remedy; current output validation replaces it.\n\n**Acceptance:** Keep exit 2 and the specific input code/remedy for malformed, missing and oversized snapshot inputs in the native CLI and SDK. Keep `moved` validation and normal row/budget behavior for successful comparisons. Independently probe the packed artifact and verify that refusal and valid-empty comparison leave tracker data unchanged."
