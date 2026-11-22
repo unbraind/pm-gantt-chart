@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026.11.22 - 2026-11-22
+
+### Dependencies
+
+- Bump unbraind/pm-github/.github/workflows/pm-github-closeout.yml ([#258](https://github.com/unbraind/pm-gantt-chart/pull/258))
+- Bump unbraind/pm-ops/.github/workflows/daily-release.yml ([#257](https://github.com/unbraind/pm-gantt-chart/pull/257))
+- Bump unbraind/pm-github/.github/workflows/pm-github-sync.yml ([#259](https://github.com/unbraind/pm-gantt-chart/pull/259))
+
 ## 2026.11.20 - 2026-11-20
 
 No changes.
