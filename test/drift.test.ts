@@ -264,6 +264,11 @@ test("packed CLI snapshot/drift work without git and leave the SDK tracker uncha
   const args = ["gantt", "drift", "--before", beforeFile, "--after", afterFile];
   const result = invoke([...args, "--json"]); assert.equal(result.status, 0, result.stderr);
   assert.equal((JSON.parse(result.stdout) as ScheduleDriftResult).ok, true); assert.match(invoke(args).stdout, /deltaDays/);
+  const unchanged = invoke(["gantt", "drift", "--before", beforeFile, "--after", beforeFile, "--json"]);
+  assert.equal(unchanged.status, 0, unchanged.stderr);
+  const unchangedReport = JSON.parse(unchanged.stdout) as ScheduleDriftResult;
+  assert.ok(unchangedReport.ok);
+  assert.deepEqual(unchangedReport.moved, []);
   writeFileSync(afterFile, JSON.stringify(JSON.parse(second.stdout).snapshot)); assert.equal(invoke(args).status, 0);
   assert.equal(durableSnapshot(pmRoot), durable);
   const oldPath = process.env.PATH, oldCeiling = process.env.GIT_CEILING_DIRECTORIES;
@@ -275,11 +280,23 @@ test("packed CLI snapshot/drift work without git and leave the SDK tracker uncha
     const compared = (await harness.runCommand({ command: "gantt drift", pmRoot, options: { before: beforeFile, after: afterFile, limit: "1" } })).result as ScheduleDriftResult;
     assert.ok(compared.ok); assert.equal(compared.moved[0].deltaDays, 1);
     for (const options of [{ before: "", after: afterFile }, {}, { before: beforeFile }, { before: root, after: afterFile }, { before: beforeFile, after: afterFile, limit: "Infinity" }]) {
-      const value = (await harness.runCommand({ command: "gantt drift", pmRoot, options })).result as ScheduleDriftResult;
+      const receipt = await harness.runCommand({ command: "gantt drift", pmRoot, options });
+      const value = receipt.result as ScheduleDriftResult & { moved: unknown[]; remediation: string };
+      assert.equal(receipt.exitCode, 2);
       assertTypedRefusal(value, "invalid_estimate");
+      assert.ok(!value.ok);
+      assert.equal(value.remediation, value.remedy);
+      assert.deepEqual(value.moved, []);
     }
     for (const contents of ["x".repeat(262145), "null", "{broken"]) {
       writeFileSync(afterFile, contents); assert.equal(invoke(args).status, 2);
+      const rejected = invoke([...args, "--json"]);
+      assert.equal(rejected.status, 2, rejected.stderr);
+      const diagnostic = JSON.parse(rejected.stdout) as ScheduleDriftResult & { moved: unknown[]; remediation: string };
+      assertTypedRefusal(diagnostic, "invalid_estimate");
+      assert.ok(!diagnostic.ok);
+      assert.equal(diagnostic.remediation, diagnostic.remedy);
+      assert.deepEqual(diagnostic.moved, []);
       assertTypedRefusal((await harness.runCommand({ command: "gantt drift", pmRoot, options: { before: beforeFile, after: afterFile } })).result as ScheduleDriftResult, "invalid_estimate");
     }
     assert.equal(((await harness.runCommand({ command: "gantt snapshot", pmRoot, options: {} })).result as ScheduleDriftResult).ok, false);
@@ -290,4 +307,5 @@ test("packed CLI snapshot/drift work without git and leave the SDK tracker uncha
     process.env.PATH = oldPath;
     if (oldCeiling === undefined) delete process.env.GIT_CEILING_DIRECTORIES; else process.env.GIT_CEILING_DIRECTORIES = oldCeiling;
   }
+  assert.equal(durableSnapshot(pmRoot), durable);
 });

@@ -128,6 +128,8 @@ test("2000 seeded extreme histories and forecasts produce bounded outputs or rea
   const estimateFile = join(root, "estimate.json"), scenarioFile = join(root, "scenario.json");
   writeFileSync(scenarioFile, JSON.stringify(resources));
   process.env.PATH = bin;
+  await assert.rejects(() => harness.runCommand({ command: "gantt uncertainty", pmRoot, options: sampling }),
+    { code: "extension_flag_value_invalid", exitCode: 2 });
   const planned = [Number.MIN_VALUE, 1e-308, 1e308, Number.MAX_SAFE_INTEGER, 1 / 6000, 1 / 60, 175200, 175201, 0, 60, 1440, 300 * 365 * 1440];
   const elapsed = [0, 1, 999, 1000, 60000, 86400000, 175200 * 60000, 175201 * 60000, 300 * 365 * 86400000];
   let state = SEED, accepted = 0, refused = 0;
@@ -152,7 +154,7 @@ test("2000 seeded extreme histories and forecasts produce bounded outputs or rea
       writeFileSync(estimateFile, JSON.stringify({ extreme: { kind: "point", minutes } }));
       for (const [command, options] of [
         ["gantt calibrate", { type: "Task", "minimum-samples": "1" }],
-        ["gantt uncertainty", { ...sampling, seed: "42", estimates: estimateFile }],
+        ["gantt uncertainty", { ...sampling, quantiles: sampling.quantiles.join(","), seed: "42", estimates: estimateFile }],
         ["gantt resources", { scenarios: scenarioFile }],
         ["gantt repair", { from: sampling.from, deadline: "2026-01-03" }],
       ] as const) checked((await harness.runCommand({ command, pmRoot, options })).result as { ok: false; code: string; remedy: string });

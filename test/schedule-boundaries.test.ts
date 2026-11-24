@@ -123,10 +123,13 @@ test("non-git CLI replays complete producer envelopes and applies all shared rea
   const durable = snapshot(pmRoot);
   const result = (await harness.runCommand({ command: "gantt drift", pmRoot, options: { before: beforeFile, after: afterFile } })).result as ScheduleDriftResult;
   assert.ok(result.ok, JSON.stringify(result)); assert.equal(result.counts.tasks, 2000); assert.equal(result.changes[0].before, null);
+  await assert.rejects(() => harness.runCommand({ command: "gantt snapshot", pmRoot,
+    options: { scenarios: controls, from: options.from, seed: "42" } }), { code: "unknown_option", exitCode: 2 });
   for (const [command, flag, kind] of [["gantt snapshot", "scenarios", "controls"], ["gantt resources", "scenarios", "controls"], ["gantt uncertainty", "estimates", "estimates"]] as const) {
     const limit = kind === "controls" ? 262144 : 65536;
     writeFileSync(controls, " ".repeat(limit + 1));
-    assertTypedRefusal((await harness.runCommand({ command, pmRoot, options: { [flag]: controls, from: options.from, seed: "42" } })).result as ScheduleDriftResult, "invalid_estimate");
+    const flags = kind === "controls" ? { [flag]: controls } : { [flag]: controls, from: options.from, seed: "42" };
+    assertTypedRefusal((await harness.runCommand({ command, pmRoot, options: flags })).result as ScheduleDriftResult, "invalid_estimate");
   }
   assert.equal(snapshot(pmRoot), durable);
 });

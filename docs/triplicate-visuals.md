@@ -64,12 +64,9 @@ JSON retain their existing schedule-data contract. Mermaid hosts must retain the
 initialization directive and allow its scoped theme CSS; use SVG when a host strips
 custom Mermaid styles.
 
-The Git devDependency is locked by its exact commit. Its npm lock entry omits the
-optional prepared-archive integrity field: Bun 1.4.3 imports that hash while
-fetching a different Git archive and rejects it. Registry package integrity
-values remain intact. A clean-cache installation reproduces the failure with
-the original Git entry and succeeds with commit-based identity. npm's Git fetcher
-also [ignores archive integrity for Git dependencies](https://github.com/npm/pacote/blob/main/lib/git.js).
+The npm lock file records the exact registry version and tarball integrity of
+the build-time kit. The build check compares the baked chart values with the
+installed tokens.
 
 Native Inkscape 1.4 acceptance for issue #153 remains pending. The resvg
 record proves a separate rasterizer check and does not satisfy that criterion.
