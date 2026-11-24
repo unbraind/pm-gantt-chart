@@ -1,0 +1,14 @@
+id: pm-gantt-chart-sdk-1122
+title: Adopt pm-cli 2026.11.23 host-aligned SDK behaviour
+description: "Migrate the pinned Gantt toolchain to the current SDK and retain published dependency entries in all changelog modes. Companion: pm-cli-website-spus."
+type: Chore
+status: in_progress
+priority: 2
+tags[3]: changelog,dependencies,sdk
+created_at: "2026-11-24T02:58:03.833Z"
+updated_at: "2026-11-24T02:58:09.218Z"
+assignee: codex-agent
+claim_principal: codex-agent
+author: codex-agent
+acceptance_criteria: "Match native host dispatch and retain packed no-git snapshot and drift coverage. Run the unchanged npm and Bun release gates, including coverage, identity and changelog verification."
+body: ""
