@@ -186,14 +186,22 @@ test("validation receipts are immutable and unforgeable, and missing SDK sources
   assert.ok(Number.isNaN(durationFlagNumber("1".repeat(129))));
   assert.deepEqual(durationFlagQuantiles([0, 1]), [0, 1]);
   const harness = await createExtensionTestHarness(extension, { capabilities: ["commands", "schema", "importers", "preflight"] });
-  for (const command of ["gantt uncertainty", "gantt resources", "gantt repair"]) {
-    const run = await harness.runCommand({ command, pmRoot: join(pmRoot, "absent"), options: { from: options.from, seed: "42", scenarios: join(pmRoot, "absent.json") } });
-    invalid(run.result as { ok: false; code: string; remedy: string });
-  }
+  const missingRoot = join(pmRoot, "absent");
+  const absentScenarios = join(pmRoot, "absent.json");
+  await assert.rejects(() => harness.runCommand({ command: "gantt uncertainty", pmRoot: missingRoot,
+    options: { from: options.from, seed: "42", scenarios: absentScenarios } }), { code: "unknown_option", exitCode: 2 });
   const scenarios = join(pmRoot, "valid-scenarios.json");
   writeFileSync(scenarios, JSON.stringify(resources));
-  const missingCorpus = await harness.runCommand({ command: "gantt resources", pmRoot: join(pmRoot, "absent"), options: { scenarios } });
-  invalid(missingCorpus.result as { ok: false; code: string; remedy: string });
+  for (const [command, flags] of [
+    ["gantt uncertainty", { from: options.from, seed: "42" }],
+    ["gantt resources", { scenarios: absentScenarios }],
+    ["gantt resources", { scenarios }],
+    ["gantt repair", { from: options.from, deadline: resources.through }],
+  ] as const) {
+    const run = await harness.runCommand({ command, pmRoot: missingRoot, options: flags });
+    assert.equal(run.exitCode, 2);
+    invalid(run.result as { ok: false; code: string; remedy: string });
+  }
   const result = await calibrateObservedDurations(123 as unknown as string, { type: "Task", minimumSamples: 1 });
   assert.equal(result.ok, false);
 });

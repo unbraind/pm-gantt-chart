@@ -2431,6 +2431,10 @@ function decodeCompleteListAll(parsed) {
 function scheduleUsage(result) {
     return { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
 }
+/** Keep the declared drift row collection present when a comparison is refused. */
+function driftUsage(result) {
+    return { ...scheduleUsage(result), moved: [] };
+}
 /** Resource capture and evaluation share bounded controls and one certified native corpus read. */
 async function withResourceInputs(ctx, consume) {
     const input = readScheduleFile(readOption(ctx.options, "scenarios"));
@@ -2763,13 +2767,13 @@ export default defineExtension({
             run(ctx) {
                 const before = readScheduleFile(readOption(ctx.options, "before"), "snapshot"), after = readScheduleFile(readOption(ctx.options, "after"), "snapshot");
                 if (!before.ok)
-                    return { ...before, exit_code: EXIT_CODE.USAGE, remediation: before.remedy };
+                    return driftUsage(before);
                 if (!after.ok)
-                    return { ...after, exit_code: EXIT_CODE.USAGE, remediation: after.remedy };
+                    return driftUsage(after);
                 const result = explainScheduleDrift(scheduleFileValue(before.value), scheduleFileValue(after.value), {
                     limit: durationFlagNumber(readOption(ctx.options, "limit")),
                 });
-                return result.ok ? result : { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
+                return result.ok ? result : driftUsage(result);
             },
         });
         api.registerCommand({

@@ -2868,6 +2868,11 @@ function scheduleUsage<T extends { ok: false; remedy: string }>(result: T) {
   return { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
 }
 
+/** Keep the declared drift row collection present when a comparison is refused. */
+function driftUsage<T extends { ok: false; remedy: string }>(result: T) {
+  return { ...scheduleUsage(result), moved: [] };
+}
+
 /** Resource capture and evaluation share bounded controls and one certified native corpus read. */
 async function withResourceInputs<T>(ctx: CommandHandlerContext, consume: (items: PmItem[], controls: ResourceScenarioOptions) => Promise<T>) {
   const input = readScheduleFile(readOption(ctx.options, "scenarios"));
@@ -3226,12 +3231,12 @@ export default defineExtension({
       ],
       run(ctx: CommandHandlerContext) {
         const before = readScheduleFile(readOption(ctx.options, "before"), "snapshot"), after = readScheduleFile(readOption(ctx.options, "after"), "snapshot");
-        if (!before.ok) return { ...before, exit_code: EXIT_CODE.USAGE, remediation: before.remedy };
-        if (!after.ok) return { ...after, exit_code: EXIT_CODE.USAGE, remediation: after.remedy };
+        if (!before.ok) return driftUsage(before);
+        if (!after.ok) return driftUsage(after);
         const result = explainScheduleDrift(scheduleFileValue(before.value), scheduleFileValue(after.value), {
           limit: durationFlagNumber(readOption(ctx.options, "limit")) as number | undefined,
         });
-        return result.ok ? result : { ...result, exit_code: EXIT_CODE.USAGE, remediation: result.remedy };
+        return result.ok ? result : driftUsage(result);
       },
     });
     api.registerCommand({

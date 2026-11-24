@@ -1,0 +1,30 @@
+id: pm-gantt-chart-sdk-1122
+title: Adopt pm-cli 2026.11.23 host-aligned SDK behaviour
+description: "Migrate the pinned Gantt toolchain to the current SDK and retain published dependency entries in all changelog modes. Companion: pm-cli-website-spus."
+type: Chore
+status: in_progress
+priority: 2
+tags[3]: changelog,dependencies,sdk
+created_at: "2026-11-24T02:58:03.833Z"
+updated_at: "2026-11-24T03:58:01.637Z"
+author: codex-agent
+acceptance_criteria: "Match native host dispatch and retain packed no-git snapshot and drift coverage. Run the unchanged npm and Bun release gates, including coverage, identity and changelog verification."
+comments[1]{created_at,author,text}:
+  "2026-11-24T03:57:59.246Z",codex-agent,"The pinned SDK build and both TypeScript checks passed. The unrepaired full suite was 344/391 with 35 failures and 12 cancellations. Failure classes by first top-level name:\n- packed CLI snapshot/drift work without git and leave the SDK tracker unchanged: old harness delivered the typed refusal directly. Native read-output validation, now exercised by the harness, requires moved before rendering. Attach an empty moved collection so invalid_estimate, remedy, and status 2 are delivered. The packed CLI also proves valid empty and nonempty comparisons and durable tracker byte equality. The existing imported issue pm-gantt-chart-github-072477cd0a70-253 tracks the public reproduction.\n- validation receipts are immutable and unforgeable, and missing SDK sources refuse cleanly, and non-git CLI replays complete producer envelopes and applies all shared reader bounds: the old harness forwarded extra options. The host refuses unknown_option before dispatch. Assert this and send declared options for missing-tracker and oversized-file tests.\n- 2000 seeded extreme histories and forecasts produce bounded outputs or read-only refusals: the host now rejects array values for the scalar quantiles flag with extension_flag_value_invalid. Assert the rejection and run forecasts with the native comma-separated value.\n- the Git brand kit is an exact build-time pin and published runtime source imports only baked values: switch the exact build-time test to the published version and registry integrity. Baked values passed the build check.\n- handler harness activates cleanly and setup-dependent cases: the direct baseline inherited global pm 2026.11.22 and its stale-host guard refused writes under the 2026.11.23 pin. The package-local binary passed the retry and all release tests.\n\nRevert proof: removing only moved from the drift refusal failed 1/1 with extension_read_output_invalid. Removing each changelog flag individually failed 4/4 targeted runs. Restored regressions passed 2/2. Initial focused retry passed 7/7. All 15 published dependency bullets remain at their release headings and 49 older entries return.\n\nnpm run release:check at full depth and bun run release:check at quick CI depth each passed 392/392, zero skips/failures/cancellations/todos, 100% lines/branches/functions across 10 required sources, 8/8 workflow checks, zero duplication, production audit, five packed-consumer scenarios, and changelog/date/attestation checks. The linked pm test passed 42/42. Bun lock import passed from the npm lockfile. The SDK testing declaration still describes undeclared keys as passing through, while a declared command such as gantt uncertainty refuses an extra scenarios option. The installed runtime follows the intended native validation."
+files[9]{path,scope}:
+  index.ts,project
+  package-lock.json,project
+  package.json,project
+  test/brand-values.test.ts,project
+  test/drift.test.ts,project
+  test/duration-input.test.ts,project
+  test/duration-output.test.ts,project
+  test/release-workflow.test.ts,project
+  test/schedule-boundaries.test.ts,project
+tests[1]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
+  node --test --test-concurrency=2 test/brand-values.test.ts test/drift.test.ts test/duration-input.test.ts test/duration-output.test.ts test/release-workflow.test.ts test/schedule-boundaries.test.ts,project,codex-agent,"2026-11-24T03:12:09.975Z",local_mutation,deps/adopt-pm-cli-host-alignment-1122
+docs[3]{path,scope}:
+  CHANGELOG.md,project
+  docs/schedule-drift.md,project
+  docs/triplicate-visuals.md,project
+body: ""

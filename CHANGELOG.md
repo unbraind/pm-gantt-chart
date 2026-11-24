@@ -25,6 +25,10 @@ No changes.
 
 - Apply Fleet CI v2 quick PR and deep tiers ([pm-gantt-chart-ci-v2](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-ci-v2.toon))
 
+### Dependencies
+
+- Bump the pm-toolchain group with 2 updates ([#244](https://github.com/unbraind/pm-gantt-chart/pull/244))
+
 ## 2026.11.15 - 2026-11-15
 
 ### Dependencies
@@ -37,6 +41,10 @@ No changes.
 ### Other
 
 - Close delivered pm items and reserve in progress for active work (2026-10-24) ([pm-gantt-chart-1j46](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-1j46.toon))
+
+### Dependencies
+
+- Bump the pm-toolchain group with 2 updates ([#232](https://github.com/unbraind/pm-gantt-chart/pull/232))
 
 ## 2026.11.13 - 2026-11-13
 
@@ -73,29 +81,49 @@ No changes.
 
 - Migrate Gantt toolchain contracts and document the declared SDK minimum ([pm-gantt-chart-sdk-docs](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-sdk-docs.toon))
 
+### Dependencies
+
+- Bump the pm-toolchain group with 3 updates ([#212](https://github.com/unbraind/pm-gantt-chart/pull/212))
+
 ## 2026.11.3 - 2026-11-03
 
 ### Closed
 
 - Closed: Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-193](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-193.toon))
 
+### Dependencies
+
+- Bump the pm-toolchain group across 1 directory with 3 updates ([#207](https://github.com/unbraind/pm-gantt-chart/pull/207))
+- Bump the dependencies group with 2 updates ([#208](https://github.com/unbraind/pm-gantt-chart/pull/208))
+
 ## 2026.11.1 - 2026-11-01
 
-No changes.
+### Dependencies
+
+- Bump unbraind/pm-github/.github/workflows/pm-github-sync.yml ([#205](https://github.com/unbraind/pm-gantt-chart/pull/205))
+- Bump unbraind/pm-github/.github/workflows/pm-github-closeout.yml ([#204](https://github.com/unbraind/pm-gantt-chart/pull/204))
 
 ## 2026.10.31 - 2026-10-31
 
-No changes.
+### Dependencies
+
+- Bump the pm-toolchain group with 3 updates ([#201](https://github.com/unbraind/pm-gantt-chart/pull/201))
 
 ## 2026.10.30 - 2026-10-30
 
-No changes.
+### Dependencies
+
+- Bump the pm-toolchain group with 3 updates ([#199](https://github.com/unbraind/pm-gantt-chart/pull/199))
 
 ## 2026.10.29 - 2026-10-29
 
 ### Added
 
 - Separate active effort from declared external waits ([pm-gantt-chart-effort-waiting](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/features/pm-gantt-chart-effort-waiting.toon))
+
+### Dependencies
+
+- Bump the pm-toolchain group with 3 updates ([#196](https://github.com/unbraind/pm-gantt-chart/pull/196))
 
 ## 2026.10.28 - 2026-10-28
 
@@ -111,6 +139,11 @@ No changes.
 ### Closed
 
 - Closed: Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-187](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-187.toon))
+
+### Dependencies
+
+- Bump the pm-toolchain group with 3 updates ([#194](https://github.com/unbraind/pm-gantt-chart/pull/194))
+- Bump the pm-toolchain group with 3 updates ([#188](https://github.com/unbraind/pm-gantt-chart/pull/188))
 
 ## 2026.10.26 - 2026-10-26
 
@@ -132,6 +165,12 @@ No changes.
 
 - Reconcile stale in-progress tracker records (2026-10-23) ([pm-gantt-chart-reconcile-1023](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-reconcile-1023.toon))
 
+### Dependencies
+
+- Bump unbraind/pm-github/.github/workflows/pm-github-closeout.yml ([#176](https://github.com/unbraind/pm-gantt-chart/pull/176))
+- Bump unbraind/pm-github/.github/workflows/pm-github-sync.yml ([#175](https://github.com/unbraind/pm-gantt-chart/pull/175))
+- Bump the codeql-action group with 2 updates ([#174](https://github.com/unbraind/pm-gantt-chart/pull/174))
+
 ## 2026.10.24 - 2026-10-24
 
 ### Added
@@ -146,6 +185,10 @@ No changes.
 ### Closed
 
 - Closed: Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-169](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-169.toon))
+
+### Dependencies
+
+- Bump jscpd ([#172](https://github.com/unbraind/pm-gantt-chart/pull/172))
 
 ## 2026.10.23 - 2026-10-23
 
@@ -174,9 +217,16 @@ No changes.
 - Closed: Seeded uncertainty changes per-ID quantiles when accepted Unicode IDs are reordered ([pm-gantt-chart-github-072477cd0a70-167](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-167.toon))
 - Closed: Shell scalar assignments are read from raw text, so a comment can flag an unattested publish ([pm-gantt-chart-grjk](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-grjk.toon))
 
+### Dependencies
+
+- Bump the pm-toolchain group across 1 directory with 3 updates ([#162](https://github.com/unbraind/pm-gantt-chart/pull/162))
+
 ## 2026.10.20 - 2026-10-20
 
-No changes.
+### Dependencies
+
+- Bump the pm-toolchain group across 1 directory with 3 updates ([#159](https://github.com/unbraind/pm-gantt-chart/pull/159))
+- Bump eslint ([#160](https://github.com/unbraind/pm-gantt-chart/pull/160))
 
 ## 2026.10.19 - 2026-10-19
 
@@ -186,15 +236,21 @@ No changes.
 
 ## 2026.10.18 - 2026-10-18
 
-No changes.
+### Dependencies
+
+- Bump the codeql-action group with 2 updates ([#154](https://github.com/unbraind/pm-gantt-chart/pull/154))
 
 ## 2026.10.17 - 2026-10-17
 
-No changes.
+### Dependencies
+
+- Bump the pm-toolchain group with 2 updates ([#150](https://github.com/unbraind/pm-gantt-chart/pull/150))
 
 ## 2026.10.16 - 2026-10-16
 
-No changes.
+### Dependencies
+
+- Bump the pm-toolchain group with 2 updates ([#147](https://github.com/unbraind/pm-gantt-chart/pull/147))
 
 ## 2026.10.15 - 2026-10-15
 
@@ -202,25 +258,42 @@ No changes.
 
 - Enable the gated GitHub issue sync and drop the braces chain ([pm-gantt-chart-maint1014](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-maint1014.toon))
 
+### Dependencies
+
+- Bump @unbrained/pm-cli ([#144](https://github.com/unbraind/pm-gantt-chart/pull/144))
+
 ## 2026.10.14 - 2026-10-14
 
 ### Fixed
 
 - Use registry ordering semantics for Gantt schedules and inverse-edge cycle detection ([pm-gantt-chart-github-072477cd0a70-135](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-135.toon))
 
+### Dependencies
+
+- Bump the dependencies group across 1 directory with 3 updates ([#138](https://github.com/unbraind/pm-gantt-chart/pull/138))
+- Bump @unbrained/pm-cli ([#137](https://github.com/unbraind/pm-gantt-chart/pull/137))
+
 ## 2026.10.10 - 2026-10-10
 
-No changes.
+### Dependencies
+
+- Bump the pm-toolchain group with 3 updates ([#133](https://github.com/unbraind/pm-gantt-chart/pull/133))
 
 ## 2026.10.9 - 2026-10-09
 
-No changes.
+### Dependencies
+
+- Bump the pm-toolchain group with 2 updates ([#131](https://github.com/unbraind/pm-gantt-chart/pull/131))
 
 ## 2026.10.5 - 2026-10-05
 
 ### Other
 
 - Auto-merge green Dependabot updates and group the pm toolchain into one daily PR ([pm-gantt-chart-krx1](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/tasks/pm-gantt-chart-krx1.toon))
+
+### Dependencies
+
+- Bump the codeql-action group across 1 directory with 2 updates ([#123](https://github.com/unbraind/pm-gantt-chart/pull/123))
 
 ## 2026.9.26 - 2026-09-26
 
@@ -234,7 +307,10 @@ No changes.
 
 ## 2026.9.23 - 2026-09-23
 
-No changes.
+### Dependencies
+
+- Bump @types/node from 26.5.1 to 26.6.2 ([#115](https://github.com/unbraind/pm-gantt-chart/pull/115))
+- Bump yaml from 2.9.0 to 2.9.1 ([#116](https://github.com/unbraind/pm-gantt-chart/pull/116))
 
 ## 2026.9.18 - 2026-09-18
 
@@ -247,6 +323,12 @@ No changes.
 ### Other
 
 - Certify pm CLI 2026.9.12 and the pm-ops 2026.9.11 auditor ([pm-gantt-chart-7kuc](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-7kuc.toon))
+
+### Dependencies
+
+- Bump pm-changelog from 2026.9.6 to 2026.9.9 ([#108](https://github.com/unbraind/pm-gantt-chart/pull/108))
+- Bump @types/node from 26.4.1 to 26.5.1 ([#107](https://github.com/unbraind/pm-gantt-chart/pull/107))
+- Bump the codeql-action group with 2 updates ([#109](https://github.com/unbraind/pm-gantt-chart/pull/109))
 
 ## 2026.9.11 - 2026-09-11
 
@@ -270,6 +352,10 @@ No changes.
 
 - Pin pm toolchain to 2026.9.5 and changelog 2026.9.2 ([pm-gantt-chart-0i4c](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-0i4c.toon))
 
+### Dependencies
+
+- Bump @types/node from 26.4.0 to 26.4.1 ([#95](https://github.com/unbraind/pm-gantt-chart/pull/95))
+
 ## 2026.9.1 - 2026-09-01
 
 ### Fixed
@@ -279,6 +365,11 @@ No changes.
 ### Closed
 
 - Closed: Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-81](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-81.toon))
+
+### Dependencies
+
+- Bump @types/node from 26.3.0 to 26.4.0 ([#92](https://github.com/unbraind/pm-gantt-chart/pull/92))
+- Bump @unbrained/pm-cli from 2026.8.26 to 2026.8.27 ([#93](https://github.com/unbraind/pm-gantt-chart/pull/93))
 
 ## 2026.8.31 - 2026-08-31
 
@@ -290,6 +381,11 @@ No changes.
 ### Closed
 
 - Closed: Pin pm-changelog 2026.8.30 before the next release ([pm-gantt-chart-kn18](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-kn18.toon))
+
+### Dependencies
+
+- Bump @types/node from 26.2.0 to 26.3.0 ([#85](https://github.com/unbraind/pm-gantt-chart/pull/85))
+- Bump @unbrained/pm-cli from 2026.8.24 to 2026.8.26 ([#86](https://github.com/unbraind/pm-gantt-chart/pull/86))
 
 ## 2026.8.29 - 2026-08-29
 
@@ -330,6 +426,12 @@ No changes.
 ### Fixed
 
 - The gantt export alias silently drops out of the preflight override's scope and nothing binds the scope to the registered commands ([pm-gantt-chart-wjv5](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-wjv5.toon))
+
+### Dependencies
+
+- Bump pm-ops from 2026.8.8 to 2026.8.10 ([#64](https://github.com/unbraind/pm-gantt-chart/pull/64))
+- Bump @types/node from 26.1.2 to 26.2.0 ([#63](https://github.com/unbraind/pm-gantt-chart/pull/63))
+- Bump pm-changelog from 2026.8.6 to 2026.8.12 ([#62](https://github.com/unbraind/pm-gantt-chart/pull/62))
 
 ## 2026.8.15 - 2026-08-15
 
@@ -376,7 +478,10 @@ No changes.
 
 ## 2026.8.3 - 2026-08-03
 
-No changes.
+### Dependencies
+
+- Bump pm-changelog from 2026.7.25 to 2026.7.29 ([#47](https://github.com/unbraind/pm-gantt-chart/pull/47))
+- Bump @types/node from 26.1.1 to 26.1.2 ([#48](https://github.com/unbraind/pm-gantt-chart/pull/48))
 
 ## 2026.8.1 - 2026-08-01
 
@@ -413,6 +518,10 @@ No changes.
 
 - Enable governance duplicate-detection advisory mode and adopt pm-cli 2026.7.25 ([pm-gantt-chart-0m58](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/chores/pm-gantt-chart-0m58.toon))
 
+### Dependencies
+
+- Bump pm-changelog from 2026.7.24 to 2026.7.25 ([#37](https://github.com/unbraind/pm-gantt-chart/pull/37))
+
 ## 2026.7.25 - 2026-07-25
 
 ### Other
@@ -439,15 +548,24 @@ No changes.
 
 ## 2026.7.20 - 2026-07-20
 
-No changes.
+### Dependencies
+
+- Bump actions/setup-node from 6 to 7 ([#26](https://github.com/unbraind/pm-gantt-chart/pull/26))
+- Bump pm-changelog from 2026.7.11 to 2026.7.18 ([#27](https://github.com/unbraind/pm-gantt-chart/pull/27))
+- Bump @unbrained/pm-cli from 2026.7.11 to 2026.7.18 ([#28](https://github.com/unbraind/pm-gantt-chart/pull/28))
 
 ## 2026.7.13 - 2026-07-13
 
-No changes.
+### Dependencies
+
+- Bump pm-changelog from 2026.7.10 to 2026.7.11 ([#24](https://github.com/unbraind/pm-gantt-chart/pull/24))
+- Bump @unbrained/pm-cli from 2026.7.10 to 2026.7.11 ([#25](https://github.com/unbraind/pm-gantt-chart/pull/25))
 
 ## 2026.7.11 - 2026-07-11
 
-No changes.
+### Dependencies
+
+- Bump actions/checkout from 6 to 7
 
 ## 2026.7.10-1 - 2026-07-10
 
