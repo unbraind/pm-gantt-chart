@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Closed
+
+- Closed: Daily Release workflow is failing ([pm-gantt-chart-github-072477cd0a70-211](https://github.com/unbraind/pm-gantt-chart/blob/main/.agents/pm/issues/pm-gantt-chart-github-072477cd0a70-211.toon))
+
 ### Dependencies
 
 - Bump unbraind/pm-ops/.github/workflows/daily-release.yml from 2026.11.18 to 2026.11.22 ([#265](https://github.com/unbraind/pm-gantt-chart/pull/265))
