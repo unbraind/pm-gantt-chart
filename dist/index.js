@@ -2700,7 +2700,7 @@ const GANTT_EXPORT_OPTIONS = {
 };
 export default defineExtension({
     name: "pm-gantt-chart",
-    version: "2026.11.24",
+    version: "2026.11.26",
     activate(api) {
         api.registerCommand({
             name: "gantt waiting",
