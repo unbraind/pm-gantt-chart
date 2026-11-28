@@ -95,7 +95,7 @@ test("pending-only drift passes read-only, but strict and versioned checks fail"
   assert.equal(f.run("changelog:check").status, 0);
   const output = join(f.root, "CHANGELOG.md");
   const stalePending = expected.replace("Preserve pending work", "Stale pending work");
-  const staleVersioned = stalePending.replace("Preserve historical attribution", "Stale historical attribution");
+  const staleVersioned = expected.replace("Preserve historical attribution", "Stale historical attribution");
   for (const { content, script, flags, status, diagnostic } of [
     { content: stalePending, script: "changelog:check", flags: [], status: 0, diagnostic: /pending_only/ },
     { content: stalePending, script: "changelog:full", flags: ["--check-pending"], status: 1, diagnostic: /out of date/ },
