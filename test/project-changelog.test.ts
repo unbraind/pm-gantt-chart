@@ -54,6 +54,9 @@ test("empty pending work stays byte-identical before and after the matching rele
   assert.equal(after.stdout, expected);
   const check = f.run("changelog:check");
   assert.equal(check.status, 0, check.stderr);
+  const preview = f.run("changelog:check", "--stdout");
+  assert.equal(preview.status, 0, preview.stderr);
+  assert.equal(preview.stdout, expected);
   assert.equal(f.run().status, 0);
   assert.equal(readFileSync(join(f.root, "CHANGELOG.md"), "utf8"), expected);
   assert.equal(f.run("changelog").status, 0);
@@ -70,7 +73,7 @@ test("empty pending work stays byte-identical before and after the matching rele
   assert.equal(readFileSync(join(noGit.root, "CHANGELOG.md"), "utf8"), "Keep this artifact.\n");
 });
 
-test("nonempty pending work and historical attribution survive; checks still reject drift", async t => {
+test("pending-only drift passes read-only, but strict and versioned checks fail", async t => {
   const f = await fixture(t);
   await f.sdk.create({ id: "shipped", type: "Issue", title: "Preserve historical attribution", status: "closed",
     closeReason: "Delivered fixture behavior", release: "2026.11.5", unset: ["parent", "goal", "objective", "sprint"] });
@@ -90,11 +93,21 @@ test("nonempty pending work and historical attribution survive; checks still rej
   assert.match(historical, /Preserve historical attribution/);
   assert.doesNotMatch(historical, /Preserve pending work/);
   assert.equal(f.run("changelog:check").status, 0);
-  writeFileSync(join(f.root, "CHANGELOG.md"), expected.replace("Preserve pending work", "Stale pending work"));
-  const stale = f.run("changelog:check");
-  assert.equal(stale.status, 1, stale.stderr);
-  assert.match(stale.stderr, /out of date/);
-  assert.match(readFileSync(join(f.root, "CHANGELOG.md"), "utf8"), /Stale pending work/);
+  const output = join(f.root, "CHANGELOG.md");
+  const stalePending = expected.replace("Preserve pending work", "Stale pending work");
+  const staleVersioned = stalePending.replace("Preserve historical attribution", "Stale historical attribution");
+  for (const { content, script, flags, status, diagnostic } of [
+    { content: stalePending, script: "changelog:check", flags: [], status: 0, diagnostic: /pending_only/ },
+    { content: stalePending, script: "changelog:full", flags: ["--check-pending"], status: 1, diagnostic: /out of date/ },
+    { content: staleVersioned, script: "changelog:check", flags: [], status: 1, diagnostic: /out of date/ },
+  ]) {
+    writeFileSync(output, content);
+    const result = f.run(script, ...flags);
+    assert.equal(result.status, status, result.stderr);
+    assert.match(result.stderr, diagnostic);
+    assert.equal(result.stdout, "");
+    assert.equal(readFileSync(output, "utf8"), content);
+  }
 });
 
 test("checked drift preserves the normalized step summary without writing the changelog", async t => {

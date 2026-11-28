@@ -1,0 +1,28 @@
+id: pm-gantt-chart-eup7
+title: Delegate pending changelog drift checks to pm-changelog
+description: "Adopt pm-changelog 2026.11.27 and preserve project changelog behavior while delegating check status. Test pending-only drift, strict checks and versioned drift without writing the artifact."
+type: Chore
+status: open
+priority: 2
+tags[1]: "gh:unbraind/pm-changelog#385"
+created_at: "2026-11-28T02:12:04.257Z"
+updated_at: "2026-11-28T02:28:48.451Z"
+author: codex-agent
+comments[3]{created_at,author,text}:
+  "2026-11-28T02:12:26.263Z",codex-agent,"Verified the wrapper decides by whole-file comparison after omitting the empty pending placeholder. The published renderer already omits that placeholder and retains empty dated releases, so the check can use native output while project rendering and summaries remain covered."
+  "2026-11-28T02:28:40.671Z",codex-agent,"Behavioral revert kept the new dependency and tests but restored the original wrapper. The pending-only default check returned 1 where the test required 0. After restoration the linked wrapper suite passed all 45 tests, including read-only pending acceptance, strict pending rejection and versioned drift rejection."
+  "2026-11-28T02:28:42.759Z",codex-agent,"Typecheck, test typecheck, docstrings and lint passed. Regenerate and check the changelog after releasing this claim. Exact-head CI is tracked at https://github.com/unbraind/pm-gantt-chart/actions?query=branch%3Afix%2Fchangelog-wrapper-pending-check."
+files[6]{path,scope}:
+  package-lock.json,project
+  package.json,project
+  scripts/pm-changelog.ts,project
+  test/compatibility-floor.test.ts,project
+  test/project-changelog.test.ts,project
+  test/release-workflow.test.ts,project
+tests[2]{command,scope,provenance{author,created_at,source_kind,source_ref}}:
+  node --test --test-concurrency=2 test/project-changelog.test.ts test/compatibility-floor.test.ts test/release-workflow.test.ts,project,codex-agent,"2026-11-28T02:14:05.635Z",local_mutation,fix/changelog-wrapper-pending-check
+  node --test --test-concurrency=2 test/verify-release-changelog-date.test.ts,project,codex-agent,"2026-11-28T02:27:16.615Z",local_mutation,fix/changelog-wrapper-pending-check
+docs[1]{path,scope}:
+  "https://github.com/unbraind/pm-changelog/issues/385",project
+github_url: "https://github.com/unbraind/pm-changelog/issues/385"
+body: ""
