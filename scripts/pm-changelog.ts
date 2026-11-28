@@ -1,6 +1,6 @@
 /** Project rendering policy around the pinned generator; all selection stays upstream. */
 import { spawnSync } from "node:child_process";
-import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cliTestSurface } from "pm-changelog/cli";
@@ -12,9 +12,8 @@ export function omitEmptyUnreleased(markdown: string): string {
 }
 
 /**
- * Generate once through the pinned CLI, then use identical bytes for output and strict checks.
- * Upstream still validates flags, requested releases, attribution, dates and entry linting.
- * The extra stdout flag prevents it from writing or comparing its unfiltered placeholder.
+ * Check with the pinned CLI, whose current renderer already omits empty Unreleased sections.
+ * Keep project normalization for generated files, stdout and release notes.
  */
 export function projectChangelog(args: readonly string[], cwd = process.cwd()): number {
   // Reuse the pinned CLI parser, including aliases, values and last-option precedence.
@@ -30,23 +29,18 @@ export function projectChangelog(args: readonly string[], cwd = process.cwd()): 
       forwarded.push(arg, args[++i]);
     } else if (arg !== "--github-step-summary") forwarded.push(arg);
   }
+  const check = options.check && !options.stdout;
+  const generatorArgs = check ? args : [...forwarded, "--stdout"];
   const generated = spawnSync(process.execPath, [fileURLToPath(import.meta.resolve("pm-changelog/cli")),
-    ...forwarded, "--stdout"],
+    ...generatorArgs],
   { cwd, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
   if (generated.stderr) process.stderr.write(generated.stderr);
   if (generated.error) throw generated.error;
   if (generated.status !== 0) return generated.status ?? 1;
+  if (check) return 0;
   const markdown = omitEmptyUnreleased(generated.stdout);
-  const output = resolve(cwd, options.output);
   if (options.stdout) process.stdout.write(markdown);
-  else if (options.check) {
-    if (!existsSync(output) || readFileSync(output, "utf8") !== markdown) {
-      if (summaryPath) appendFileSync(summaryPath, markdown);
-      process.stderr.write("Changelog is out of date. Run npm run changelog:full.\n");
-      return 1;
-    }
-    process.stderr.write("Changelog is up to date.\n");
-  } else writeFileSync(output, markdown);
+  else writeFileSync(resolve(cwd, options.output), markdown);
   if (summaryPath) appendFileSync(summaryPath, markdown);
   return 0;
 }
